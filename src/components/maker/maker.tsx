@@ -1,0 +1,269 @@
+'use client';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { mountStudio } from './studio.js';
+import { AuthDialog } from '@/components/auth-dialog';
+import { supabaseBrowser } from '@/lib/supabase/client';
+import { formatMoney, type Currency } from '@/lib/money';
+import { EXAMPLES } from '@/lib/gallery';
+import './maker.css';
+
+type Studio = { designPayload(): unknown; previewJpeg(): string; destroy(): void; loadExample(src: string, name: string): void };
+type Phase = { kind: 'idle' } | { kind: 'working'; text: string } | { kind: 'done'; fileId: string } | { kind: 'error'; text: string; orderId?: string };
+
+type RzpResponse = { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string };
+type RzpInstance = { open(): void; on(ev: string, fn: (r: { error?: { description?: string } }) => void): void };
+declare global { interface Window { Razorpay?: new (o: Record<string, unknown>) => RzpInstance } }
+
+function loadCheckout(): Promise<void> {
+  if (window.Razorpay) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://checkout.razorpay.com/v1/checkout.js'; s.async = true;
+    s.onload = () => res(); s.onerror = () => rej(new Error('The payment window could not be loaded. Check your connection and try again.'));
+    document.head.append(s);
+  });
+}
+
+async function post<T>(url: string, body: unknown): Promise<T> {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || 'Something went wrong.'), { status: r.status, orderId: j.orderId });
+  return j as T;
+}
+
+export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example }: { currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string }) {
+  const first = EXAMPLES.find((e) => e.id === example) ?? EXAMPLES.find((e) => e.id === 'elephant')!;
+  const [picked, setPicked] = useState<string | null>(first.id);
+  const root = useRef<HTMLDivElement>(null), studio = useRef<Studio | null>(null);
+  const [ready, setReady] = useState(false);
+  const [signedIn, setSignedIn] = useState(signedIn0);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
+
+  useEffect(() => {
+    if (!root.current) return;
+    const s = mountStudio(root.current, { onReady: setReady, sample: `/examples/${first.id}.png`, sampleName: first.name }) as Studio;
+    studio.current = s;
+    (window as unknown as { __lamp?: Studio }).__lamp = s;   // handy for support and tests
+    return () => { s.destroy(); studio.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const purchase = useCallback(async () => {
+    const s = studio.current; if (!s) return;
+    const design = s.designPayload();
+    if (!design) return;
+    try {
+      setPhase({ kind: 'working', text: 'Saving your design…' });
+      const { id: designId } = await post<{ id: string }>('/api/designs', { tool: 'shadow-lamp', design, preview: s.previewJpeg() });
+      setPhase({ kind: 'working', text: 'Starting the payment…' });
+      const co = await post<{ free?: boolean; fileId?: string; keyId: string; providerOrderId: string; amount: number; currency: string; description: string; prefill: { name: string; email: string } }>(
+        '/api/checkout', { designId, currency });
+      if (co.free && co.fileId) { setPhase({ kind: 'done', fileId: co.fileId }); return; }
+      await loadCheckout();
+      const paid = await new Promise<RzpResponse | null>((resolve, reject) => {
+        const rzp = new window.Razorpay!({
+          key: co.keyId, order_id: co.providerOrderId, amount: co.amount, currency: co.currency,
+          name: 'MD Creations Labs', description: co.description, image: `${location.origin}/brand/mark-dark.svg`,
+          prefill: co.prefill, theme: { color: '#424532' },
+          handler: (r: RzpResponse) => resolve(r),
+          modal: { ondismiss: () => resolve(null), confirm_close: true },
+        });
+        rzp.on('payment.failed', (r) => reject(new Error(r.error?.description || 'The payment failed.')));
+        rzp.open();
+        setPhase({ kind: 'working', text: 'Waiting for the payment…' });
+      });
+      if (!paid) { setPhase({ kind: 'error', text: 'Payment cancelled. Your design is still here; press the button again when you are ready.' }); return; }
+      setPhase({ kind: 'working', text: 'Payment received. Building your files (this takes a few seconds)…' });
+      const v = await post<{ fileId: string }>('/api/payments/verify', paid);
+      setPhase({ kind: 'done', fileId: v.fileId });
+    } catch (e) {
+      const err = e as Error & { status?: number; orderId?: string };
+      if (err.status === 401) { setSignedIn(false); setPhase({ kind: 'idle' }); setAuthOpen(true); return; }
+      setPhase({ kind: 'error', text: err.message, orderId: err.orderId });
+    }
+  }, [currency]);
+
+  const onBuy = useCallback(async () => {
+    if (!signedIn) {
+      // they may have signed in or confirmed their email in another tab
+      const { data } = await supabaseBrowser().auth.getUser().catch(() => ({ data: { user: null } }));
+      if (!data.user) { setAuthOpen(true); return; }
+      setSignedIn(true);
+    }
+    purchase();
+  }, [signedIn, purchase]);
+
+  const price = amountMinor != null ? formatMoney(amountMinor, currency) : null;
+  const working = phase.kind === 'working';
+
+  return (
+    <div className="maker" ref={root}>
+      <div className="app">
+        <section className="stage" aria-label="Shadow preview">
+          <div className="wallbox" id="wallbox">
+            <canvas id="wall" width={704} height={704} aria-label="Shadow on the wall" />
+            <div className="chip" id="chip">Loading</div>
+            <div className="readout" id="readout" />
+          </div>
+          <div className="stagebar">
+            <span className="grow">Drag to move the shadow, scroll or pinch to resize. The olive box is the lamp.</span>
+            <label className="check"><input type="checkbox" id="guides" defaultChecked /> Guides</label>
+            <label className="check"><input type="checkbox" id="diff" /> Show what changes</label>
+          </div>
+        </section>
+
+        <div className="steps">
+          <section className="step">
+            <header><span className="num">1</span><h2>Picture</h2></header>
+            <div className="drop" id="drop">
+              <canvas id="thumb" width={128} height={128} aria-hidden />
+              <div className="txt">
+                <span className="name" id="fname">{first.name}</span>
+                <div className="row">
+                  <button type="button" className="btn small" id="pick" onClick={() => setPicked(null)}>Upload your picture</button>
+                  <input type="file" id="file" accept="image/*" hidden />
+                </div>
+              </div>
+            </div>
+            <div className="field">
+              <span className="hint">Or start from an example</span>
+              <div className="examples">
+                {EXAMPLES.map((e) => (
+                  <button key={e.id} type="button" aria-pressed={picked === e.id} onClick={() => { setPicked(e.id); studio.current?.loadExample(`/examples/${e.id}.png`, e.name); }}>
+                    <img src={`/examples/${e.id}.png`} alt="" />{e.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="hint">Best: a black silhouette, or a cut-out PNG with a clear background. A photo works when the background is one plain colour. Small grey dots missing? Move the cut-off slider to the right. You can also drop or paste a picture.</p>
+            <div className="row">
+              <div className="field">
+                <label htmlFor="mode">How to read it</label>
+                <select id="mode" className="input" defaultValue="art">
+                  <option value="art">Dark parts become shadow</option>
+                  <option value="photo">Remove the plain background</option>
+                  <option value="alpha">Use the transparent background</option>
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="level"><span id="levelLab">Darkness cut-off</span><output id="levelOut" /></label>
+                <input type="range" id="level" min={1} max={254} defaultValue={128} />
+              </div>
+            </div>
+            <div className="row">
+              <div className="field">
+                <label htmlFor="smooth">Smooth the outline<output id="smoothOut" /></label>
+                <input type="range" id="smooth" min={0} max={40} defaultValue={12} />
+              </div>
+              <label className="check"><input type="checkbox" id="invert" /> Swap light and shadow</label>
+            </div>
+            <label className="check" id="gapsRow" hidden><input type="checkbox" id="gaps" defaultChecked /> Also cut out gaps enclosed by the figure</label>
+          </section>
+
+          <section className="step">
+            <header><span className="num">2</span><h2>Size and position</h2></header>
+            <div className="field">
+              <label htmlFor="size">Shadow height on the wall<output id="sizeOut" /></label>
+              <input type="range" id="size" min={30} max={200} defaultValue={110} />
+            </div>
+            <div className="row">
+              <button type="button" className="btn small ghost" id="fit">Fit automatically</button>
+              <label className="check"><input type="checkbox" id="mirror" /> Mirror</label>
+            </div>
+            <div className="field">
+              <label htmlFor="loose">Loose pieces (dots, splashes, stars)</label>
+              <select id="loose" className="input" defaultValue="struts">
+                <option value="struts">Hold them with thin support bars (one colour)</option>
+                <option value="backing">Keep every dot on a clear layer (clear + one colour)</option>
+                <option value="drop">Leave them out</option>
+              </select>
+            </div>
+            <p className="note" id="placeNote" hidden />
+          </section>
+
+          <section className="step">
+            <header><span className="num">3</span><h2>Cover plate</h2></header>
+            <label className="check"><input type="checkbox" id="plateOn" defaultChecked /> Add a plate that hides the wiring</label>
+            <div className="platebody" id="plateBody">
+              <div className="platebox" id="platebox"><canvas id="plateCv" width={454} height={574} aria-label="Cover plate" /></div>
+              <div className="platectl">
+                <span className="name" id="plateName">Using the shadow picture</span>
+                <div className="row">
+                  <button type="button" className="btn small ghost" id="platePick">Choose a plate picture</button>
+                  <button type="button" className="btn small ghost" id="plateSame" hidden>Use the shadow picture</button>
+                  <input type="file" id="plateFile" accept="image/*" hidden />
+                </div>
+                <div className="platectl" id="plateRead" hidden>
+                  <div className="field"><label htmlFor="pMode">How to read it</label>
+                    <select id="pMode" className="input" defaultValue="art"><option value="art">Dark parts become the picture</option><option value="photo">Remove the plain background</option><option value="alpha">Use the transparent background</option></select></div>
+                  <div className="field"><label htmlFor="pLevel">Cut-off<output id="pLevelOut" /></label><input type="range" id="pLevel" min={1} max={254} defaultValue={128} /></div>
+                  <label className="check"><input type="checkbox" id="pInvert" /> Swap picture and background</label>
+                </div>
+                <div className="field"><label htmlFor="plateStyle">Picture style</label>
+                  <select id="plateStyle" className="input" defaultValue="solid"><option value="solid">Solid shape</option><option value="outline">Outline only</option></select></div>
+                <div className="field" id="plateLineRow" hidden><label htmlFor="plateLine">Line width<output id="plateLineOut" /></label><input type="range" id="plateLine" min={1} max={3} step={0.1} defaultValue={1.6} /></div>
+                <div className="field"><label htmlFor="plateSize">Picture size<output id="plateSizeOut" /></label><input type="range" id="plateSize" min={20} max={250} defaultValue={100} /></div>
+                <div className="row"><button type="button" className="btn small ghost" id="plateFit">Centre and fit</button></div>
+                <div className="tags" id="plateTags" />
+              </div>
+            </div>
+            <p className="hint" id="plateHint">Drag the picture on the plate to place it. Two prints, no colour change: a 2 mm plate with the picture sunk 1 mm deep, and the picture itself, 1 mm thick, which presses in.</p>
+          </section>
+
+          <section className="step buy">
+            <header><span className="num">4</span><h2>Get the files</h2></header>
+            <div className="field">
+              <label htmlFor="name">Design name</label>
+              <input type="text" id="name" className="input" defaultValue={first.name} maxLength={40} autoComplete="off" />
+            </div>
+            <label className="check"><input type="checkbox" id="withBase" defaultChecked /> Include the base and battery cover</label>
+
+            {phase.kind === 'done' ? (
+              <div className="done">
+                <p className="serif">Your files are ready.</p>
+                <a className="btn" href={`/api/files/${phase.fileId}/download`}>Download the zip <span className="arrow">↓</span></a>
+                <p className="hint">They are saved in <Link href="/account">your account</Link>, so you can download them again any time. Changed something? You can buy another version below.</p>
+                <button type="button" className="linkish" onClick={() => setPhase({ kind: 'idle' })}>Make another version</button>
+              </div>
+            ) : (
+              <>
+                <button type="button" className="btn buybtn" onClick={onBuy} disabled={!ready || working || !payConfigured || amountMinor == null}>
+                  {working ? phase.text : price ? <>Buy and download <span className="sep" /> <span className="mono">{price}</span></> : 'Download'}
+                </button>
+                {!payConfigured ? <p className="note">Payments are being set up. Please check back soon.</p>
+                  : amountMinor == null ? <p className="note">This tool is not sold in {currency} yet. Switch the currency at the top of the page.</p> : null}
+                {phase.kind === 'error' && (
+                  <p className="note">{phase.text}{phase.orderId ? <> If you were charged, your files will appear in <Link href="/account">your account</Link> within a few minutes.</> : null}</p>
+                )}
+                <p className="hint">Free to try. {signedIn ? 'You are signed in.' : 'You will sign in or create an account before paying.'} One payment per design; your files stay in your account.</p>
+              </>
+            )}
+
+            <details className="fine">
+              <summary>Fine-tuning</summary>
+              <div className="grid">
+                <div className="field"><label htmlFor="vmax">Tallest wall<output id="vmaxOut" /></label><input type="range" id="vmax" min={45} max={69} step={0.5} defaultValue={67.5} /></div>
+                <div className="field"><label htmlFor="thin">Thinnest printed detail<output id="thinOut" /></label><input type="range" id="thin" min={0.2} max={1.2} step={0.05} defaultValue={0.35} /></div>
+                <div className="field"><label htmlFor="apex">Light above the ledge<output id="apexOut" /></label><input type="range" id="apex" min={70} max={80} step={0.5} defaultValue={75} /></div>
+                <div className="field"><label htmlFor="plateGap">Plate picture: gap around each piece<output id="plateGapOut" /></label><input type="range" id="plateGap" min={0.05} max={0.3} step={0.01} defaultValue={0.15} /></div>
+                <label className="check"><input type="checkbox" id="wrap" defaultChecked /> Carry corner pieces on the next wall</label>
+                <label className="check"><input type="checkbox" id="ribs" defaultChecked /> Alignment ribs</label>
+                <label className="check"><input type="checkbox" id="cuts" defaultChecked /> Switch and charging cut-outs (wall 3)</label>
+              </div>
+            </details>
+          </section>
+        </div>
+      </div>
+
+      <section aria-label="Printed walls" className="walls">
+        <p className="eyebrow">The four walls, as they will print</p>
+        <div className="panels" id="panels" />
+      </section>
+
+      <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} onSignedIn={() => { setSignedIn(true); setAuthOpen(false); purchase(); }}
+        next="/tools/shadow-lamp/make" reason="Sign in to buy and download your files. Your design stays right here." />
+    </div>
+  );
+}
