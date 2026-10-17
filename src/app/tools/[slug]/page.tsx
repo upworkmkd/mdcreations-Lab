@@ -8,6 +8,8 @@ import Image from 'next/image';
 import { INSTAGRAM_URL, SUPPORT_EMAIL } from '@/lib/env';
 import { LAMP_GALLERY, KIND_LABEL } from '@/lib/gallery';
 import { SocialBand } from '@/components/social-band';
+import { JsonLd, pageMeta, TOOL_SEO } from '@/lib/seo';
+import { CANONICAL_URL as SITE_URL } from '@/lib/env';
 
 export function generateStaticParams() {
   return TOOLS.map((t) => ({ slug: t.slug }));
@@ -16,7 +18,9 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps<'/tools/[slug]'>): Promise<Metadata> {
   const { slug } = await params;
   const tool = TOOLS.find((x) => x.slug === slug);
-  return tool ? { title: tool.name, description: tool.short } : {};
+  if (!tool) return {};
+  const seo = TOOL_SEO[slug];
+  return pageMeta({ title: seo?.title ?? tool.name, absoluteTitle: true, description: seo?.description ?? tool.short, path: `/tools/${slug}`, image: tool.image, keywords: seo?.keywords });
 }
 
 export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
@@ -26,8 +30,28 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
   const live = tool.status === 'live';
   const price = tool.prices[currency];
 
+  const url = `${SITE_URL}/tools/${tool.slug}`;
+  const ld = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebApplication', name: tool.name, url, description: TOOL_SEO[tool.slug]?.description ?? tool.lede,
+        applicationCategory: 'DesignApplication', operatingSystem: 'Any (web browser)', image: `${SITE_URL}${tool.image}`,
+        publisher: { '@id': `${SITE_URL}/#org` },
+        ...(live ? { offers: Object.entries(tool.prices).map(([c, a]) => ({ '@type': 'Offer', price: ((a as number) / 100).toFixed(2), priceCurrency: c, availability: 'https://schema.org/InStock', url: `${SITE_URL}${tool.makePath ?? `/tools/${tool.slug}`}` })) } : {}),
+      },
+      { '@type': 'BreadcrumbList', itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Labs', item: SITE_URL },
+        { '@type': 'ListItem', position: 2, name: 'Tools', item: `${SITE_URL}/#tools` },
+        { '@type': 'ListItem', position: 3, name: tool.name, item: url },
+      ] },
+      ...(tool.faq.length ? [{ '@type': 'FAQPage', mainEntity: tool.faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }] : []),
+    ],
+  };
+
   return (
     <>
+      <JsonLd data={ld} />
       <div className="wrap page-title">
         <nav className="crumbs" aria-label="Breadcrumb"><Link href="/#tools">Tools</Link><span>/</span><span>{tool.index}</span></nav>
         <h1>{tool.name}</h1>

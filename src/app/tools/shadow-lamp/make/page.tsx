@@ -1,11 +1,18 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { pageMeta } from '@/lib/seo';
 import { Maker } from '@/components/maker/maker';
 import { getCurrency, getTool } from '@/lib/catalog.server';
 import { getViewer } from '@/lib/auth.server';
 import { supabaseConfigured } from '@/lib/env';
 
-export const metadata: Metadata = { title: 'Make a shadow lamp', description: 'Turn your picture into the printable walls, base and cover plate of a shadow lamp.' };
+export const metadata: Metadata = pageMeta({
+  title: 'Make a Shadow Lamp Online – Free Preview, Download STL Files',
+  absoluteTitle: true,
+  description: 'Upload any picture and turn it into a 3D printable shadow lamp in your browser. See the real shadow on the wall before you buy, then download the walls, base and cover plate as STL.',
+  path: '/tools/shadow-lamp/make',
+  keywords: ['make a shadow lamp', 'shadow lamp generator online', 'custom shadow lamp STL download', 'picture to shadow lamp'],
+});
 
 export default async function MakePage({ searchParams }: PageProps<'/tools/shadow-lamp/make'>) {
   const sp = await searchParams;

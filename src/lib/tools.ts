@@ -48,6 +48,9 @@ export const TOOLS: Tool[] = [
       ['Files', 'Binary STL in a single zip'],
     ],
     faq: [
+      { q: 'How does a shadow lamp work?', a: 'A small LED sits in the middle of four 3D printed walls. Each wall is shaped so that its top edge blocks the light in exactly the right places, and together they throw your picture onto the wall around the lamp, up to about 1.8 m tall.' },
+      { q: 'Can I make a shadow lamp from my own photo?', a: 'Yes. Upload any photo, drawing or logo. The maker picks out the main shape, lets you place it on the wall and shows the exact shadow the printed walls will cast before you pay.' },
+      { q: 'Is the Shadow Lamp Maker free?', a: 'Designing and previewing is free and needs no account. You pay once per design when you download the STL files, and you can download them again any time from your account.' },
       { q: 'What pictures work best?', a: 'Bold shapes with a clear outline: silhouettes, logos, line art and photos of a figure against a plain wall. Very thin lines are thickened to the thinnest wall your printer can make, and the preview shows exactly what changes.' },
       { q: 'Can I sell the lamps I print?', a: 'Yes. You can print and sell lamps made from your files. Please do not share or resell the files themselves.' },
       { q: 'Which printer and filament?', a: 'Any FDM printer with a bed of at least 160 × 160 mm. Use opaque filament for the walls; a second colour for the plate picture looks best but is optional.' },

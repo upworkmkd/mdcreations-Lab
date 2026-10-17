@@ -23,14 +23,14 @@ The browser sends only a black-and-white run-length mask of the picture (tens of
 1. Create a project at supabase.com (region: Mumbai, `ap-south-1`).
 2. SQL Editor → paste and run `supabase/migrations/20261008000000_init.sql`.
 3. Authentication → URL Configuration:
-   - Site URL: `https://lab.themdcreations.com`
-   - Redirect URLs: `https://lab.themdcreations.com/auth/callback`, `http://localhost:3000/auth/callback`
+   - Site URL: `https://labs.themdcreations.com`
+   - Redirect URLs: `https://labs.themdcreations.com/auth/callback`, `http://localhost:3000/auth/callback`
 4. Authentication → Emails: keep "Confirm email" on. For real customers, set up custom SMTP (Resend, Zoho, Brevo…); the built-in sender is rate-limited.
 5. Project Settings → API Keys: copy the **publishable** key and the **secret** key.
 
 ### 2. Razorpay
 1. Dashboard → Account & Settings → API Keys → generate (test mode first).
-2. Dashboard → Account & Settings → Webhooks → add `https://lab.themdcreations.com/api/webhooks/razorpay`, events `payment.captured` and `order.paid`, choose a secret.
+2. Dashboard → Account & Settings → Webhooks → add `https://labs.themdcreations.com/api/webhooks/razorpay`, events `payment.captured` and `order.paid`, choose a secret.
 3. For USD: Account & Settings → International payments → activate. Until it is approved, leave the USD price empty in /admin (the site then sells in INR only).
 
 ### 3. Environment variables
@@ -53,7 +53,7 @@ update public.profiles set role = 'admin' where email = 'you@example.com';
 ### 6. Deploy on Vercel
 1. Push this folder to a GitHub repo and import it in Vercel (framework: Next.js; build command `npm run build`).
 2. Add the environment variables.
-3. Domains → add `lab.themdcreations.com`, then at your DNS provider add a `CNAME` record `lab` → `cname.vercel-dns.com`.
+3. Domains → add `labs.themdcreations.com`, then at your DNS provider add a `CNAME` record `labs` → `cname.vercel-dns.com`.
 4. Selling on Vercel needs the **Pro** plan (Hobby is for non-commercial use). Generating a zip takes 2–6 s; routes allow up to 60 s.
 
 ## Adding the next tool

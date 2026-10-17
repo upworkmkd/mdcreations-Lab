@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Legal } from '@/components/legal';
 import { SUPPORT_EMAIL, SOCIALS } from '@/lib/env';
-export const metadata: Metadata = { title: 'Contact' };
+export const metadata: Metadata = { title: 'Contact', description: 'Contact MD Creations for help with Labs tools, custom shadow lamps and printed orders.', alternates: { canonical: '/contact' } };
 export default function Page() {
   return (
     <Legal title="Contact">

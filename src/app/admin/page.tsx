@@ -5,7 +5,7 @@ import { TOOLS } from '@/lib/tools';
 import { formatMoney, isCurrency } from '@/lib/money';
 import { ToolRow } from './tool-row';
 
-export const metadata: Metadata = { title: 'Admin' };
+export const metadata: Metadata = { title: 'Admin', robots: { index: false, follow: false } };
 const when = (s: string) => new Date(s).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 export default async function Admin() {

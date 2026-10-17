@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Legal } from '@/components/legal';
-export const metadata: Metadata = { title: 'Delivery' };
+export const metadata: Metadata = { title: 'Delivery', description: 'How digital downloads from MD Creations Labs are delivered.', alternates: { canonical: '/shipping' } };
 export default function Page() {
   return (
     <Legal title="Delivery" updated="8 October 2026">

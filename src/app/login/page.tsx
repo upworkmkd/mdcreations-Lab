@@ -4,7 +4,7 @@ import { AuthShell } from '@/components/auth-shell';
 import { AuthForm } from '@/components/auth-form';
 import { signIn } from './actions';
 
-export const metadata: Metadata = { title: 'Sign in' };
+export const metadata: Metadata = { title: 'Sign in', robots: { index: false, follow: false } };
 
 export default async function Login({ searchParams }: PageProps<'/login'>) {
   const sp = await searchParams;

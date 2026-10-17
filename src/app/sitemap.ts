@@ -1,0 +1,18 @@
+import type { MetadataRoute } from 'next';
+import { CANONICAL_URL as SITE_URL } from '@/lib/env';
+import { TOOLS } from '@/lib/tools';
+import { LAMP_GALLERY } from '@/lib/gallery';
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  const now = new Date();
+  const u = (p: string) => `${SITE_URL}${p}`;
+  return [
+    { url: u('/'), lastModified: now, changeFrequency: 'weekly', priority: 1, images: [u('/images/hero-shadow-lamp.jpg')] },
+    ...TOOLS.map((t) => ({
+      url: u(`/tools/${t.slug}`), lastModified: now, changeFrequency: 'weekly' as const, priority: t.status === 'live' ? 0.9 : 0.5,
+      images: t.slug === 'shadow-lamp' ? [u(t.image), ...LAMP_GALLERY.map((g) => u(g.src))] : [u(t.image)],
+    })),
+    { url: u('/tools/shadow-lamp/make'), lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
+    ...['/contact', '/terms', '/refunds', '/privacy', '/shipping'].map((p) => ({ url: u(p), lastModified: now, changeFrequency: 'yearly' as const, priority: 0.2 })),
+  ];
+}

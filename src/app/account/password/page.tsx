@@ -4,7 +4,7 @@ import { AuthForm } from '@/components/auth-form';
 import { updatePassword } from '../../login/actions';
 import { requireViewer } from '@/lib/auth.server';
 
-export const metadata: Metadata = { title: 'Choose a new password' };
+export const metadata: Metadata = { title: 'Choose a new password', robots: { index: false, follow: false } };
 
 export default async function NewPassword() {
   await requireViewer('/account/password');

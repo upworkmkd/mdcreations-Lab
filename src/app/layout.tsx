@@ -3,7 +3,8 @@ import localFont from 'next/font/local';
 import { Analytics } from '@vercel/analytics/next';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
-import { SITE_URL } from '@/lib/env';
+import { CANONICAL_URL as SITE_URL } from '@/lib/env';
+import { JsonLd, organizationLd } from '@/lib/seo';
 import './globals.css';
 
 const serif = localFont({
@@ -18,9 +19,15 @@ const mono = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: 'MD Creations Labs', template: '%s · MD Creations Labs' },
-  description: 'Browser tools that turn your pictures into print-ready 3D files. Start with the Shadow Lamp Maker.',
-  openGraph: { siteName: 'MD Creations Labs', type: 'website', images: ['/images/hero-shadow-lamp.jpg'] },
+  title: { default: 'MD Creations Labs – Shadow Lamp Maker & 3D Printing Tools', template: '%s | MD Creations Labs' },
+  description: 'Online tools that turn your pictures into print-ready 3D files. Make a custom shadow lamp from any picture and download the STL files.',
+  applicationName: 'MD Creations Labs',
+  authors: [{ name: 'MD Creations' }],
+  creator: 'MD Creations',
+  category: '3D printing',
+  openGraph: { siteName: 'MD Creations Labs', type: 'website', locale: 'en_IN', images: ['/images/hero-shadow-lamp.jpg'] },
+  twitter: { card: 'summary_large_image' },
+  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } : undefined,
 };
 export const viewport: Viewport = { themeColor: '#424532' };
 
@@ -28,6 +35,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
       <body>
+        <JsonLd data={organizationLd()} />
         <SiteHeader />
         <main id="main">{children}</main>
         <SiteFooter />

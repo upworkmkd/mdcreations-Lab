@@ -8,7 +8,7 @@ import { RetryBuild } from '@/components/retry-build';
 import { updateName } from '../login/actions';
 import { toolBySlug } from '@/lib/tools';
 
-export const metadata: Metadata = { title: 'Your account' };
+export const metadata: Metadata = { title: 'Your account', robots: { index: false, follow: false } };
 
 const when = (s: string) => new Date(s).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 const money = (a: number, c: string) => (isCurrency(c) ? formatMoney(a, c) : `${a / 100} ${c}`);

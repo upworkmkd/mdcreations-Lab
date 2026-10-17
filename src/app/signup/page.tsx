@@ -4,7 +4,7 @@ import { AuthShell } from '@/components/auth-shell';
 import { AuthForm } from '@/components/auth-form';
 import { signUp } from '../login/actions';
 
-export const metadata: Metadata = { title: 'Create an account' };
+export const metadata: Metadata = { title: 'Create an account', robots: { index: false, follow: false } };
 
 export default async function Signup({ searchParams }: PageProps<'/signup'>) {
   const sp = await searchParams;

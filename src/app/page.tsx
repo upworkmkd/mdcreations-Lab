@@ -5,6 +5,15 @@ import { formatMoney } from '@/lib/money';
 import { HeroSlider, type Slide } from '@/components/hero-slider';
 import { LAMP_GALLERY, KIND_LABEL } from '@/lib/gallery';
 import { SocialBand } from '@/components/social-band';
+import { pageMeta } from '@/lib/seo';
+
+export const metadata = pageMeta({
+  title: 'MD Creations Labs – Shadow Lamp Maker & 3D Printing Tools',
+  absoluteTitle: true,
+  description: 'Make a custom 3D printed shadow lamp from any picture, preview the shadow on your wall and download print-ready STL files. More tools for makers coming: statue maker, layered sculptures and STL repair.',
+  path: '/',
+  keywords: ['shadow lamp maker', '3D printing tools', 'custom shadow lamp STL', 'photo to STL', 'MD Creations'],
+});
 
 const DELIVERABLES: Record<string, { file: string; lines: [string, string?][] }> = {
   'shadow-lamp': { file: 'your-design_shadow_lamp.zip', lines: [['1 top.stl'], ['2 right.stl'], ['3 left.stl'], ['4 bottom.stl'], ['plate.stl'], ['plate picture.stl', 'inlay'], ['Lamp base.stl'], ['Battery cover.stl'], ['shadow preview.jpg'], ['README.txt', 'how-to']] },

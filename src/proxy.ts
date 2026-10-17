@@ -3,6 +3,13 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 // Keeps the Supabase session fresh on every page view and guards the private areas.
 export async function proxy(request: NextRequest) {
+  // one address for search engines: send the production *.vercel.app alias to the real domain
+  const host = request.headers.get('host') ?? '';
+  if (process.env.VERCEL_ENV === 'production' && host.endsWith('.vercel.app')) {
+    const to = new URL(request.nextUrl.pathname + request.nextUrl.search, 'https://labs.themdcreations.com');
+    return NextResponse.redirect(to, 308);
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   let response = NextResponse.next({ request });
   if (!url || !key) return response;

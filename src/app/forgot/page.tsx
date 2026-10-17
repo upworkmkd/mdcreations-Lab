@@ -4,7 +4,7 @@ import { AuthShell } from '@/components/auth-shell';
 import { AuthForm } from '@/components/auth-form';
 import { sendReset } from '../login/actions';
 
-export const metadata: Metadata = { title: 'Reset your password' };
+export const metadata: Metadata = { title: 'Reset your password', robots: { index: false, follow: false } };
 
 export default function Forgot() {
   return (

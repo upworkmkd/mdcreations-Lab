@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Legal } from '@/components/legal';
 import { SUPPORT_EMAIL } from '@/lib/env';
-export const metadata: Metadata = { title: 'Terms of use' };
+export const metadata: Metadata = { title: 'Terms of use', description: 'Terms of use and file licence for MD Creations Labs.', alternates: { canonical: '/terms' } };
 export default function Page() {
   return (
     <Legal title="Terms of use" updated="8 October 2026">

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Legal } from '@/components/legal';
 import { SUPPORT_EMAIL } from '@/lib/env';
-export const metadata: Metadata = { title: 'Privacy' };
+export const metadata: Metadata = { title: 'Privacy', description: 'How MD Creations Labs handles your account, designs and payment data.', alternates: { canonical: '/privacy' } };
 export default function Page() {
   return (
     <Legal title="Privacy" updated="8 October 2026">

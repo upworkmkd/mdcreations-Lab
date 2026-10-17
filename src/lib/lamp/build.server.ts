@@ -12,7 +12,7 @@ function field(p: PictureMask) {
 
 const README = (name: string, plate: boolean, base: boolean, backing = false) => [
   `${name} - shadow lamp`,
-  'Made with MD Creations Labs - lab.themdcreations.com',
+  'Made with MD Creations Labs - labs.themdcreations.com',
   '',
   'Seen from the front, with the lamp on the wall:',
   '  1 = top wall, 2 = right wall, 3 = left wall (switch side), 4 = bottom wall.',

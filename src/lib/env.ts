@@ -3,7 +3,9 @@
 export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 export const SUPABASE_PUBLISHABLE_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+/** The public address used for search engines, canonical links and sitemaps. */
+export const CANONICAL_URL = 'https://labs.themdcreations.com';
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? (process.env.VERCEL_ENV === 'production' ? 'https://labs.themdcreations.com' : 'http://localhost:3000')).replace(/\/$/, '');
 export const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hello@themdcreations.com';
 export const SOCIALS = [
   { name: 'Instagram', handle: '@mdcreationsbymanoj', url: process.env.NEXT_PUBLIC_INSTAGRAM_URL ?? 'https://www.instagram.com/mdcreationsbymanoj/' },
