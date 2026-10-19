@@ -4,6 +4,7 @@ import path from 'node:path';
 import { bytesToMask, fieldFromMask, makeSampler } from './raster.js';
 import { generate, generatePlate, stlBinary, zipFiles } from './mesh.server.js';
 import type { LampDesign, PictureMask } from './design';
+import { licenseText } from '@/lib/license';
 
 function field(p: PictureMask) {
   const bytes = new Uint8Array(Buffer.from(p.mask, 'base64'));
@@ -33,13 +34,13 @@ const README = (name: string, plate: boolean, base: boolean, backing = false) =>
     'Base and battery cover: the same for every design. Print the base with its back on the bed, no supports;',
     'print the cover with its wider face down. It takes a 2 x AA holder, a small rocker switch and a 70 mm LED post.'] : []),
   '',
-  'These files are licensed for your personal use and for selling printed lamps you make yourself.',
-  'Please do not share or resell the files.',
+  'COMMERCIAL LICENSE: you may print, sell the printed lamps, and sell or share these files,',
+  'as they are or modified. The full terms are in LICENSE.txt in this zip.',
   '',
 ].join('\r\n');
 
 /** Builds the paid download. Takes about 2-6 s for a typical design. */
-export async function buildLampZip(d: LampDesign, preview?: Uint8Array | null) {
+export async function buildLampZip(d: LampDesign, preview?: Uint8Array | null, license?: { owner?: string; orderId?: string }) {
   const shadowField = field(d.shadow);
   const sampler = makeSampler(shadowField, d.shadow.w, d.shadow.h, d.shadow.view);
   const walls = generate(sampler, d.opts);
@@ -61,6 +62,7 @@ export async function buildLampZip(d: LampDesign, preview?: Uint8Array | null) {
     files.push({ name: 'Battery cover.stl', data: new Uint8Array(await readFile(path.join(dir, 'battery_cover.stl'))) });
   }
   files.push({ name: 'README.txt', data: new TextEncoder().encode(README(base, !!d.plate, d.withBase, d.opts.backing)) });
+  files.push({ name: 'LICENSE.txt', data: new TextEncoder().encode(licenseText({ design: base, ...license }).replace(/\n/g, '\r\n')) });
   if (preview && preview.length) files.push({ name: `${base} shadow preview.jpg`, data: preview });
   const zip = zipFiles(files);
   return { zip, fileName: `${base.replace(/ +/g, '_')}_shadow_lamp.zip`, panels: walls.panels.length, plate: plateInfo };

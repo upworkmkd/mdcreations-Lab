@@ -23,6 +23,8 @@ export function SiteFooter() {
         <div>
           <h4>Help</h4>
           <ul>
+            <li><Link href="/pricing">Pricing and plans</Link></li>
+            <li><Link href="/license">Commercial license</Link></li>
             <li><Link href="/account">Your files</Link></li>
             <li><Link href="/contact">Contact</Link></li>
             <li><a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></li>

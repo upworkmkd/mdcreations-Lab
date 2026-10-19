@@ -8,7 +8,7 @@ export const metadata = { title: 'Live activity' };
 const SIZE = 200;
 const GROUPS: Record<string, string[]> = {
   pages: ['pageview'],
-  sales: ['design_saved', 'checkout', 'payment_done', 'payment', 'payment_cancelled', 'purchase_error', 'download'],
+  sales: ['subscribe_start', 'subscribed', 'subscribe_cancelled', 'subscription_cancel', 'plan_build', 'design_saved', 'checkout', 'payment_done', 'payment', 'payment_cancelled', 'purchase_error', 'download'],
   accounts: ['signup', 'email_confirmed', 'signin', 'signin_failed', 'signout', 'password_reset'],
   errors: ['error', 'purchase_error', 'signin_failed'],
 };

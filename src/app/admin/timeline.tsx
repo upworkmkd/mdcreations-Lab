@@ -4,8 +4,8 @@ import { clock, day, duration, money } from './ui';
 export type Ev = { id: number; visitor_id: string; session_id: string | null; user_id: string | null; type: string; name: string | null; path: string | null; title: string | null; props: Record<string, unknown>; created_at: string };
 export type Sess = { id: string; started_at: string; last_seen: string; pageviews: number; events: number; referrer: string | null; landing: string | null; browser: string | null; os: string | null; device_type: string | null; city: string | null; country: string | null; ip: string | null; utm_source: string | null; utm_campaign: string | null };
 
-const KEY = new Set(['signup', 'signin', 'email_confirmed', 'design_saved', 'checkout', 'payment', 'payment_done', 'download', 'review']);
-const BAD = new Set(['error', 'purchase_error', 'signin_failed', 'payment_cancelled']);
+const KEY = new Set(['subscribed', 'plan_build', 'subscription_cancel', 'signup', 'signin', 'email_confirmed', 'design_saved', 'checkout', 'payment', 'payment_done', 'download', 'review']);
+const BAD = new Set(['subscribe_error', 'error', 'purchase_error', 'signin_failed', 'payment_cancelled']);
 
 const q = (s: unknown) => `“${String(s ?? '')}”`;
 const p = (e: Ev, k: string) => e.props?.[k] as string | number | boolean | undefined;
@@ -34,6 +34,12 @@ function describe(e: Ev): { icon: string; text: React.ReactNode } {
     case 'payment': return { icon: '₹', text: <><b>Paid</b> {money(Number(p(e, 'amount') ?? 0), String(p(e, 'currency') ?? 'INR'))} · files built</> };
     case 'purchase_error': return { icon: '!', text: <>Purchase problem: {n}</> };
     case 'download': return { icon: '⬇', text: <>Downloaded <b>{n}</b></> };
+    case 'subscribe_start': return { icon: '↻', text: <>Started subscribing to the <b>{n}</b></> };
+    case 'subscribed': return { icon: '↻', text: <><b>Subscribed</b> to the {n}, paid {money(Number(p(e, 'amount') ?? 0), String(p(e, 'currency') ?? 'INR'))}</> };
+    case 'subscribe_cancelled': return { icon: '×', text: <>Closed the subscription payment window ({n})</> };
+    case 'subscribe_error': return { icon: '!', text: <>Subscription problem: {n}</> };
+    case 'subscription_cancel': return { icon: '×', text: <>Cancelled their {n} (stays active until the end of the month)</> };
+    case 'plan_build': return { icon: '◆', text: <>Built {q(n)} with their plan{p(e, 'left') != null ? `, ${p(e, 'left')} left today` : ''}</> };
     case 'review': return { icon: '❝', text: <>Wrote a review</> };
     case 'error': return { icon: '!', text: <>Page error: <code>{n}</code></> };
     default: return { icon: '·', text: <>{e.type}{n ? `: ${n}` : ''}</> };

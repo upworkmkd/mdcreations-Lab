@@ -8,6 +8,7 @@ import { RetryBuild } from '@/components/retry-build';
 import { updateName } from '../login/actions';
 import { toolBySlug } from '@/lib/tools';
 import { ReviewForm } from '@/components/review-form';
+import { entitlement } from '@/lib/plans.server';
 
 export const metadata: Metadata = { title: 'Your account', robots: { index: false, follow: false } };
 
@@ -15,8 +16,9 @@ const when = (s: string) => new Date(s).toLocaleDateString('en-IN', { day: 'nume
 const money = (a: number, c: string) => (isCurrency(c) ? formatMoney(a, c) : `${a / 100} ${c}`);
 const kb = (n: number) => (n > 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.round(n / 1e3)} KB`);
 
-export default async function Account() {
+export default async function Account({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const viewer = await requireViewer('/account');
+  const sp = await searchParams;
   const supabase = await createClient();
   const [files, orders, payments, downloads] = await Promise.all([
     supabase.from('files').select('id, name, size_bytes, created_at, tool_slug, design_id, designs(name, preview)').order('created_at', { ascending: false }),
@@ -24,6 +26,8 @@ export default async function Account() {
     supabase.from('payments').select('provider_payment_id, amount_minor, currency, status, method, created_at').order('created_at', { ascending: false }).limit(100),
     supabase.from('downloads').select('file_id'),
   ]);
+  const ent = await entitlement(viewer.id, 'shadow-lamp').catch(() => null);
+  const sub = ent?.sub ?? null;
   const dl = new Map<string, number>();
   for (const d of downloads.data ?? []) dl.set(d.file_id, (dl.get(d.file_id) ?? 0) + 1);
   const one = <T,>(v: T | T[] | null | undefined) => (Array.isArray(v) ? v[0] : v) ?? null;
@@ -38,6 +42,7 @@ export default async function Account() {
       <div className="dash">
         <nav aria-label="Account sections">
           <a href="#files" className="on">Files</a>
+          <a href="#plan">Plan</a>
           <a href="#orders">Orders</a>
           <a href="#payments">Payments</a>
           <a href="#review">Review</a>
@@ -70,6 +75,38 @@ export default async function Account() {
             )}
           </section>
 
+          <section id="plan">
+            <h2>Your plan</h2>
+            {sp.plan === 'started' && <p className="msg ok" style={{ marginBottom: 16 }}>Welcome to your plan! You can start making designs straight away.</p>}
+            {sp.plan === 'cancelled' && <p className="msg ok" style={{ marginBottom: 16 }}>Your plan will not renew. It keeps working until the date below.</p>}
+            {typeof sp.plan_error === 'string' && <p className="msg err" style={{ marginBottom: 16 }}>{sp.plan_error}</p>}
+            {sub && ent ? (
+              <div className="plan-card">
+                <div>
+                  <h3>{ent.plan.name}</h3>
+                  <dl>
+                    <dt>Covers</dt><dd>{sub.tool_slug ? toolBySlug(sub.tool_slug)?.name ?? sub.tool_slug : 'Every tool'}</dd>
+                    <dt>Today</dt><dd>{ent.remaining == null ? `${ent.used} designs, no limit` : `${ent.used} of ${ent.plan.daily_limit} designs used, ${ent.remaining} left`}</dd>
+                    <dt>Price</dt><dd>{money(sub.amount_minor, sub.currency)} a month</dd>
+                    <dt>{sub.cancel_at_period_end || sub.status === 'cancelled' ? 'Ends on' : 'Renews on'}</dt><dd>{sub.current_end ? when(sub.current_end) : '—'}</dd>
+                    <dt>Status</dt><dd><span className={`pill ${sub.status === 'active' ? 'live' : ''}`}>{sub.cancel_at_period_end ? 'cancelled, active until end' : sub.status}</span></dd>
+                  </dl>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
+                  <Link className="btn" href="/tools/shadow-lamp/make">Make a design</Link>
+                  {!sub.cancel_at_period_end && sub.status !== 'cancelled' && (
+                    <form action="/api/subscriptions/cancel" method="post"><button className="btn ghost small">Cancel plan</button></form>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="empty">
+                <p>No plan. You pay per design, which suits a lamp now and then. Making lots? The Starter plan includes 10 designs a day.</p>
+                <Link className="btn ghost" href="/pricing">See plans</Link>
+              </div>
+            )}
+          </section>
+
           <section id="orders">
             <h2>Orders</h2>
             <div className="tbl-wrap">
@@ -81,7 +118,7 @@ export default async function Account() {
                       <td>{when(o.created_at)}</td>
                       <td>{one(o.designs as { name: string } | { name: string }[] | null)?.name ?? '—'}</td>
                       <td>{toolBySlug(o.tool_slug)?.name ?? o.tool_slug}</td>
-                      <td><span className={`pill ${o.status}`}>{o.status === 'created' ? 'not paid' : o.status}</span>{o.status === 'paid' && <> <RetryBuild orderId={o.id} /></>}</td>
+                      <td><span className={`pill ${o.status}`}>{o.status === 'created' ? 'not paid' : o.status}</span>{o.amount_minor === 0 && o.status === 'fulfilled' ? <span className="id"> · plan</span> : null}{o.status === 'paid' && <> <RetryBuild orderId={o.id} /></>}</td>
                       <td className="num">{money(o.amount_minor, o.currency)}</td>
                       <td className="id">{o.provider_order_id ?? o.id.slice(0, 8)}</td>
                     </tr>

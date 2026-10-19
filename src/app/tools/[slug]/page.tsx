@@ -9,6 +9,7 @@ import { INSTAGRAM_URL, SUPPORT_EMAIL } from '@/lib/env';
 import { LAMP_GALLERY, KIND_LABEL } from '@/lib/gallery';
 import { SocialBand } from '@/components/social-band';
 import { Reviews } from '@/components/reviews';
+import { LICENSE_POINTS } from '@/lib/license';
 import { JsonLd, pageMeta, TOOL_SEO } from '@/lib/seo';
 import { CANONICAL_URL as SITE_URL } from '@/lib/env';
 
@@ -123,7 +124,19 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
                 <p className="per">per design · {currency === 'INR' ? 'incl. GST where applicable' : 'paid by card'} · download again any time</p>
                 <ul>{tool.youGet.map((x) => <li key={x}>{x}</li>)}</ul>
                 {tool.makePath && <Link href={tool.makePath} className="btn">Start designing <span className="arrow">→</span></Link>}
+                <p className="per" style={{ marginTop: 14 }}>Making lamps often? <Link href="/pricing">A monthly plan</Link> includes up to 10 designs a day.</p>
               </div>
+            </div>
+          </section>
+          <section className="section band">
+            <div className="wrap split license-band">
+              <div>
+                <p className="eyebrow" style={{ color: 'var(--light)' }}>Commercial license included</p>
+                <h2 className="serif" style={{ fontSize: 'clamp(30px, 4vw, 44px)', lineHeight: 1.08, marginTop: 10 }}>Make it, sell it. The files are yours to use.</h2>
+                <p style={{ marginTop: 14, opacity: .85 }}>Every download, bought on its own or with a plan, comes with a commercial license. A copy with your name and order number is saved as LICENSE.txt in the zip.</p>
+                <Link href="/license" className="btn on-dark" style={{ marginTop: 22 }}>Read the license</Link>
+              </div>
+              <ul className="checks">{LICENSE_POINTS.map((p) => <li key={p}>{p}</li>)}</ul>
             </div>
           </section>
           {tool.faq.length > 0 && (

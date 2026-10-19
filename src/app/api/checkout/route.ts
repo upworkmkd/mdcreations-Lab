@@ -6,6 +6,7 @@ import { fulfilOrder } from '@/lib/fulfil.server';
 import { isCurrency } from '@/lib/money';
 import { serverEnv } from '@/lib/env';
 import { trackServer } from '@/lib/track.server';
+import { entitlement } from '@/lib/plans.server';
 
 export const maxDuration = 60;
 
@@ -31,6 +32,23 @@ export async function POST(req: Request) {
     db.from('profiles').select('role, full_name').eq('id', user.id).single(),
   ]);
   if (!tool || tool.status !== 'live') return NextResponse.json({ error: 'This tool is not available right now.' }, { status: 409 });
+
+  // On a plan with designs left today: no payment, build straight away.
+  const ent = await entitlement(user.id, design.tool_slug);
+  if (ent?.covers && (ent.remaining == null || ent.remaining > 0)) {
+    const { data: po, error: pe } = await db.from('orders').insert({
+      user_id: user.id, design_id: design.id, tool_slug: design.tool_slug, currency: ent.sub.currency, amount_minor: 0,
+      status: 'paid', provider: 'plan', subscription_id: ent.sub.id, paid_at: new Date().toISOString(),
+    }).select('id').single();
+    if (pe || !po) return NextResponse.json({ error: 'Could not start the order.' }, { status: 500 });
+    await trackServer('plan_build', { name: design.name, userId: user.id, props: { orderId: po.id, plan: ent.plan.id, left: ent.remaining == null ? null : ent.remaining - 1 } });
+    try {
+      const fileId = await fulfilOrder(po.id);
+      return NextResponse.json({ free: true, plan: true, fileId, orderId: po.id, remaining: ent.remaining == null ? null : ent.remaining - 1 });
+    } catch (e) {
+      return NextResponse.json({ error: (e as Error).message, orderId: po.id }, { status: 500 });
+    }
+  }
   if (!price) return NextResponse.json({ error: `Payments in ${currency} are not set up yet.` }, { status: 409 });
 
   const isAdmin = profile?.role === 'admin';

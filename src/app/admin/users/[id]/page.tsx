@@ -5,6 +5,7 @@ import { UUID_RE } from '@/lib/consent';
 import { toolBySlug } from '@/lib/tools';
 import { Card, Empty, Filters, PageHead, Pager, Pill, Stat, ago, money, num, one, pageNum, place, str, when } from '../../ui';
 import { NOISE, Timeline, type Ev, type Sess } from '../../timeline';
+import { hasAccess } from '@/lib/plans.server';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'User' };
@@ -20,7 +21,7 @@ export default async function User({ params, searchParams }: { params: Promise<{
   if (!u) notFound();
   let evq = db.from('visitor_events').select('*', { count: 'exact' }).eq('user_id', id);
   if (f === 'key') evq = evq.not('type', 'in', `(${NOISE.join(',')})`);
-  const [auth, visitors, designs, orders, payments, files, downloads, ev] = await Promise.all([
+  const [auth, visitors, designs, orders, payments, files, downloads, ev, subs] = await Promise.all([
     db.auth.admin.getUserById(id),
     db.from('visitors').select('*').eq('user_id', id).order('last_seen', { ascending: false }),
     db.from('designs').select('id, name, preview, tool_slug, created_at').eq('user_id', id).order('created_at', { ascending: false }).limit(60),
@@ -29,6 +30,7 @@ export default async function User({ params, searchParams }: { params: Promise<{
     db.from('files').select('id, name, size_bytes, created_at').eq('user_id', id).order('created_at', { ascending: false }),
     db.from('downloads').select('id, file_id, created_at, files(name)').eq('user_id', id).order('created_at', { ascending: false }).limit(100),
     evq.order('created_at', { ascending: false }).order('id', { ascending: false }).range((page - 1) * SIZE, page * SIZE - 1),
+    db.from('subscriptions').select('*').eq('user_id', id).order('created_at', { ascending: false }),
   ]);
   const au = auth.data?.user;
   const sids = [...new Set((ev.data ?? []).map((e) => e.session_id).filter(Boolean))] as string[];
@@ -51,6 +53,7 @@ export default async function User({ params, searchParams }: { params: Promise<{
         <Stat label="Designs" value={num(designs.data?.length)} />
         <Stat label="Spent" value={Object.keys(spent).length ? Object.entries(spent).map(([c, n]) => money(n, c)).join(' + ') : '—'} note={`${(orders.data ?? []).filter((o) => o.status === 'paid' || o.status === 'fulfilled').length} paid orders`} />
         <Stat label="Downloads" value={num(downloads.data?.length)} />
+        <Stat label="Plan" value={(() => { const s = (subs.data ?? []).find((x) => hasAccess(x)); return s ? s.plan_id : 'none'; })()} note={(() => { const s = (subs.data ?? []).find((x) => hasAccess(x)); return s ? `${s.status} · until ${when(s.current_end)}` : `${(subs.data ?? []).length} past`; })()} href="/admin/subscriptions" />
       </div>
 
       <div className="adm-grid2">

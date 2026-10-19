@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { formatMoney } from '@/lib/money';
 import { BarList, Card, DailyChart, Empty, Filters, PageHead, Pill, Stat, ago, country, duration, emails, money, num, one, str, visitorNames, when } from './ui';
 import { Timeline, type Ev } from './timeline';
+import { hasAccess } from '@/lib/plans.server';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Overview' };
@@ -19,15 +20,16 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const days = [7, 30, 90].includes(Number(str(sp.days))) ? Number(str(sp.days)) : 30;
   const db = supabaseAdmin();
-  const [stats, users, designs, files, downloads, paid, orders, feed] = await Promise.all([
+  const [stats, users, designs, files, downloads, paid, subs, orders, feed] = await Promise.all([
     db.rpc('admin_stats', { p_days: days }),
     db.from('profiles').select('id', { count: 'exact', head: true }),
     db.from('designs').select('id', { count: 'exact', head: true }),
     db.from('files').select('id', { count: 'exact', head: true }),
     db.from('downloads').select('id', { count: 'exact', head: true }),
     db.from('orders').select('currency, amount_minor').in('status', ['paid', 'fulfilled']).eq('provider', 'razorpay'),
+    db.from('subscriptions').select('status, current_end, currency, amount_minor, cancel_at_period_end'),
     db.from('orders').select('id, user_id, currency, amount_minor, status, created_at, designs(name)').order('created_at', { ascending: false }).limit(8),
-    db.from('visitor_events').select('*').in('type', ['signup', 'email_confirmed', 'signin', 'design_saved', 'checkout', 'payment', 'download', 'payment_cancelled', 'purchase_error']).order('created_at', { ascending: false }).limit(15),
+    db.from('visitor_events').select('*').in('type', ['signup', 'email_confirmed', 'signin', 'design_saved', 'checkout', 'payment', 'download', 'payment_cancelled', 'purchase_error', 'subscribed', 'subscription_cancel', 'plan_build']).order('created_at', { ascending: false }).limit(15),
   ]);
   const s = stats.data as Stats | null;
   const revenue: Record<string, number> = {};
@@ -50,6 +52,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
         <Stat label="Page views" value={num(t.pageviews)} note={`${num(t.sessions)} visits · avg ${duration(t.avg_session_s ?? 0)}`} />
         <Stat label="Sign-ups" value={num(t.signups)} note={`${num(users.count)} accounts in all`} href="/admin/users" />
         <Stat label="Revenue" value={revenue.INR ? formatMoney(revenue.INR, 'INR') : '₹0'} note={revenue.USD ? `+ ${formatMoney(revenue.USD, 'USD')}` : `${num((paid.data ?? []).length)} paid orders`} href="/admin/orders" />
+        <Stat label="Active plans" value={num((subs.data ?? []).filter((x) => hasAccess(x)).length)} note={(() => { const m: Record<string, number> = {}; for (const x of subs.data ?? []) if (hasAccess(x) && !x.cancel_at_period_end && x.status !== 'cancelled') m[x.currency] = (m[x.currency] ?? 0) + x.amount_minor; return Object.keys(m).length ? `${Object.entries(m).map(([c, n]) => money(n, c)).join(' + ')} a month` : 'no subscribers yet'; })()} href="/admin/subscriptions" />
         <Stat label="Designs saved" value={num(designs.count)} href="/admin/designs" />
         <Stat label="Files built · downloads" value={`${num(files.count)} · ${num(downloads.count)}`} href="/admin/downloads" />
       </div>

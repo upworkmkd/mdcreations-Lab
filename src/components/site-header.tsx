@@ -16,6 +16,7 @@ export async function SiteHeader() {
         <nav className="site-nav" aria-label="Main">
           <Link href="/#tools" className="hide-sm">Tools</Link>
           <Link href="/tools/shadow-lamp" className="hide-sm">Shadow lamps</Link>
+          <Link href="/pricing">Pricing</Link>
           <CurrencySwitch current={currency} />
           {viewer ? (
             <>

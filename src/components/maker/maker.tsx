@@ -33,7 +33,9 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   return j as T;
 }
 
-export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example }: { currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string }) {
+export type MakerPlan = { name: string; remaining: number | null; limit: number | null };
+
+export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example, plan }: { currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null }) {
   const first = EXAMPLES.find((e) => e.id === example) ?? EXAMPLES.find((e) => e.id === 'elephant')!;
   const [picked, setPicked] = useState<string | null>(first.id);
   const root = useRef<HTMLDivElement>(null), studio = useRef<Studio | null>(null);
@@ -41,6 +43,8 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
   const [signedIn, setSignedIn] = useState(signedIn0);
   const [authOpen, setAuthOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
+  const [left, setLeft] = useState<number | null | undefined>(plan ? plan.remaining : undefined);   // undefined = no plan
+  const onPlan = plan != null && (left == null || left > 0);
 
   useEffect(() => {
     if (!root.current) return;
@@ -59,9 +63,9 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
       setPhase({ kind: 'working', text: 'Saving your design…' });
       const { id: designId } = await post<{ id: string }>('/api/designs', { tool: 'shadow-lamp', design, preview: s.previewJpeg() });
       setPhase({ kind: 'working', text: 'Starting the payment…' });
-      const co = await post<{ free?: boolean; fileId?: string; orderId?: string; keyId: string; providerOrderId: string; amount: number; currency: string; description: string; prefill: { name: string; email: string } }>(
+      const co = await post<{ free?: boolean; plan?: boolean; remaining?: number | null; fileId?: string; orderId?: string; keyId: string; providerOrderId: string; amount: number; currency: string; description: string; prefill: { name: string; email: string } }>(
         '/api/checkout', { designId, currency });
-      if (co.free && co.fileId) { setPhase({ kind: 'done', fileId: co.fileId }); return; }
+      if (co.free && co.fileId) { if (co.plan) setLeft(co.remaining ?? null); setPhase({ kind: 'done', fileId: co.fileId }); return; }
       await loadCheckout();
       const paid = await new Promise<RzpResponse | null>((resolve, reject) => {
         const rzp = new window.Razorpay!({
@@ -227,20 +231,22 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
               <div className="done">
                 <p className="serif">Your files are ready.</p>
                 <a className="btn" href={`/api/files/${phase.fileId}/download`}>Download the zip <span className="arrow">↓</span></a>
-                <p className="hint">They are saved in <Link href="/account">your account</Link>, so you can download them again any time. Changed something? You can buy another version below.</p>
+                <p className="hint">They are saved in <Link href="/account">your account</Link>, so you can download them again any time. Changed something? {plan ? 'Make another version below.' : 'You can buy another version below.'}</p>
                 <button type="button" className="linkish" onClick={() => setPhase({ kind: 'idle' })}>Make another version</button>
               </div>
             ) : (
               <>
-                <button type="button" className="btn buybtn" onClick={onBuy} disabled={!ready || working || !payConfigured || amountMinor == null}>
-                  {working ? phase.text : price ? <>Buy and download <span className="sep" /> <span className="mono">{price}</span></> : 'Download'}
+                <button type="button" className="btn buybtn" onClick={onBuy} disabled={!ready || working || (!onPlan && (!payConfigured || amountMinor == null))}>
+                  {working ? phase.text : onPlan ? <>Download <span className="sep" /> <span className="mono">in your {plan!.name} plan</span></> : price ? <>Buy and download <span className="sep" /> <span className="mono">{price}</span></> : 'Download'}
                 </button>
-                {!payConfigured ? <p className="note">Payments are being set up. Please check back soon.</p>
+                {onPlan ? <p className="note ok">{left == null ? 'Unlimited designs on your plan.' : `${left} of ${plan!.limit} plan designs left today.`}</p>
+                  : plan ? <p className="note">You have used today&apos;s {plan.limit} plan designs. This one is charged separately, or come back after midnight (India time).</p>
+                  : !payConfigured ? <p className="note">Payments are being set up. Please check back soon.</p>
                   : amountMinor == null ? <p className="note">This tool is not sold in {currency} yet. Switch the currency at the top of the page.</p> : null}
                 {phase.kind === 'error' && (
                   <p className="note">{phase.text}{phase.orderId ? <> If you were charged, your files will appear in <Link href="/account">your account</Link> within a few minutes.</> : null}</p>
                 )}
-                <p className="hint">Free to try. {signedIn ? 'You are signed in.' : 'You will sign in or create an account before paying.'} One payment per design; your files stay in your account.</p>
+                <p className="hint">Free to try. {signedIn ? 'You are signed in.' : 'You will sign in or create an account before paying.'} {onPlan ? 'Your files stay in your account.' : <>One payment per design, or <Link href="/pricing">a monthly plan</Link>; your files stay in your account.</>} Every download includes a <Link href="/license">commercial license</Link>.</p>
               </>
             )}
 

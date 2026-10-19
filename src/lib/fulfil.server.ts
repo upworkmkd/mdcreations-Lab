@@ -37,7 +37,8 @@ export async function fulfilOrder(orderId: string): Promise<string> {
     const d = parseDesign(design.params);
     const preview = typeof design.preview === 'string' && design.preview.startsWith('data:image/jpeg;base64,')
       ? new Uint8Array(Buffer.from(design.preview.slice(23), 'base64')) : null;
-    const built = await buildLampZip(d, preview);
+    const { data: owner } = await db.from('profiles').select('email, full_name').eq('id', order.user_id).maybeSingle();
+    const built = await buildLampZip(d, preview, { owner: [owner?.full_name, owner?.email ? `<${owner.email}>` : ''].filter(Boolean).join(' ') || undefined, orderId: order.id });
     const path = `${order.user_id}/${order.id}/${built.fileName}`;
     const up = await db.storage.from(FILES_BUCKET).upload(path, built.zip, { contentType: 'application/zip', upsert: true });
     if (up.error) throw new Error('Could not store the files: ' + up.error.message);
