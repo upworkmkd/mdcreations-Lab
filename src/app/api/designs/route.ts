@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { parseDesign } from '@/lib/lamp/design';
+import { trackServer } from '@/lib/track.server';
 
 export const maxDuration = 20;
 
@@ -22,5 +23,6 @@ export async function POST(req: Request) {
     .insert({ user_id: auth.user.id, tool_slug: 'shadow-lamp', name: design.name, params: design, preview })
     .select('id').single();
   if (error) return NextResponse.json({ error: 'Could not save the design.' }, { status: 500 });
+  await trackServer('design_saved', { name: design.name, userId: auth.user.id, props: { designId: data.id, tool: 'shadow-lamp' } });
   return NextResponse.json({ id: data.id });
 }

@@ -7,6 +7,7 @@ import { AuthForm } from '@/components/auth-form';
 import { RetryBuild } from '@/components/retry-build';
 import { updateName } from '../login/actions';
 import { toolBySlug } from '@/lib/tools';
+import { ReviewForm } from '@/components/review-form';
 
 export const metadata: Metadata = { title: 'Your account', robots: { index: false, follow: false } };
 
@@ -39,6 +40,7 @@ export default async function Account() {
           <a href="#files" className="on">Files</a>
           <a href="#orders">Orders</a>
           <a href="#payments">Payments</a>
+          <a href="#review">Review</a>
           <a href="#profile">Profile</a>
         </nav>
         <div>
@@ -110,6 +112,12 @@ export default async function Account() {
               </table>
             </div>
             <p className="muted" style={{ fontSize: 14, marginTop: 14 }}>Razorpay emails a receipt for every payment. Need an invoice with your GSTIN? Write to us with the payment ID.</p>
+          </section>
+
+          <section id="review">
+            <h2>Tell others about it</h2>
+            <p className="muted" style={{ marginBottom: 18, maxWidth: '60ch' }}>Made a lamp? A few words help other makers decide. We read every review before it goes on the site{files.data?.length ? ', and yours will be marked as from a verified buyer' : ''}.</p>
+            <ReviewForm name={viewer.name} />
           </section>
 
           <section id="profile">

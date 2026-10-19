@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { verifyCheckoutSignature } from '@/lib/razorpay.server';
 import { fulfilOrder, recordPayment } from '@/lib/fulfil.server';
+import { trackServer } from '@/lib/track.server';
 
 export const maxDuration = 60;
 
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
   try {
     if (order.status === 'created') await recordPayment(order, b.razorpay_payment_id);
     const fileId = await fulfilOrder(order.id);
+    await trackServer('payment', { name: `Paid ${order.amount_minor / 100} ${order.currency}`, userId: auth.user.id, props: { orderId: order.id, paymentId: b.razorpay_payment_id, amount: order.amount_minor, currency: order.currency, fileId } });
     return NextResponse.json({ fileId, orderId: order.id });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message, orderId: order.id }, { status: 500 });

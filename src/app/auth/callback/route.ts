@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
+import { trackServer, linkVisitor } from '@/lib/track.server';
 
 // Landing point for the links in Supabase emails (confirm sign-up, reset password).
 export async function GET(req: Request) {
@@ -17,5 +18,7 @@ export async function GET(req: Request) {
   else if (!error) error = 'This link is not valid.';
 
   if (error) return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent('That link has expired or was already used. Please sign in, or ask for a new link.')}`, url.origin));
+  const { data: u } = await supabase.auth.getUser();
+  if (u.user) { await linkVisitor(u.user.id); await trackServer(type === 'recovery' ? 'password_reset' : 'email_confirmed', { name: u.user.email ?? '', userId: u.user.id }); }
   return NextResponse.redirect(new URL(next, url.origin));
 }

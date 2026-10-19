@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Logo } from '@/components/brand';
 import { SUPPORT_EMAIL, SOCIALS } from '@/lib/env';
+import { CookieSettings } from '@/components/tracker';
 
 export function SiteFooter() {
   return (
@@ -40,6 +41,7 @@ export function SiteFooter() {
             <li><Link href="/refunds">Refunds and cancellations</Link></li>
             <li><Link href="/privacy">Privacy</Link></li>
             <li><Link href="/shipping">Delivery</Link></li>
+            <li><CookieSettings /></li>
           </ul>
         </div>
         <div className="base">

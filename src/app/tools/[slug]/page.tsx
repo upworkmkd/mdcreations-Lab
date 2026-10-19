@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { INSTAGRAM_URL, SUPPORT_EMAIL } from '@/lib/env';
 import { LAMP_GALLERY, KIND_LABEL } from '@/lib/gallery';
 import { SocialBand } from '@/components/social-band';
+import { Reviews } from '@/components/reviews';
 import { JsonLd, pageMeta, TOOL_SEO } from '@/lib/seo';
 import { CANONICAL_URL as SITE_URL } from '@/lib/env';
 
@@ -155,6 +156,7 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
           </div>
         </section>
       )}
+      {tool.status === 'live' && <Reviews tool={tool.slug} />}
       <SocialBand />
     </>
   );

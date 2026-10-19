@@ -1,81 +1,96 @@
-import type { Metadata } from 'next';
-import { requireAdmin } from '@/lib/auth.server';
+import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { TOOLS } from '@/lib/tools';
-import { formatMoney, isCurrency } from '@/lib/money';
-import { ToolRow } from './tool-row';
+import { formatMoney } from '@/lib/money';
+import { BarList, Card, DailyChart, Empty, Filters, PageHead, Pill, Stat, ago, country, duration, emails, money, num, one, str, visitorNames, when } from './ui';
+import { Timeline, type Ev } from './timeline';
 
-export const metadata: Metadata = { title: 'Admin', robots: { index: false, follow: false } };
-const when = (s: string) => new Date(s).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Overview' };
 
-export default async function Admin() {
-  await requireAdmin();
+type Stats = {
+  totals: Record<string, number>;
+  daily: { day: string; visitors: number; pageviews: number }[];
+  pages: { k: string; n: number; u: number }[]; referrers: { k: string; n: number }[]; campaigns: { k: string; n: number }[];
+  countries: { k: string; n: number }[]; cities: { k: string; n: number }[]; devices: { k: string; n: number }[];
+  browsers: { k: string; n: number }[]; os: { k: string; n: number }[]; actions: { k: string; n: number }[];
+};
+
+export default async function Overview({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = await searchParams;
+  const days = [7, 30, 90].includes(Number(str(sp.days))) ? Number(str(sp.days)) : 30;
   const db = supabaseAdmin();
-  const [tools, prices, orders, users, files] = await Promise.all([
-    db.from('tools').select('slug, name, status').order('sort'),
-    db.from('tool_prices').select('tool_slug, currency, amount_minor'),
-    db.from('orders').select('id, user_id, tool_slug, currency, amount_minor, status, provider, provider_order_id, error, created_at, designs(name)').order('created_at', { ascending: false }).limit(50),
+  const [stats, users, designs, files, downloads, paid, orders, feed] = await Promise.all([
+    db.rpc('admin_stats', { p_days: days }),
     db.from('profiles').select('id', { count: 'exact', head: true }),
+    db.from('designs').select('id', { count: 'exact', head: true }),
     db.from('files').select('id', { count: 'exact', head: true }),
+    db.from('downloads').select('id', { count: 'exact', head: true }),
+    db.from('orders').select('currency, amount_minor').in('status', ['paid', 'fulfilled']).eq('provider', 'razorpay'),
+    db.from('orders').select('id, user_id, currency, amount_minor, status, created_at, designs(name)').order('created_at', { ascending: false }).limit(8),
+    db.from('visitor_events').select('*').in('type', ['signup', 'email_confirmed', 'signin', 'design_saved', 'checkout', 'payment', 'download', 'payment_cancelled', 'purchase_error']).order('created_at', { ascending: false }).limit(15),
   ]);
-  const ids = [...new Set((orders.data ?? []).map((o) => o.user_id))];
-  const { data: people } = ids.length ? await db.from('profiles').select('id, email').in('id', ids) : { data: [] as { id: string; email: string }[] };
-  const emailOf = new Map((people ?? []).map((p) => [p.id, p.email]));
-  const { data: paidRows } = await db.from('orders').select('currency, amount_minor').in('status', ['paid', 'fulfilled']).eq('provider', 'razorpay');
+  const s = stats.data as Stats | null;
   const revenue: Record<string, number> = {};
-  for (const r of paidRows ?? []) revenue[r.currency] = (revenue[r.currency] ?? 0) + r.amount_minor;
-  const priceOf = (slug: string, c: string) => prices.data?.find((p) => p.tool_slug === slug && p.currency === c)?.amount_minor ?? null;
-  const one = <T,>(v: T | T[] | null | undefined) => (Array.isArray(v) ? v[0] : v) ?? null;
+  for (const r of paid.data ?? []) revenue[r.currency] = (revenue[r.currency] ?? 0) + r.amount_minor;
+  const [who, names] = await Promise.all([emails((orders.data ?? []).map((o) => o.user_id)), visitorNames((feed.data ?? []).map((e) => e.visitor_id))]);
+  const t = s?.totals ?? {};
 
   return (
-    <div className="wrap">
-      <div className="page-title" style={{ paddingBottom: 28 }}>
-        <p className="eyebrow">Admin</p>
-        <h1>The shop</h1>
+    <>
+      <PageHead title="Overview" sub="Visitors, sales and what people do on the site. Times are India time.">
+        <Filters base="/admin" name="days" current={String(days === 30 ? '' : days)} options={[['7', '7 days'], ['', '30 days'], ['90', '90 days']]} />
+      </PageHead>
+
+      {stats.error && <div className="adm-alert">Visitor numbers are not available: {stats.error.message}. Run <code>supabase/migrations/20261019000000_visitors.sql</code> in the Supabase SQL editor.</div>}
+
+      <div className="adm-stats">
+        <Stat label="Online now" value={num(t.online)} note="active in the last 5 min" href="/admin/activity" />
+        <Stat label="Visitors today" value={num(t.today)} />
+        <Stat label={`Visitors, ${days} days`} value={num(t.visitors)} note={`${num(t.new_visitors)} new · ${num(t.returning)} returning`} href="/admin/visitors" />
+        <Stat label="Page views" value={num(t.pageviews)} note={`${num(t.sessions)} visits · avg ${duration(t.avg_session_s ?? 0)}`} />
+        <Stat label="Sign-ups" value={num(t.signups)} note={`${num(users.count)} accounts in all`} href="/admin/users" />
+        <Stat label="Revenue" value={revenue.INR ? formatMoney(revenue.INR, 'INR') : '₹0'} note={revenue.USD ? `+ ${formatMoney(revenue.USD, 'USD')}` : `${num((paid.data ?? []).length)} paid orders`} href="/admin/orders" />
+        <Stat label="Designs saved" value={num(designs.count)} href="/admin/designs" />
+        <Stat label="Files built · downloads" value={`${num(files.count)} · ${num(downloads.count)}`} href="/admin/downloads" />
       </div>
-      <div style={{ padding: '40px 0 96px' }}>
-        <div className="stats">
-          <div><b>{revenue.INR ? formatMoney(revenue.INR, 'INR') : '₹0'}</b><span>Revenue, rupees</span></div>
-          <div><b>{revenue.USD ? formatMoney(revenue.USD, 'USD') : '$0'}</b><span>Revenue, dollars</span></div>
-          <div><b>{(paidRows ?? []).length}</b><span>Paid orders</span></div>
-          <div><b>{files.count ?? 0}</b><span>Files built</span></div>
-          <div><b>{users.count ?? 0}</b><span>Accounts</span></div>
-        </div>
 
-        <h2 className="serif" style={{ fontSize: 34, marginBottom: 8 }}>Tools and prices</h2>
-        <p className="muted" style={{ marginBottom: 18, fontSize: 15 }}>Prices are per design download, including tax. Leave a price empty to stop selling in that currency. As admin you can download your own designs free.</p>
-        <div className="tbl-wrap" style={{ marginBottom: 56 }}>
-          <table className="tbl">
-            <thead><tr><th>Tool</th><th>Status</th><th>Price ₹</th><th>Price $</th><th /></tr></thead>
-            <tbody>
-              {(tools.data ?? []).map((t) => (
-                <ToolRow key={t.slug} slug={t.slug} name={TOOLS.find((x) => x.slug === t.slug)?.name ?? t.name} status={t.status} inr={priceOf(t.slug, 'INR')} usd={priceOf(t.slug, 'USD')} />
-              ))}
-              {tools.error && <tr><td colSpan={5} className="msg err">Could not read the tools table: {tools.error.message}. Did you run the SQL migration?</td></tr>}
-            </tbody>
-          </table>
-        </div>
+      <Card title={`Visitors per day`}>
+        {s?.daily?.length ? <DailyChart rows={s.daily} /> : <Empty>No visits recorded yet.</Empty>}
+      </Card>
 
-        <h2 className="serif" style={{ fontSize: 34, marginBottom: 18 }}>Latest orders</h2>
-        <div className="tbl-wrap">
-          <table className="tbl">
-            <thead><tr><th>When</th><th>Customer</th><th>Design</th><th>Status</th><th className="num">Amount</th><th>Razorpay order</th></tr></thead>
+      <div className="adm-grid2">
+        <Card title="Top pages"><BarList rows={s?.pages ?? []} format={(k) => <code>{k}</code>} /></Card>
+        <Card title="Where they come from"><BarList rows={s?.referrers ?? []} /></Card>
+        <Card title="Countries"><BarList rows={s?.countries ?? []} format={country} /></Card>
+        <Card title="Cities"><BarList rows={s?.cities ?? []} /></Card>
+        <Card title="Devices"><BarList rows={s?.devices ?? []} format={(k) => k[0].toUpperCase() + k.slice(1)} /></Card>
+        <Card title="Browsers"><BarList rows={s?.browsers ?? []} /></Card>
+        <Card title="Operating systems"><BarList rows={s?.os ?? []} /></Card>
+        <Card title="What people do"><BarList rows={s?.actions ?? []} /></Card>
+        {s?.campaigns?.length ? <Card title="Campaigns (utm)"><BarList rows={s.campaigns} /></Card> : null}
+      </div>
+
+      <div className="adm-grid2 wide">
+        <Card title="Latest key moments" action={<Link href="/admin/activity">All activity →</Link>}>
+          <Timeline events={(feed.data ?? []) as Ev[]} showVisitor names={names} />
+        </Card>
+        <Card title="Latest orders" action={<Link href="/admin/orders">All orders →</Link>} flush>
+          <div className="tbl-wrap"><table className="tbl adm-tbl">
+            <thead><tr><th>When</th><th>Customer</th><th>Status</th><th className="num">Amount</th></tr></thead>
             <tbody>
               {(orders.data ?? []).map((o) => (
                 <tr key={o.id}>
-                  <td>{when(o.created_at)}</td>
-                  <td>{emailOf.get(o.user_id) ?? o.user_id.slice(0, 8)}</td>
-                  <td>{one(o.designs as { name: string } | { name: string }[] | null)?.name ?? '—'}</td>
-                  <td><span className={`pill ${o.status}`}>{o.status}</span>{o.provider !== 'razorpay' && <span className="id"> · {o.provider}</span>}{o.error && <div className="id" style={{ color: 'var(--bad)' }}>{o.error}</div>}</td>
-                  <td className="num">{isCurrency(o.currency) ? formatMoney(o.amount_minor, o.currency) : o.amount_minor}</td>
-                  <td className="id">{o.provider_order_id ?? '—'}</td>
+                  <td title={when(o.created_at)}>{ago(o.created_at)}<div className="id">{one(o.designs as { name: string } | { name: string }[] | null)?.name ?? '—'}</div></td>
+                  <td><Link href={`/admin/users/${o.user_id}`}>{who.get(o.user_id)?.email ?? o.user_id.slice(0, 8)}</Link></td>
+                  <td><Pill s={o.status} /></td>
+                  <td className="num">{money(o.amount_minor, o.currency)}</td>
                 </tr>
               ))}
-              {!orders.data?.length && <tr><td colSpan={6} className="muted">No orders yet.</td></tr>}
+              {!orders.data?.length && <tr><td colSpan={4} className="muted">No orders yet.</td></tr>}
             </tbody>
-          </table>
-        </div>
+          </table></div>
+        </Card>
       </div>
-    </div>
+    </>
   );
 }

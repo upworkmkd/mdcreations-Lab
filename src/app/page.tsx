@@ -5,6 +5,7 @@ import { formatMoney } from '@/lib/money';
 import { HeroSlider, type Slide } from '@/components/hero-slider';
 import { LAMP_GALLERY, KIND_LABEL } from '@/lib/gallery';
 import { SocialBand } from '@/components/social-band';
+import { Reviews } from '@/components/reviews';
 import { pageMeta } from '@/lib/seo';
 
 export const metadata = pageMeta({
@@ -125,6 +126,8 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      <Reviews />
 
       <SocialBand />
     </>

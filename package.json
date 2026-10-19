@@ -17,13 +17,15 @@
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "ua-parser-js": "^1.0.41"
   },
   "devDependencies": {
     "@types/earcut": "^2.1.4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/ua-parser-js": "^0.7.39",
     "esbuild": "^0.25.12",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",

@@ -3,6 +3,8 @@ import localFont from 'next/font/local';
 import { Analytics } from '@vercel/analytics/next';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
+import { SiteChrome } from '@/components/site-chrome';
+import { Tracker } from '@/components/tracker';
 import { CANONICAL_URL as SITE_URL } from '@/lib/env';
 import { JsonLd, organizationLd } from '@/lib/seo';
 import './globals.css';
@@ -36,9 +38,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
       <body>
         <JsonLd data={organizationLd()} />
-        <SiteHeader />
+        <SiteChrome><SiteHeader /></SiteChrome>
         <main id="main">{children}</main>
-        <SiteFooter />
+        <SiteChrome><SiteFooter /></SiteChrome>
+        <Tracker />
         <Analytics />
       </body>
     </html>

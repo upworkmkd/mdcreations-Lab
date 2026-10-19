@@ -5,6 +5,7 @@ import { createOrder } from '@/lib/razorpay.server';
 import { fulfilOrder } from '@/lib/fulfil.server';
 import { isCurrency } from '@/lib/money';
 import { serverEnv } from '@/lib/env';
+import { trackServer } from '@/lib/track.server';
 
 export const maxDuration = 60;
 
@@ -40,6 +41,8 @@ export async function POST(req: Request) {
     paid_at: amount === 0 ? new Date().toISOString() : null,
   }).select('id').single();
   if (error || !order) return NextResponse.json({ error: 'Could not start the order.' }, { status: 500 });
+
+  await trackServer('checkout', { name: design.name, userId: user.id, props: { orderId: order.id, designId: design.id, amount, currency, tool: design.tool_slug } });
 
   // Free (or the shop owner): build straight away.
   if (amount === 0) {

@@ -1,6 +1,6 @@
 'use client';
 import { useActionState } from 'react';
-import { saveTool, type SaveState } from './actions';
+import { saveTool, type SaveState } from '../actions';
 
 export function ToolRow({ slug, name, status, inr, usd }: { slug: string; name: string; status: string; inr: number | null; usd: number | null }) {
   const [state, run, pending] = useActionState<SaveState, FormData>(saveTool, null);

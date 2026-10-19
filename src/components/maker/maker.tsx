@@ -6,6 +6,7 @@ import { AuthDialog } from '@/components/auth-dialog';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import { formatMoney, type Currency } from '@/lib/money';
 import { EXAMPLES } from '@/lib/gallery';
+import { track } from '@/components/tracker';
 import './maker.css';
 
 type Studio = { designPayload(): unknown; previewJpeg(): string; destroy(): void; loadExample(src: string, name: string): void };
@@ -58,7 +59,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
       setPhase({ kind: 'working', text: 'Saving your design…' });
       const { id: designId } = await post<{ id: string }>('/api/designs', { tool: 'shadow-lamp', design, preview: s.previewJpeg() });
       setPhase({ kind: 'working', text: 'Starting the payment…' });
-      const co = await post<{ free?: boolean; fileId?: string; keyId: string; providerOrderId: string; amount: number; currency: string; description: string; prefill: { name: string; email: string } }>(
+      const co = await post<{ free?: boolean; fileId?: string; orderId?: string; keyId: string; providerOrderId: string; amount: number; currency: string; description: string; prefill: { name: string; email: string } }>(
         '/api/checkout', { designId, currency });
       if (co.free && co.fileId) { setPhase({ kind: 'done', fileId: co.fileId }); return; }
       await loadCheckout();
@@ -74,12 +75,14 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
         rzp.open();
         setPhase({ kind: 'working', text: 'Waiting for the payment…' });
       });
+      track(paid ? 'payment_done' : 'payment_cancelled', paid ? 'Razorpay payment completed' : 'Closed the payment window', { orderId: co.orderId });
       if (!paid) { setPhase({ kind: 'error', text: 'Payment cancelled. Your design is still here; press the button again when you are ready.' }); return; }
       setPhase({ kind: 'working', text: 'Payment received. Building your files (this takes a few seconds)…' });
       const v = await post<{ fileId: string }>('/api/payments/verify', paid);
       setPhase({ kind: 'done', fileId: v.fileId });
     } catch (e) {
       const err = e as Error & { status?: number; orderId?: string };
+      track('purchase_error', err.message, { status: err.status, orderId: err.orderId });
       if (err.status === 401) { setSignedIn(false); setPhase({ kind: 'idle' }); setAuthOpen(true); return; }
       setPhase({ kind: 'error', text: err.message, orderId: err.orderId });
     }

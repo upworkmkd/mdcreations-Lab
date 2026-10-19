@@ -14,6 +14,7 @@ Live tool: **Shadow Lamp Maker**. Coming soon: Statue Maker, Layered Sculpture M
 | Payments | `src/app/api/checkout`, `api/payments/verify`, `api/webhooks/razorpay`, `src/lib/razorpay.server.ts` |
 | Delivery | `src/lib/fulfil.server.ts` builds the zip into the private `lab-files` bucket; `api/files/[id]/download` hands out a 60-second signed link |
 | Database | `supabase/migrations/20261008000000_init.sql` – tables, row level security, storage bucket, seed prices |
+| Visitor tracking | `supabase/migrations/20261019000000_visitors.sql` – visitors, visits, activity events, reviews, admin stats |
 
 The browser sends only a black-and-white run-length mask of the picture (tens of KB) plus the placement. The server rebuilds the identical field and the paid files from it, so preview and files always match.
 
@@ -21,7 +22,7 @@ The browser sends only a black-and-white run-length mask of the picture (tens of
 
 ### 1. Supabase
 1. Create a project at supabase.com (region: Mumbai, `ap-south-1`).
-2. SQL Editor → paste and run `supabase/migrations/20261008000000_init.sql`.
+2. SQL Editor → paste and run `supabase/migrations/20261008000000_init.sql`, then `supabase/migrations/20261019000000_visitors.sql`.
 3. Authentication → URL Configuration:
    - Site URL: `https://labs.themdcreations.com`
    - Redirect URLs: `https://labs.themdcreations.com/auth/callback`, `http://localhost:3000/auth/callback`
