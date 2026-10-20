@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { BulkForm, RowDelete, Sel } from '../bulk';
 import { toolBySlug } from '@/lib/tools';
 import { hasAccess } from '@/lib/plans.server';
 import { Card, Filters, PageHead, Pager, Stat, emails, money, num, pageNum, str, when } from '../ui';
@@ -42,11 +43,13 @@ export default async function Subscriptions({ searchParams }: { searchParams: Pr
       <Filters base="/admin/subscriptions" current={f} options={[['', 'All'], ['active', 'Active'], ['problem', 'Payment problems'], ['ended', 'Ended'], ['created', 'Started, not paid']]} />
       {error && <div className="adm-alert">{error.message}. Run the subscriptions SQL migration.</div>}
       <Card flush>
-        <div className="tbl-wrap"><table className="tbl adm-tbl">
-          <thead><tr><th>Started</th><th>Customer</th><th>Plan</th><th>Status</th><th>Paid until</th><th className="num">Months paid</th><th className="num">Designs built</th><th className="num">Price</th></tr></thead>
+        <BulkForm kind="subscriptions" noun="subscription" warn="Live plans are cancelled in Razorpay straight away.">
+<div className="tbl-wrap"><table className="tbl adm-tbl">
+          <thead><tr><th className="sel" /><th>Started</th><th>Customer</th><th>Plan</th><th>Status</th><th>Paid until</th><th className="num">Months paid</th><th className="num">Designs built</th><th className="num">Price</th><th /></tr></thead>
           <tbody>
             {(data ?? []).map((s) => (
               <tr key={s.id}>
+                <td className="sel"><Sel id={s.id} /></td>
                 <td>{when(s.created_at)}<div className="id">{s.provider_subscription_id ?? '—'}</div></td>
                 <td><Link href={`/admin/users/${s.user_id}`}>{who.get(s.user_id)?.email ?? s.user_id.slice(0, 8)}</Link></td>
                 <td><b>{s.plan_id}</b><div className="id">{s.tool_slug ? toolBySlug(s.tool_slug)?.name ?? s.tool_slug : 'every tool'}</div></td>
@@ -55,11 +58,13 @@ export default async function Subscriptions({ searchParams }: { searchParams: Pr
                 <td className="num">{s.paid_count}</td>
                 <td className="num">{used.get(s.id) ?? 0}</td>
                 <td className="num">{money(s.amount_minor, s.currency)}</td>
+                <td className="act"><RowDelete id={s.id} /></td>
               </tr>
             ))}
-            {!data?.length && <tr><td colSpan={8} className="muted">No subscriptions yet.</td></tr>}
+            {!data?.length && <tr><td colSpan={10} className="muted">No subscriptions yet.</td></tr>}
           </tbody>
         </table></div>
+        </BulkForm>
       </Card>
       <Pager page={page} size={SIZE} total={count ?? 0} base="/admin/subscriptions" params={{ f }} />
     </>

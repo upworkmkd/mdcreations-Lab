@@ -3,6 +3,7 @@ export const CONSENT_COOKIE = 'mdl_consent';   // 'all' | 'essential'
 export const VISITOR_COOKIE = 'mdl_vid';       // one id per browser, kept for a year (only with consent)
 export const SESSION_COOKIE = 'mdl_sid';       // one id per visit, ends after 30 idle minutes
 export const SESSION_MINUTES = 30;
+export const NOTRACK_COOKIE = 'mdl_notrack';  // set on browsers used by accounts that are never tracked (the shop owner)
 export const CONSENT_VERSION = '2026-10';
 
 export type Consent = 'all' | 'essential';

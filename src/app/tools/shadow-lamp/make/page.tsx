@@ -5,7 +5,8 @@ import { Maker } from '@/components/maker/maker';
 import { getCurrency, getTool } from '@/lib/catalog.server';
 import { getViewer } from '@/lib/auth.server';
 import { supabaseConfigured } from '@/lib/env';
-import { entitlement } from '@/lib/plans.server';
+import { entitlement, getPlans } from '@/lib/plans.server';
+import { formatMoney } from '@/lib/money';
 
 export const metadata: Metadata = pageMeta({
   title: 'Make a Shadow Lamp Online – Free Preview, Download STL Files',
@@ -22,6 +23,10 @@ export default async function MakePage({ searchParams }: PageProps<'/tools/shado
   const amount = tool?.prices[currency] ?? null;
   const ent = viewer ? await entitlement(viewer.id, 'shadow-lamp').catch(() => null) : null;
   const plan = ent?.covers ? { name: ent.plan.name, remaining: ent.remaining, limit: ent.plan.daily_limit } : null;
+  const plans = (await getPlans()).map((p) => ({
+    id: p.id, name: p.name, status: p.status, ready: Boolean(p.ready[currency]), limit: p.daily_limit, tools: p.tools,
+    price: p.prices[currency] != null ? formatMoney(p.prices[currency]!, currency) : null,
+  }));
   const payConfigured = supabaseConfigured() && Boolean(process.env.RAZORPAY_KEY_ID) && tool?.status === 'live';
   return (
     <div className="wrap">
@@ -32,7 +37,7 @@ export default async function MakePage({ searchParams }: PageProps<'/tools/shado
         </div>
         <p className="muted" style={{ maxWidth: '46ch', fontSize: 15 }}>Everything on this page runs in your browser and is free to try. The printable files are built when you buy.</p>
       </div>
-      <Maker currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} example={example} plan={plan} />
+      <Maker currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} example={example} plan={plan} plans={plans} otherPlan={Boolean(ent && !ent.covers)} />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CONSENT_COOKIE, SESSION_COOKIE, SESSION_MINUTES, VISITOR_COOKIE, type Consent } from '@/lib/consent';
+import { CONSENT_COOKIE, NOTRACK_COOKIE, SESSION_COOKIE, SESSION_MINUTES, VISITOR_COOKIE, type Consent } from '@/lib/consent';
 
 /* ------------------------------------------------------------------ cookies */
 function getCookie(name: string) {
@@ -75,7 +75,7 @@ function flush(beacon = false) {
 /** Records one thing the visitor did. Safe to call anywhere; does nothing without analytics consent. */
 export function track(type: string, name?: string, props?: Record<string, unknown>) {
   if (typeof window === 'undefined' || state.consent === 'essential') return;
-  if (location.pathname.startsWith('/admin')) return;
+  if (location.pathname.startsWith('/admin') || getCookie(NOTRACK_COOKIE)) { state.queue.length = 0; return; }
   state.queue.push({ type, name, path: location.pathname + location.search, title: document.title, props, ts: new Date().toISOString() });
   if (state.queue.length > 120) state.queue.splice(0, state.queue.length - 120);
   if (state.consent !== 'all') return;                     // waits for the answer to the cookie question

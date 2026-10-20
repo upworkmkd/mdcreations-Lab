@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { BulkForm, RowDelete, Sel } from '../bulk';
 import { toolBySlug } from '@/lib/tools';
 import { Card, Empty, PageHead, Pager, ago, emails, pageNum, when } from '../ui';
 
@@ -22,9 +23,11 @@ export default async function Designs({ searchParams }: { searchParams: Promise<
       <PageHead title="Designs" sub="Every design saved by a signed-in visitor, with the shadow preview. A design is saved when they press Buy." />
       <Card>
         {data?.length ? (
+          <BulkForm kind="designs" noun="design" warn="Designs that have orders are kept.">
           <div className="adm-designs">
             {data.map((d) => (
               <figure key={d.id} title={when(d.created_at)}>
+                <span className="adm-fig-tools"><Sel id={d.id} /><RowDelete id={d.id} /></span>
                 {d.preview ? <img src={d.preview} alt="" /> : <div className="ph" />}
                 <figcaption>
                   <b>{d.name}</b>{bought.has(d.id) && <span className="pill fulfilled">bought</span>}
@@ -34,6 +37,7 @@ export default async function Designs({ searchParams }: { searchParams: Promise<
               </figure>
             ))}
           </div>
+          </BulkForm>
         ) : <Empty>No designs yet.</Empty>}
         <Pager page={page} size={SIZE} total={count ?? 0} base="/admin/designs" />
       </Card>

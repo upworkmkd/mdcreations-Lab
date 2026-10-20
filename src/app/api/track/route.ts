@@ -4,7 +4,7 @@ import UAParser from 'ua-parser-js';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { supabaseConfigured } from '@/lib/env';
-import { CONSENT_COOKIE, CONSENT_VERSION, SESSION_COOKIE, UUID_RE, VISITOR_COOKIE } from '@/lib/consent';
+import { CONSENT_COOKIE, CONSENT_VERSION, NOTRACK_COOKIE, SESSION_COOKIE, UUID_RE, VISITOR_COOKIE } from '@/lib/consent';
 
 const BOT = /bot|crawl|spider|slurp|facebookexternalhit|preview|headless|lighthouse|pingdom|monitor|curl|wget|python-requests|axios|node-fetch|vercel-screenshot/i;
 const str = (v: unknown, n: number) => (typeof v === 'string' && v ? v.slice(0, n) : null);
@@ -17,7 +17,7 @@ type InEvent = { type?: unknown; name?: unknown; path?: unknown; title?: unknown
 export async function POST(req: Request) {
   if (!supabaseConfigured()) return new NextResponse(null, { status: 204 });
   const jar = await cookies();
-  if (jar.get(CONSENT_COOKIE)?.value !== 'all') return new NextResponse(null, { status: 204 });
+  if (jar.get(CONSENT_COOKIE)?.value !== 'all' || jar.get(NOTRACK_COOKIE)) return new NextResponse(null, { status: 204 });
   const vid = jar.get(VISITOR_COOKIE)?.value, sid = jar.get(SESSION_COOKIE)?.value;
   if (!vid || !sid || !UUID_RE.test(vid) || !UUID_RE.test(sid)) return new NextResponse(null, { status: 204 });
 
@@ -63,7 +63,14 @@ export async function POST(req: Request) {
     },
     events,
   };
-  const { error } = await supabaseAdmin().rpc('track_ingest', { p: payload });
+  const db = supabaseAdmin();
+  const { error } = await db.rpc('track_ingest', { p: payload });
   if (error) console.error('track_ingest', error.message);
-  return new NextResponse(null, { status: 204 });
+  const res = new NextResponse(null, { status: 204 });
+  if (uid) {
+    // an account that is never tracked: mark this browser so it stops sending, even when signed out
+    const { data: skip } = await db.rpc('untracked', { p_uid: uid });
+    if (skip) res.cookies.set(NOTRACK_COOKIE, '1', { path: '/', maxAge: 60 * 60 * 24 * 400, sameSite: 'lax' });
+  }
+  return res;
 }

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { BulkForm, RowDelete, Sel } from '../bulk';
 import { toolBySlug } from '@/lib/tools';
 import { Card, Filters, PageHead, Pager, Pill, emails, money, one, pageNum, str, when } from '../ui';
 
@@ -20,25 +21,29 @@ export default async function Orders({ searchParams }: { searchParams: Promise<R
       <PageHead title="Orders" sub="Fulfilled means the files were built and are in the customer's account. Paid but not fulfilled needs a look." />
       <Filters base="/admin/orders" current={f} options={[['', 'All'], ['fulfilled', 'Fulfilled'], ['paid', 'Paid, not built'], ['created', 'Not paid'], ['failed', 'Failed'], ['refunded', 'Refunded']]} />
       <Card flush>
-        <div className="tbl-wrap"><table className="tbl adm-tbl">
-          <thead><tr><th>Created</th><th>Customer</th><th>Design</th><th>Status</th><th className="num">Amount</th><th>Razorpay order</th></tr></thead>
+        <BulkForm kind="orders" noun="order" warn="Their files, payment records and downloads go too. This does not refund anything in Razorpay.">
+<div className="tbl-wrap"><table className="tbl adm-tbl">
+          <thead><tr><th className="sel" /><th>Created</th><th>Customer</th><th>Design</th><th>Status</th><th className="num">Amount</th><th>Razorpay order</th><th /></tr></thead>
           <tbody>
             {(data ?? []).map((o) => {
               const d = one(o.designs as { name: string; preview: string | null } | { name: string; preview: string | null }[] | null);
               return (
                 <tr key={o.id}>
+                  <td className="sel"><Sel id={o.id} /></td>
                   <td>{when(o.created_at)}{o.paid_at && <div className="id">paid {when(o.paid_at)}</div>}</td>
                   <td><Link href={`/admin/users/${o.user_id}`}>{who.get(o.user_id)?.email ?? o.user_id.slice(0, 8)}</Link></td>
                   <td><span className="adm-mini">{d?.preview ? <img src={d.preview} alt="" /> : null}<span>{d?.name ?? '—'}<span className="id">{toolBySlug(o.tool_slug)?.name ?? o.tool_slug}</span></span></span></td>
                   <td><Pill s={o.status} />{o.provider !== 'razorpay' && <span className="id"> · {o.provider}</span>}{o.error && <div className="id" style={{ color: 'var(--bad)' }}>{o.error}</div>}</td>
                   <td className="num">{money(o.amount_minor, o.currency)}</td>
                   <td className="id">{o.provider_order_id ?? '—'}</td>
+                  <td className="act"><RowDelete id={o.id} /></td>
                 </tr>
               );
             })}
-            {!data?.length && <tr><td colSpan={6} className="muted">No orders.</td></tr>}
+            {!data?.length && <tr><td colSpan={8} className="muted">No orders.</td></tr>}
           </tbody>
         </table></div>
+        </BulkForm>
       </Card>
       <Pager page={page} size={SIZE} total={count ?? 0} base="/admin/orders" params={{ f }} />
     </>

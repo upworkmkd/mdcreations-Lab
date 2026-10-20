@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { BulkForm, RowDelete, Sel } from '../bulk';
 import { Card, Filters, PageHead, Pager, ago, emails, num, pageNum, place, shortId, str, when, sinceIso, isLive } from '../ui';
 
 export const dynamic = 'force-dynamic';
@@ -39,13 +40,15 @@ export default async function Visitors({ searchParams }: { searchParams: Promise
       <Filters base="/admin/visitors" current={f} options={[['', 'All'], ['online', 'Online now'], ['new', 'New today'], ['returning', 'Returning'], ['known', 'Signed up'], ['anon', 'Anonymous']]} />
       {error && <div className="adm-alert">{error.message}. Have you run the visitors SQL migration?</div>}
       <Card flush>
-        <div className="tbl-wrap"><table className="tbl adm-tbl">
-          <thead><tr><th>Visitor</th><th>Place</th><th>Device</th><th className="num">Visits</th><th className="num">Pages</th><th>First seen</th><th>Last seen</th></tr></thead>
+        <BulkForm kind="visitors" noun="visitor" warn="Their visits and activity go too.">
+<div className="tbl-wrap"><table className="tbl adm-tbl">
+          <thead><tr><th className="sel" /><th>Visitor</th><th>Place</th><th>Device</th><th className="num">Visits</th><th className="num">Pages</th><th>First seen</th><th>Last seen</th><th /></tr></thead>
           <tbody>
             {(data ?? []).map((v) => {
               const u = v.user_id ? who.get(v.user_id) : null;
               return (
                 <tr key={v.id}>
+                  <td className="sel"><Sel id={v.id} /></td>
                   <td>
                     <Link href={`/admin/visitors/${v.id}`} className="adm-who">
                       <span className={`dot${isLive(v.last_seen) ? ' live' : ''}`} />
@@ -59,12 +62,14 @@ export default async function Visitors({ searchParams }: { searchParams: Promise
                   <td className="num">{num(v.pageviews)}</td>
                   <td title={when(v.first_seen)}>{ago(v.first_seen)}</td>
                   <td title={when(v.last_seen)}>{ago(v.last_seen)}<div className="id">{v.last_path}</div></td>
+                  <td className="act"><RowDelete id={v.id} /></td>
                 </tr>
               );
             })}
-            {!data?.length && <tr><td colSpan={7} className="muted">No visitors match.</td></tr>}
+            {!data?.length && <tr><td colSpan={9} className="muted">No visitors match.</td></tr>}
           </tbody>
         </table></div>
+        </BulkForm>
       </Card>
       <Pager page={page} size={SIZE} total={count ?? 0} base="/admin/visitors" params={{ f, q }} />
     </>

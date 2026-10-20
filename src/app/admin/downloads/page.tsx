@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { BulkForm, RowDelete, Sel } from '../bulk';
 import { Card, PageHead, Pager, Stat, emails, num, one, pageNum, when } from '../ui';
 
 export const dynamic = 'force-dynamic';
@@ -24,22 +25,26 @@ export default async function Downloads({ searchParams }: { searchParams: Promis
       </div>
       <div className="adm-grid2 wide">
         <Card title="Downloads" flush>
-          <div className="tbl-wrap"><table className="tbl adm-tbl">
-            <thead><tr><th>When</th><th>Customer</th><th>File</th></tr></thead>
+          <BulkForm kind="downloads" noun="download record">
+<div className="tbl-wrap"><table className="tbl adm-tbl">
+            <thead><tr><th className="sel" /><th>When</th><th>Customer</th><th>File</th><th /></tr></thead>
             <tbody>
               {(dl.data ?? []).map((d) => {
                 const f = one(d.files as { name: string; size_bytes: number } | { name: string; size_bytes: number }[] | null);
                 return (
                   <tr key={d.id}>
+                    <td className="sel"><Sel id={String(d.id)} /></td>
                     <td>{when(d.created_at)}</td>
                     <td><Link href={`/admin/users/${d.user_id}`}>{who.get(d.user_id)?.email ?? d.user_id.slice(0, 8)}</Link></td>
                     <td>{f?.name ?? '—'}{f && <div className="id">{kb(f.size_bytes)}</div>}</td>
+                    <td className="act"><RowDelete id={String(d.id)} /></td>
                   </tr>
                 );
               })}
-              {!dl.data?.length && <tr><td colSpan={3} className="muted">No downloads yet.</td></tr>}
+              {!dl.data?.length && <tr><td colSpan={5} className="muted">No downloads yet.</td></tr>}
             </tbody>
           </table></div>
+          </BulkForm>
           <Pager page={page} size={SIZE} total={dl.count ?? 0} base="/admin/downloads" />
         </Card>
         <Card title="Latest files built" flush>

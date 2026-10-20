@@ -1,10 +1,10 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth.server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { supabaseAdmin, FILES_BUCKET } from '@/lib/supabase/admin';
 import { CURRENCIES } from '@/lib/money';
 import { clearCatalogCache } from '@/lib/catalog.server';
-import { createPlan } from '@/lib/razorpay.server';
+import { cancelSubscription, createPlan } from '@/lib/razorpay.server';
 
 export type SaveState = { ok?: boolean; error?: string } | null;
 
@@ -89,4 +89,93 @@ export async function savePlan(_: SaveState, form: FormData): Promise<SaveState>
   }
   revalidatePath('/pricing'); revalidatePath('/admin/plans');
   return { ok: true, error: notes.some((n) => n.includes('said')) ? notes.join(' ') : undefined };
+}
+
+/* ------------------------------------------------------------------ deleting records */
+export type DeleteState = { message: string; error?: boolean } | null;
+const KINDS = ['visitors', 'events', 'users', 'designs', 'orders', 'payments', 'downloads', 'subscriptions', 'reviews'] as const;
+type Kind = (typeof KINDS)[number];
+
+async function removeStoredFiles(db: ReturnType<typeof supabaseAdmin>, filter: { orderIds?: string[]; userIds?: string[] }) {
+  let q = db.from('files').select('storage_path');
+  if (filter.orderIds) q = q.in('order_id', filter.orderIds);
+  if (filter.userIds) q = q.in('user_id', filter.userIds);
+  const { data } = await q;
+  const paths = (data ?? []).map((f) => f.storage_path).filter(Boolean);
+  for (let i = 0; i < paths.length; i += 100) await db.storage.from(FILES_BUCKET).remove(paths.slice(i, i + 100));
+}
+
+/** Deletes one row (the "one" button) or every ticked row ("ids") of a kind. */
+export async function deleteRecords(_: DeleteState, form: FormData): Promise<DeleteState> {
+  const me = await requireAdmin();
+  const kind = String(form.get('kind') || '') as Kind;
+  if (!KINDS.includes(kind)) return { message: 'Unknown record type.', error: true };
+  const one = form.get('one');
+  const ids = (one ? [String(one)] : form.getAll('ids').map(String)).filter(Boolean).slice(0, 500);
+  if (!ids.length) return { message: 'Nothing selected.', error: true };
+  const db = supabaseAdmin();
+  let done = 0; const notes: string[] = [];
+  try {
+    switch (kind) {
+      case 'visitors': { const r = await db.from('visitors').delete({ count: 'exact' }).in('id', ids); if (r.error) throw r.error; done = r.count ?? 0; break; }
+      case 'events': { const r = await db.from('visitor_events').delete({ count: 'exact' }).in('id', ids.map(Number)); if (r.error) throw r.error; done = r.count ?? 0; break; }
+      case 'payments': { const r = await db.from('payments').delete({ count: 'exact' }).in('id', ids); if (r.error) throw r.error; done = r.count ?? 0; break; }
+      case 'downloads': { const r = await db.from('downloads').delete({ count: 'exact' }).in('id', ids.map(Number)); if (r.error) throw r.error; done = r.count ?? 0; break; }
+      case 'reviews': { const r = await db.from('testimonials').delete({ count: 'exact' }).in('id', ids); if (r.error) throw r.error; done = r.count ?? 0; break; }
+      case 'orders': {
+        await removeStoredFiles(db, { orderIds: ids });
+        const r = await db.from('orders').delete({ count: 'exact' }).in('id', ids);   // files, payments and downloads go with them
+        if (r.error) throw r.error; done = r.count ?? 0; break;
+      }
+      case 'designs': {
+        const { data: used } = await db.from('orders').select('design_id').in('design_id', ids);
+        const keep = new Set((used ?? []).map((o) => o.design_id));
+        const free = ids.filter((id) => !keep.has(id));
+        if (keep.size) notes.push(`${keep.size} kept because they have orders (delete the orders first)`);
+        if (free.length) { const r = await db.from('designs').delete({ count: 'exact' }).in('id', free); if (r.error) throw r.error; done = r.count ?? 0; }
+        break;
+      }
+      case 'subscriptions': {
+        const { data: subs } = await db.from('subscriptions').select('id, status, provider_subscription_id').in('id', ids);
+        for (const s of subs ?? []) {
+          if (s.provider_subscription_id && ['active', 'authenticated', 'pending', 'halted', 'created'].includes(s.status)) {
+            try { await cancelSubscription(s.provider_subscription_id, false); } catch (e) { notes.push(`Razorpay: ${(e as Error).message}`); }
+          }
+        }
+        const r = await db.from('subscriptions').delete({ count: 'exact' }).in('id', ids);
+        if (r.error) throw r.error; done = r.count ?? 0; break;
+      }
+      case 'users': {
+        const targets = ids.filter((id) => id !== me.id);
+        if (targets.length < ids.length) notes.push('your own account was skipped');
+        for (const id of targets) {
+          const { data: subs } = await db.from('subscriptions').select('provider_subscription_id, status').eq('user_id', id);
+          for (const s of subs ?? []) if (s.provider_subscription_id && ['active', 'authenticated', 'pending', 'halted'].includes(s.status)) {
+            try { await cancelSubscription(s.provider_subscription_id, false); } catch { /* already gone */ }
+          }
+          await db.rpc('forget_tracking', { p_uid: id });
+          await removeStoredFiles(db, { userIds: [id] });
+          await db.from('orders').delete().eq('user_id', id);
+          const r = await db.auth.admin.deleteUser(id);
+          if (r.error) notes.push(r.error.message); else done++;
+        }
+        break;
+      }
+    }
+  } catch (e) {
+    return { message: `Could not delete: ${(e as { message?: string }).message ?? e}`, error: true };
+  }
+  revalidatePath('/admin', 'layout');
+  if (kind === 'reviews') revalidatePath('/', 'layout');
+  return { message: `Deleted ${done}.${notes.length ? ' ' + notes.join('; ') + '.' : ''}` };
+}
+
+/** Turns tracking on or off for one account. Turning it off also removes everything recorded for it. */
+export async function setTracking(form: FormData) {
+  await requireAdmin();
+  const id = String(form.get('id') || ''), on = form.get('on') === '1';
+  const db = supabaseAdmin();
+  await db.from('profiles').update({ track: on }).eq('id', id);
+  if (!on) await db.rpc('forget_tracking', { p_uid: id });
+  revalidatePath('/admin', 'layout');
 }

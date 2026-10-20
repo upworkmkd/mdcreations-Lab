@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { Card, Filters, PageHead, Pager, pageNum, str, visitorNames } from '../ui';
 import { NOISE, Timeline, type Ev, type Sess } from '../timeline';
 import { AutoRefresh } from '../auto-refresh';
+import { BulkForm } from '../bulk';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Live activity' };
@@ -35,7 +36,9 @@ export default async function Activity({ searchParams }: { searchParams: Promise
       <Filters base="/admin/activity" current={f} options={[['', 'Everything'], ['key', 'Without clicks and settings'], ['pages', 'Page views'], ['sales', 'Designs and sales'], ['accounts', 'Accounts'], ['errors', 'Problems']]} />
       {error && <div className="adm-alert">{error.message}. Have you run the visitors SQL migration?</div>}
       <Card>
-        <Timeline events={(data ?? []) as Ev[]} sessions={(sess ?? []) as Sess[]} showVisitor names={names} />
+        <BulkForm kind="events" noun="event">
+          <Timeline events={(data ?? []) as Ev[]} sessions={(sess ?? []) as Sess[]} showVisitor names={names} selectable />
+        </BulkForm>
         <Pager page={page} size={SIZE} total={count ?? 0} base="/admin/activity" params={{ f }} />
       </Card>
     </>

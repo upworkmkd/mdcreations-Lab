@@ -5,6 +5,8 @@ import { UUID_RE } from '@/lib/consent';
 import { toolBySlug } from '@/lib/tools';
 import { Card, Empty, Filters, PageHead, Pager, Pill, Stat, ago, money, num, one, pageNum, place, str, when } from '../../ui';
 import { NOISE, Timeline, type Ev, type Sess } from '../../timeline';
+import { BulkForm, DeleteOne } from '../../bulk';
+import { setTracking } from '../../actions';
 import { hasAccess } from '@/lib/plans.server';
 
 export const dynamic = 'force-dynamic';
@@ -44,6 +46,11 @@ export default async function User({ params, searchParams }: { params: Promise<{
     <>
       <PageHead title={u.full_name || u.email} sub={<>{u.email} · joined {when(u.created_at)}{u.role === 'admin' ? ' · admin' : ''}</>}>
         <Link href="/admin/users" className="btn small ghost">← All users</Link>
+        <form action={setTracking}>
+          <input type="hidden" name="id" value={u.id} /><input type="hidden" name="on" value={u.track === false ? '1' : '0'} />
+          <button className="btn small ghost" title={u.track === false ? 'Start recording this account again' : 'Stop recording this account and remove what was recorded'}>{u.track === false ? 'Tracking off · turn on' : 'Stop tracking'}</button>
+        </form>
+        <DeleteOne kind="users" id={u.id} label="Delete user" after="/admin/users" warn="Deletes the account, designs, orders, files and plans, and cancels any live plan in Razorpay." />
       </PageHead>
 
       <div className="adm-stats">
@@ -129,7 +136,8 @@ export default async function User({ params, searchParams }: { params: Promise<{
       </div>
 
       <Card title="Activity timeline" action={<Filters base={`/admin/users/${id}`} current={f} options={[['', 'Everything'], ['key', 'Pages and key actions']]} />}>
-        <Timeline events={(ev.data ?? []) as Ev[]} sessions={(sess ?? []) as Sess[]} />
+        {u.track === false && <p className="adm-alert" style={{ marginBottom: 14 }}>Tracking is off for this account: nothing it does is recorded.</p>}
+        <BulkForm kind="events" noun="event"><Timeline events={(ev.data ?? []) as Ev[]} sessions={(sess ?? []) as Sess[]} selectable /></BulkForm>
         <Pager page={page} size={SIZE} total={ev.count ?? 0} base={`/admin/users/${id}`} params={{ f }} />
       </Card>
     </>

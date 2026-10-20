@@ -41,10 +41,13 @@ export async function getTool(slug: string) {
   return (await getCatalog()).find((t) => t.slug === slug) ?? null;
 }
 
-/** The visitor's currency: their own choice if they made one, else INR in India and USD elsewhere. */
+/** The visitor's currency: INR in India and USD everywhere else, unless they switched it themselves from the same country. */
 export async function getCurrency(): Promise<Currency> {
-  const c = (await cookies()).get('cur')?.value;
-  if (isCurrency(c)) return c;
   const country = (await headers()).get('x-vercel-ip-country');
-  return !country || country === 'IN' ? 'INR' : 'USD';
+  const byPlace: Currency = !country || country === 'IN' ? 'INR' : 'USD';
+  const saved = (await cookies()).get('cur')?.value ?? '';
+  const [choice, madeIn] = saved.split('|');
+  // old cookies without a country ("INR") are ignored, so everyone starts from their location again
+  if (saved.includes('|') && isCurrency(choice) && (!country || !madeIn || madeIn === country)) return choice;
+  return byPlace;
 }

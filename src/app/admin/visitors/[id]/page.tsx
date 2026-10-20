@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { UUID_RE } from '@/lib/consent';
 import { Card, Filters, PageHead, Pager, Stat, ago, country, duration, emails, num, pageNum, place, shortId, str, when } from '../../ui';
 import { NOISE, Timeline, type Ev, type Sess } from '../../timeline';
+import { BulkForm, DeleteOne } from '../../bulk';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Visitor' };
@@ -36,6 +37,7 @@ export default async function Visitor({ params, searchParams }: { params: Promis
     <>
       <PageHead title={u ? u.name || u.email : `Visitor ${shortId(v.id)}`} sub={<>{u ? <><Link href={`/admin/users/${v.user_id}`}>{u.email}</Link> · </> : 'Anonymous · '}{place(v)} · last seen {ago(v.last_seen)}</>}>
         <Link href="/admin/visitors" className="btn small ghost">← All visitors</Link>
+        <DeleteOne kind="visitors" id={v.id} label="Delete visitor" after="/admin/visitors" warn="Deletes this browser's profile, visits and activity." />
       </PageHead>
 
       <div className="adm-stats">
@@ -105,7 +107,7 @@ export default async function Visitor({ params, searchParams }: { params: Promis
       </Card>
 
       <Card title="Activity timeline" action={<Filters base={`/admin/visitors/${id}`} current={f} options={[['', 'Everything'], ['key', 'Pages and key actions']]} />}>
-        <Timeline events={(ev.data ?? []) as Ev[]} sessions={sess} />
+        <BulkForm kind="events" noun="event"><Timeline events={(ev.data ?? []) as Ev[]} sessions={sess} selectable /></BulkForm>
         <Pager page={page} size={SIZE} total={ev.count ?? 0} base={`/admin/visitors/${id}`} params={{ f }} />
       </Card>
     </>

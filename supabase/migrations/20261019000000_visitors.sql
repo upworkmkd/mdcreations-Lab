@@ -108,6 +108,25 @@ drop policy if exists "admins read events" on public.visitor_events;
 create policy "admins read events" on public.visitor_events for select using (public.is_admin());
 
 
+-- ---------------------------------------------------------------- accounts that are never tracked (the shop owner, testers)
+alter table public.profiles add column if not exists track boolean not null default true;
+update public.profiles set track = false where role = 'admin';
+
+create or replace function public.untracked(p_uid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select p_uid is not null and exists (select 1 from profiles where id = p_uid and track = false);
+$$;
+
+-- removes everything recorded for an account (all its browsers, visits and events)
+create or replace function public.forget_tracking(p_uid uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  delete from visitors where user_id = p_uid;
+  delete from visitor_events where user_id = p_uid;
+  delete from visitor_sessions where user_id = p_uid;
+end $$;
+
+
 -- ---------------------------------------------------------------- ingest: one call per batch from /api/track
 create or replace function public.track_ingest(p jsonb)
 returns void language plpgsql security definer set search_path = public as $$
@@ -124,6 +143,7 @@ declare
   c jsonb := coalesce(p->'ctx', '{}'::jsonb);
   s jsonb := coalesce(p->'session', '{}'::jsonb);
 begin
+  if public.untracked(v_uid) then delete from visitors where id = v_vid; return; end if;
   n_ev := jsonb_array_length(v_ev);
   select count(*) into n_pv from jsonb_array_elements(v_ev) e where e->>'type' = 'pageview';
   select e->>'path' into v_last from jsonb_array_elements(v_ev) e where e->>'type' = 'pageview' order by (e->>'ts') desc nulls last limit 1;
@@ -210,6 +230,7 @@ end $$;
 create or replace function public.link_visitor(p_vid uuid, p_uid uuid)
 returns void language plpgsql security definer set search_path = public as $$
 begin
+  if public.untracked(p_uid) then delete from visitors where id = p_vid; return; end if;
   update visitors set user_id = p_uid where id = p_vid;
   update visitor_sessions set user_id = p_uid where visitor_id = p_vid and user_id is null;
   update visitor_events set user_id = p_uid where visitor_id = p_vid and user_id is null;
@@ -219,6 +240,7 @@ end $$;
 create or replace function public.track_server_event(p_vid uuid, p_sid uuid, p_uid uuid, p_type text, p_name text, p_path text, p_props jsonb)
 returns void language plpgsql security definer set search_path = public as $$
 begin
+  if public.untracked(p_uid) then delete from visitors where id = p_vid; return; end if;
   if not exists (select 1 from visitors where id = p_vid) then return; end if;
   if p_sid is not null and not exists (select 1 from visitor_sessions where id = p_sid) then p_sid := null; end if;
   insert into visitor_events (visitor_id, session_id, user_id, type, name, path, props)
@@ -284,6 +306,10 @@ begin
 end $$;
 
 revoke all on function public.track_ingest(jsonb) from public, anon, authenticated;
+revoke all on function public.untracked(uuid) from public, anon, authenticated;
+revoke all on function public.forget_tracking(uuid) from public, anon, authenticated;
+grant execute on function public.untracked(uuid) to service_role;
+grant execute on function public.forget_tracking(uuid) to service_role;
 revoke all on function public.link_visitor(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.track_server_event(uuid, uuid, uuid, text, text, text, jsonb) from public, anon, authenticated;
 revoke all on function public.admin_stats(int) from public, anon, authenticated;
@@ -312,3 +338,7 @@ alter table public.testimonials enable row level security;
 drop policy if exists "published reviews are public" on public.testimonials;
 create policy "published reviews are public" on public.testimonials for select using (status = 'published' or public.is_admin());
 -- reviews are written through the server (it checks for a paid order), so there is no insert policy
+
+
+-- ---------------------------------------------------------------- clear anything already recorded for untracked accounts
+select public.forget_tracking(id) from public.profiles where track = false;

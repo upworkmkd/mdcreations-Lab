@@ -7,6 +7,8 @@ import { supabaseBrowser } from '@/lib/supabase/client';
 import { formatMoney, type Currency } from '@/lib/money';
 import { EXAMPLES } from '@/lib/gallery';
 import { track } from '@/components/tracker';
+import { startPlan } from '@/lib/subscribe.client';
+import { PlanChooser, type ChooserPlan, type Choice } from './plan-chooser';
 import './maker.css';
 
 type Studio = { designPayload(): unknown; previewJpeg(): string; destroy(): void; loadExample(src: string, name: string): void };
@@ -35,7 +37,10 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 
 export type MakerPlan = { name: string; remaining: number | null; limit: number | null };
 
-export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example, plan }: { currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null }) {
+export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example, plan: plan0, plans = [], otherPlan = false }: { currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean }) {
+  const [plan, setPlan] = useState<MakerPlan | null>(plan0 ?? null);
+  const [chooser, setChooser] = useState(false);
+  const choice = useRef<Choice>('single');
   const first = EXAMPLES.find((e) => e.id === example) ?? EXAMPLES.find((e) => e.id === 'elephant')!;
   const [picked, setPicked] = useState<string | null>(first.id);
   const root = useRef<HTMLDivElement>(null), studio = useRef<Studio | null>(null);
@@ -92,15 +97,43 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
     }
   }, [currency]);
 
-  const onBuy = useCallback(async () => {
-    if (!signedIn) {
-      // they may have signed in or confirmed their email in another tab
-      const { data } = await supabaseBrowser().auth.getUser().catch(() => ({ data: { user: null } }));
-      if (!data.user) { setAuthOpen(true); return; }
-      setSignedIn(true);
+  // after signing in (or straight away): carry out what they picked in the chooser
+  const proceed = useCallback(async () => {
+    const c = choice.current;
+    if (c === 'single') { purchase(); return; }
+    const p = plans.find((x) => x.id === c); if (!p) return;
+    try {
+      const ok = await startPlan({ plan: p.id, planName: p.name, currency, tool: p.tools === 1 ? 'shadow-lamp' : undefined, onStep: (text) => setPhase({ kind: 'working', text }) });
+      if (!ok) { setPhase({ kind: 'error', text: 'Payment window closed. Nothing was charged; your design is still here.' }); return; }
+      setPlan({ name: p.name, remaining: p.limit, limit: p.limit }); setLeft(p.limit);
+      setPhase({ kind: 'working', text: 'Plan started. Building your files…' });
+      purchase();
+    } catch (e) {
+      const err = e as Error & { status?: number };
+      if (err.status === 401) { setSignedIn(false); setPhase({ kind: 'idle' }); setAuthOpen(true); return; }
+      setPhase({ kind: 'error', text: err.message });
     }
-    purchase();
-  }, [signedIn, purchase]);
+  }, [plans, currency, purchase]);
+
+  const ensureSignedIn = useCallback(async () => {
+    if (signedIn) return true;
+    // they may have signed in or confirmed their email in another tab
+    const { data } = await supabaseBrowser().auth.getUser().catch(() => ({ data: { user: null } }));
+    if (!data.user) { setAuthOpen(true); return false; }
+    setSignedIn(true); return true;
+  }, [signedIn]);
+
+  const onBuy = useCallback(async () => {
+    if (plan) { choice.current = 'single'; if (await ensureSignedIn()) purchase(); return; }   // on a plan: the server decides if it is included
+    track('chooser_open', 'Download options');
+    setChooser(true);
+  }, [plan, ensureSignedIn, purchase]);
+
+  const onChoose = useCallback(async (c: Choice) => {
+    choice.current = c; setChooser(false);
+    track('chooser_pick', c === 'single' ? 'Just this design' : `${c} plan`);
+    if (await ensureSignedIn()) proceed();
+  }, [ensureSignedIn, proceed]);
 
   const price = amountMinor != null ? formatMoney(amountMinor, currency) : null;
   const working = phase.kind === 'working';
@@ -236,8 +269,8 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
               </div>
             ) : (
               <>
-                <button type="button" className="btn buybtn" onClick={onBuy} disabled={!ready || working || (!onPlan && (!payConfigured || amountMinor == null))}>
-                  {working ? phase.text : onPlan ? <>Download <span className="sep" /> <span className="mono">in your {plan!.name} plan</span></> : price ? <>Buy and download <span className="sep" /> <span className="mono">{price}</span></> : 'Download'}
+                <button type="button" className="btn buybtn" onClick={onBuy} disabled={!ready || working || (!onPlan && !payConfigured)}>
+                  {working ? phase.text : onPlan ? <>Download <span className="sep" /> <span className="mono">in your {plan!.name} plan</span></> : plan ? <>Buy and download <span className="sep" /> <span className="mono">{price}</span></> : <>Download <span className="sep" /> <span className="mono">{price ? `from ${price}` : 'choose an option'}</span></>}
                 </button>
                 {onPlan ? <p className="note ok">{left == null ? 'Unlimited designs on your plan.' : `${left} of ${plan!.limit} plan designs left today.`}</p>
                   : plan ? <p className="note">You have used today&apos;s {plan.limit} plan designs. This one is charged separately, or come back after midnight (India time).</p>
@@ -271,7 +304,8 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
         <div className="panels" id="panels" />
       </section>
 
-      <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} onSignedIn={() => { setSignedIn(true); setAuthOpen(false); purchase(); }}
+      <PlanChooser open={chooser} onClose={() => setChooser(false)} onChoose={onChoose} single={amountMinor != null ? price : null} plans={plans} otherPlan={otherPlan} />
+      <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} onSignedIn={() => { setSignedIn(true); setAuthOpen(false); proceed(); }}
         next="/tools/shadow-lamp/make" reason="Sign in to buy and download your files. Your design stays right here." />
     </div>
   );

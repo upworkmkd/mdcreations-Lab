@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { clock, day, duration, money } from './ui';
+import { RowDelete, Sel } from './bulk';
 
 export type Ev = { id: number; visitor_id: string; session_id: string | null; user_id: string | null; type: string; name: string | null; path: string | null; title: string | null; props: Record<string, unknown>; created_at: string };
 export type Sess = { id: string; started_at: string; last_seen: string; pageviews: number; events: number; referrer: string | null; landing: string | null; browser: string | null; os: string | null; device_type: string | null; city: string | null; country: string | null; ip: string | null; utm_source: string | null; utm_campaign: string | null };
@@ -40,6 +41,8 @@ function describe(e: Ev): { icon: string; text: React.ReactNode } {
     case 'subscribe_error': return { icon: '!', text: <>Subscription problem: {n}</> };
     case 'subscription_cancel': return { icon: '×', text: <>Cancelled their {n} (stays active until the end of the month)</> };
     case 'plan_build': return { icon: '◆', text: <>Built {q(n)} with their plan{p(e, 'left') != null ? `, ${p(e, 'left')} left today` : ''}</> };
+    case 'chooser_open': return { icon: '?', text: <>Opened the download options</> };
+    case 'chooser_pick': return { icon: '→', text: <>Chose <b>{n}</b></> };
     case 'review': return { icon: '❝', text: <>Wrote a review</> };
     case 'error': return { icon: '!', text: <>Page error: <code>{n}</code></> };
     default: return { icon: '·', text: <>{e.type}{n ? `: ${n}` : ''}</> };
@@ -47,7 +50,7 @@ function describe(e: Ev): { icon: string; text: React.ReactNode } {
 }
 
 /** The activity timeline: days, then visits (sessions), then each thing they did. */
-export function Timeline({ events, sessions = [], showVisitor, names }: { events: Ev[]; sessions?: Sess[]; showVisitor?: boolean; names?: Map<string, string> }) {
+export function Timeline({ events, sessions = [], showVisitor, names, selectable }: { events: Ev[]; sessions?: Sess[]; showVisitor?: boolean; names?: Map<string, string>; selectable?: boolean }) {
   if (!events.length) return <p className="adm-empty">No activity recorded yet.</p>;
   const sMap = new Map(sessions.map((s) => [s.id, s]));
   const groups: { key: string; sid: string | null; day: string; items: Ev[] }[] = [];
@@ -76,9 +79,11 @@ export function Timeline({ events, sessions = [], showVisitor, names }: { events
                   const d = describe(e);
                   return (
                     <li key={e.id} className={`t-${e.type}${KEY.has(e.type) ? ' key' : ''}${BAD.has(e.type) ? ' bad' : ''}`}>
+                      {selectable && <span className="sel"><Sel id={String(e.id)} /></span>}
                       <time>{clock(e.created_at)}</time>
                       <span className="ic" aria-hidden>{d.icon}</span>
                       <span className="tx">{d.text}{e.type !== 'pageview' && e.type !== 'leave' && e.path ? <span className="where"> on {e.path}</span> : e.type === 'pageview' ? <span className="where"> {e.path}</span> : null}</span>
+                      {selectable && <span className="act"><RowDelete id={String(e.id)} /></span>}
                     </li>
                   );
                 })}
