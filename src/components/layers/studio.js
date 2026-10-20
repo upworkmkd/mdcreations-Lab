@@ -16,7 +16,7 @@ export function mountLayerStudio(root, opts = {}) {
   const DEF = {
     fit: 'cover', zoom: 1, panX: 0, panY: 0, rotate: 0, flipH: false, brightness: 0, contrast: 0, saturation: 0, gamma: 1, blur: 0, invert: false,
     mode: 'colour', colors: 7, tonalBalance: 0.5, shadow: '#161616', highlight: '#f4f4f2', snap: false, transparent: 'layer', bgColor: '#f4f4f2',
-    order: 'loose', manual: null, smooth: 0.6, despeckle: 1.5, loose: 'keep', looseArea: 6,
+    order: 'loose', manual: null, smooth: 0.6, despeckle: 1.5, loose: 'limit', looseMax: 2, looseArea: 6,
     width: 200, ratio: '1:1', outer: 'square', radius: 0, window: 'circle', border: 6, frameLayer: true, frameColor: '#161616',
     thickness: 1, backThickness: 0.6, frameThickness: 1, pins: 'off', pinDia: 1.9, res: 520, tol: 0.05,
     shade: true, backdrop: 'auto', mirror: false, incRef: false, prefix: 'sculpture',
@@ -58,9 +58,10 @@ export function mountLayerStudio(root, opts = {}) {
     { title: 'Clean-up', items: [
       { k: 'smooth', t: 'range', label: 'Smooth edges', min: 0, max: 4, step: 0.1, st: 'B', fmt: mm },
       { k: 'despeckle', t: 'range', label: 'Remove specks under', min: 0, max: 30, step: 0.5, st: 'B', fmt: (v) => v.toFixed(1) + ' mm²' },
-      { k: 'loose', t: 'select', label: 'Loose pieces', st: 'C', opts: [['keep', 'Keep (glue them in place)'], ['small', 'Drop the small ones'], ['all', 'Drop all of them']] },
+      { k: 'loose', t: 'select', label: 'Loose pieces', st: 'C', opts: [['limit', 'Keep only the biggest few'], ['keep', 'Keep them all (glue in place)'], ['small', 'Drop the small ones'], ['all', 'Drop all of them']] },
+      { k: 'looseMax', t: 'range', label: 'Most loose pieces per layer', min: 0, max: 6, step: 1, st: 'C', fmt: (v) => String(v), show: (p) => p.loose === 'limit' },
       { k: 'looseArea', t: 'range', label: 'Small means under', min: 1, max: 150, step: 1, st: 'C', fmt: (v) => v + ' mm²', show: (p) => p.loose === 'small' },
-      { k: '_h2', t: 'note', label: 'A loose piece is an island not joined to the rest of its layer. A dropped piece shows the colour of the layer behind it.' },
+      { k: '_h2', t: 'note', label: 'A loose piece is an island not joined to the rest of its layer, so it has to be glued in place. A dropped piece shows the colour of the layer behind it. Tip: “Light in front” or “Fewest loose pieces” order usually needs the fewest.' },
     ] },
     { title: 'Shape and frame', open: true, items: [
       { k: 'width', t: 'range', label: 'Width', min: 60, max: 300, step: 1, st: 'A', fmt: (v) => v + ' mm' },
@@ -351,7 +352,7 @@ export function mountLayerStudio(root, opts = {}) {
   function classColour(k) { return S.overrides[k] ? Core.hexToRgb(S.overrides[k]) : P.snap ? Core.nearestFilament(S.C.palette[k]).rgb : S.C.palette[k]; }
   function designPayload() {
     if (!S.ready || !S.C || !S.G) return null;
-    const keys = ['width', 'ratio', 'outer', 'radius', 'window', 'border', 'frameLayer', 'frameColor', 'thickness', 'backThickness', 'frameThickness', 'pins', 'pinDia', 'res', 'tol', 'loose', 'looseArea', 'mirror', 'incRef'];
+    const keys = ['width', 'ratio', 'outer', 'radius', 'window', 'border', 'frameLayer', 'frameColor', 'thickness', 'backThickness', 'frameThickness', 'pins', 'pinDia', 'res', 'tol', 'loose', 'looseMax', 'looseArea', 'mirror', 'incRef'];
     const p = {}; for (const k of keys) p[k] = P[k];
     const colors = []; for (let k = 0; k < S.C.K; k++) colors.push(Core.rgbToHex(classColour(k)));
     return { name: (P.prefix || 'Sculpture').slice(0, 40), p, aspect: S.imgW / S.imgH, nx: S.G.nx, ny: S.G.ny, K: S.C.K, cls: encodeRle(S.C.cls), order: S.order.slice(), colors };

@@ -6,7 +6,7 @@ export type LayerParams = {
   width: number; ratio: string; outer: string; radius: number; window: string; border: number;
   frameLayer: boolean; frameColor: string; thickness: number; backThickness: number; frameThickness: number;
   pins: 'off' | 'hidden' | 'through'; pinDia: number; res: number; tol: number;
-  loose: 'keep' | 'small' | 'all'; looseArea: number; mirror: boolean; incRef: boolean;
+  loose: 'keep' | 'small' | 'all' | 'limit'; looseMax: number; looseArea: number; mirror: boolean; incRef: boolean;
 };
 export type LayerDesign = {
   name: string; p: LayerParams; aspect: number; nx: number; ny: number;
@@ -43,7 +43,8 @@ export function parseLayerDesign(x: unknown): LayerDesign {
     pinDia: num(p.pinDia, 1, 6, 'hole diameter'),
     res: num(p.res, 120, 1100, 'detail'),
     tol: num(p.tol, 0.005, 0.5, 'simplification'),
-    loose: pick(p.loose, ['keep', 'small', 'all'] as const, 'loose pieces'),
+    loose: pick(p.loose, ['keep', 'small', 'all', 'limit'] as const, 'loose pieces'),
+    looseMax: p.looseMax == null ? 2 : num(p.looseMax, 0, 20, 'most loose pieces'),
     looseArea: num(p.looseArea, 0, 500, 'small pieces'),
     mirror: Boolean(p.mirror), incRef: Boolean(p.incRef),
   };
