@@ -94,7 +94,7 @@ export async function savePlan(_: SaveState, form: FormData): Promise<SaveState>
 
 /* ------------------------------------------------------------------ deleting records */
 export type DeleteState = { message: string; error?: boolean } | null;
-const KINDS = ['visitors', 'events', 'users', 'designs', 'orders', 'payments', 'downloads', 'subscriptions', 'reviews'] as const;
+const KINDS = ['anon', 'visitors', 'events', 'users', 'designs', 'orders', 'payments', 'downloads', 'subscriptions', 'reviews'] as const;
 type Kind = (typeof KINDS)[number];
 
 async function removeStoredFiles(db: ReturnType<typeof supabaseAdmin>, filter: { orderIds?: string[]; userIds?: string[] }) {
@@ -118,6 +118,7 @@ export async function deleteRecords(_: DeleteState, form: FormData): Promise<Del
   let done = 0; const notes: string[] = [];
   try {
     switch (kind) {
+      case 'anon': { const r = await db.from('anon_views').delete({ count: 'exact' }).in('visit', ids); if (r.error) throw r.error; done = new Set(ids).size; break; }
       case 'visitors': { const r = await db.from('visitors').delete({ count: 'exact' }).in('id', ids); if (r.error) throw r.error; done = r.count ?? 0; break; }
       case 'events': { const r = await db.from('visitor_events').delete({ count: 'exact' }).in('id', ids.map(Number)); if (r.error) throw r.error; done = r.count ?? 0; break; }
       case 'payments': { const r = await db.from('payments').delete({ count: 'exact' }).in('id', ids); if (r.error) throw r.error; done = r.count ?? 0; break; }

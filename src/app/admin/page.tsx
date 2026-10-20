@@ -20,7 +20,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const days = [7, 30, 90].includes(Number(str(sp.days))) ? Number(str(sp.days)) : 30;
   const db = supabaseAdmin();
-  const [stats, users, designs, files, downloads, paid, subs, orders, feed] = await Promise.all([
+  const [stats, users, designs, files, downloads, paid, subs, orders, feed, anonStats] = await Promise.all([
     db.rpc('admin_stats', { p_days: days }),
     db.from('profiles').select('id', { count: 'exact', head: true }),
     db.from('designs').select('id', { count: 'exact', head: true }),
@@ -30,6 +30,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
     db.from('subscriptions').select('status, current_end, currency, amount_minor, cancel_at_period_end'),
     db.from('orders').select('id, user_id, currency, amount_minor, status, created_at, designs(name)').order('created_at', { ascending: false }).limit(8),
     db.from('visitor_events').select('*').in('type', ['signup', 'email_confirmed', 'signin', 'design_saved', 'checkout', 'payment', 'download', 'payment_cancelled', 'purchase_error', 'subscribed', 'subscription_cancel', 'plan_build']).order('created_at', { ascending: false }).limit(15),
+    db.rpc('admin_anon_stats', { p_days: days }),
   ]);
   const s = stats.data as Stats | null;
   const revenue: Record<string, number> = {};
@@ -49,6 +50,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
         <Stat label="Online now" value={num(t.online)} note="active in the last 5 min" href="/admin/activity" />
         <Stat label="Visitors today" value={num(t.today)} />
         <Stat label={`Visitors, ${days} days`} value={num(t.visitors)} note={`${num(t.new_visitors)} new · ${num(t.returning)} returning`} href="/admin/visitors" />
+        <Stat label="Anonymous visits" value={num((anonStats.data as { totals?: Record<string, number> } | null)?.totals?.visits)} note={`${num((anonStats.data as { totals?: Record<string, number> } | null)?.totals?.views)} page views, no cookies`} href="/admin/anonymous" />
         <Stat label="Page views" value={num(t.pageviews)} note={`${num(t.sessions)} visits · avg ${duration(t.avg_session_s ?? 0)}`} />
         <Stat label="Sign-ups" value={num(t.signups)} note={`${num(users.count)} accounts in all`} href="/admin/users" />
         <Stat label="Revenue" value={revenue.INR ? formatMoney(revenue.INR, 'INR') : '₹0'} note={revenue.USD ? `+ ${formatMoney(revenue.USD, 'USD')}` : `${num((paid.data ?? []).length)} paid orders`} href="/admin/orders" />

@@ -72,10 +72,35 @@ function flush(beacon = false) {
   if (state.queue.length) flush(beacon);
 }
 
-/** Records one thing the visitor did. Safe to call anywhere; does nothing without analytics consent. */
+/* ------------------------------------------------------------------ cookieless counting (no consent needed)
+ * Without analytics consent only page views and time on page are sent, with no cookie and no stored id:
+ * the visit id below lives in this tab's memory and is gone on reload. The server keeps no IP or city. */
+const anonState = { visit: '', sent: false, first: true };
+function anon(type: 'pageview' | 'leave', path: string, title?: string, props?: Record<string, unknown>) {
+  const n = navigator as Navigator & { globalPrivacyControl?: boolean };
+  if (n.globalPrivacyControl || n.doNotTrack === '1') return;
+  if (!anonState.visit) anonState.visit = uuid();
+  const body: Record<string, unknown> = { visit: anonState.visit, type, path: path.split('?')[0], title };
+  if (type === 'leave') { body.seconds = props?.seconds; body.scroll = props?.scroll; }
+  if (type === 'pageview' && anonState.first) {
+    anonState.first = false;
+    try { if (document.referrer && new URL(document.referrer).host !== location.host) body.ref = document.referrer; } catch { /* ignore */ }
+    body.utm = new URL(location.href).searchParams.get('utm_source') ?? undefined;
+  }
+  anonState.sent = true;
+  const json = JSON.stringify(body);
+  if (navigator.sendBeacon) navigator.sendBeacon('/api/track/anon', new Blob([json], { type: 'application/json' }));
+  else fetch('/api/track/anon', { method: 'POST', body: json, headers: { 'Content-Type': 'application/json' }, keepalive: true }).catch(() => {});
+}
+
+/** Records one thing the visitor did. Safe to call anywhere; without analytics consent only page views are counted, anonymously. */
 export function track(type: string, name?: string, props?: Record<string, unknown>) {
-  if (typeof window === 'undefined' || state.consent === 'essential') return;
+  if (typeof window === 'undefined') return;
   if (location.pathname.startsWith('/admin') || getCookie(NOTRACK_COOKIE)) { state.queue.length = 0; return; }
+  if (state.consent !== 'all' && (type === 'pageview' || type === 'leave')) {
+    anon(type, type === 'leave' ? (name ?? location.pathname) : location.pathname, type === 'pageview' ? document.title : undefined, props);
+  }
+  if (state.consent === 'essential') return;
   state.queue.push({ type, name, path: location.pathname + location.search, title: document.title, props, ts: new Date().toISOString() });
   if (state.queue.length > 120) state.queue.splice(0, state.queue.length - 120);
   if (state.consent !== 'all') return;                     // waits for the answer to the cookie question
@@ -206,7 +231,11 @@ export function Tracker() {
     state.consent = v;
     setAsking(false);
     dispatchEvent(new Event(CHANGED));
-    if (v === 'all') { track('consent', 'Accepted analytics cookies'); flush(); }
+    if (v === 'all') {
+      // the full record now covers this visit, so the anonymous copy is dropped
+      if (anonState.sent) navigator.sendBeacon?.('/api/track/anon', new Blob([JSON.stringify({ visit: anonState.visit, upgrade: true })], { type: 'application/json' }));
+      track('consent', 'Accepted analytics cookies'); flush();
+    }
     else {
       state.queue.length = 0;
       setCookie(VISITOR_COOKIE, '', 0);
@@ -217,7 +246,7 @@ export function Tracker() {
   if (consent === 'ssr' || (consent !== 'none' && !asking) || pathname.startsWith('/admin')) return null;
   return (
     <div className="consent" role="dialog" aria-live="polite" aria-label="Cookie choices" data-notrack>
-      <p><b>Cookies.</b> We use essential cookies to keep you signed in. With your OK we also record how the site is used (pages, clicks, device, browser and approximate location) so we can make the tools better. <Link href="/privacy">Privacy policy</Link></p>
+      <p><b>Cookies.</b> We use essential cookies to keep you signed in, and count page views anonymously without cookies. With your OK we also record how the site is used (pages, clicks, device, browser and approximate location) so we can make the tools better. <Link href="/privacy">Privacy policy</Link></p>
       <div className="consent-btns">
         <button type="button" className="btn small ghost" onClick={() => choose('essential')}>Essential only</button>
         <button type="button" className="btn small" onClick={() => choose('all')}>Accept all</button>
