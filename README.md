@@ -19,6 +19,7 @@ Live tool: **Shadow Lamp Maker**. Coming soon: Statue Maker, Layered Sculpture M
 | Prices (Oct 2026) | `supabase/migrations/20261020200000_new_prices.sql` |
 | Reviews | `supabase/migrations/20261020300000_one_review_each.sql` – one review per customer |
 | Anonymous counts | `supabase/migrations/20261020400000_anonymous_views.sql` – cookieless page views for visitors without consent |
+| Retention | `supabase/migrations/20261020500000_keep_tracking_10_days.sql` – deletes visitor data older than 10 days, nightly (pg_cron) |
 
 The browser sends only a black-and-white run-length mask of the picture (tens of KB) plus the placement. The server rebuilds the identical field and the paid files from it, so preview and files always match.
 

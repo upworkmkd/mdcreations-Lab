@@ -4,6 +4,7 @@ import { formatMoney } from '@/lib/money';
 import { BarList, Card, DailyChart, Empty, Filters, PageHead, Pill, Stat, ago, country, duration, emails, money, num, one, str, visitorNames, when } from './ui';
 import { Timeline, type Ev } from './timeline';
 import { hasAccess } from '@/lib/plans.server';
+import { purgeOldTracking } from '@/lib/retention.server';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Overview' };
@@ -18,8 +19,9 @@ type Stats = {
 
 export default async function Overview({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
-  const days = [7, 30, 90].includes(Number(str(sp.days))) ? Number(str(sp.days)) : 30;
+  const days = [1, 3, 7, 10].includes(Number(str(sp.days))) ? Number(str(sp.days)) : 10;
   const db = supabaseAdmin();
+  await purgeOldTracking(db);   // backup for the nightly clean-up in the database
   const [stats, users, designs, files, downloads, paid, subs, orders, feed, anonStats] = await Promise.all([
     db.rpc('admin_stats', { p_days: days }),
     db.from('profiles').select('id', { count: 'exact', head: true }),
@@ -40,8 +42,8 @@ export default async function Overview({ searchParams }: { searchParams: Promise
 
   return (
     <>
-      <PageHead title="Overview" sub="Visitors, sales and what people do on the site. Times are India time.">
-        <Filters base="/admin" name="days" current={String(days === 30 ? '' : days)} options={[['7', '7 days'], ['', '30 days'], ['90', '90 days']]} />
+      <PageHead title="Overview" sub="Visitors, sales and what people do on the site. Visitor data is kept for 10 days. Times are India time.">
+        <Filters base="/admin" name="days" current={String(days === 10 ? '' : days)} options={[['1', 'Today'], ['3', '3 days'], ['7', '7 days'], ['', '10 days']]} />
       </PageHead>
 
       {stats.error && <div className="adm-alert">Visitor numbers are not available: {stats.error.message}. Run <code>supabase/migrations/20261019000000_visitors.sql</code> in the Supabase SQL editor.</div>}

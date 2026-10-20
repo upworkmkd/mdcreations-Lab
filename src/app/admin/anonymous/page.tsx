@@ -11,7 +11,7 @@ type Stats = { totals: Record<string, number>; daily: { day: string; visitors: n
 
 export default async function Anonymous({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
-  const page = pageNum(sp.page), days = [7, 30, 90].includes(Number(str(sp.days))) ? Number(str(sp.days)) : 30;
+  const page = pageNum(sp.page), days = [1, 3, 7, 10].includes(Number(str(sp.days))) ? Number(str(sp.days)) : 10;
   const db = supabaseAdmin();
   const [stats, rows] = await Promise.all([
     db.rpc('admin_anon_stats', { p_days: days }),
@@ -33,7 +33,7 @@ export default async function Anonymous({ searchParams }: { searchParams: Promis
   return (
     <>
       <PageHead title="Anonymous visits" sub="Visitors who have not accepted analytics cookies (or chose “Essential only”). Counted without cookies: no IP, no city and no way to recognise them on their next visit. A reload starts a new visit.">
-        <Filters base="/admin/anonymous" name="days" current={String(days === 30 ? '' : days)} options={[['7', '7 days'], ['', '30 days'], ['90', '90 days']]} />
+        <Filters base="/admin/anonymous" name="days" current={String(days === 10 ? '' : days)} options={[['1', 'Today'], ['3', '3 days'], ['7', '7 days'], ['', '10 days']]} />
       </PageHead>
       {stats.error && <div className="adm-alert">{stats.error.message}. Run <code>supabase/migrations/20261020400000_anonymous_views.sql</code> in the Supabase SQL editor.</div>}
       <div className="adm-stats">
