@@ -7,6 +7,7 @@ import { getViewer } from '@/lib/auth.server';
 import { supabaseConfigured } from '@/lib/env';
 import { entitlement, getPlans } from '@/lib/plans.server';
 import { formatMoney } from '@/lib/money';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export const metadata: Metadata = pageMeta({
   title: 'Make a Shadow Lamp Online – Free Preview, Download STL Files',
@@ -22,6 +23,7 @@ export default async function MakePage({ searchParams }: PageProps<'/tools/shado
   const [tool, currency, viewer] = await Promise.all([getTool('shadow-lamp'), getCurrency(), getViewer()]);
   const amount = tool?.prices[currency] ?? null;
   const ent = viewer ? await entitlement(viewer.id, 'shadow-lamp').catch(() => null) : null;
+  const reviewed = viewer ? ((await supabaseAdmin().from('testimonials').select('id', { count: 'exact', head: true }).eq('user_id', viewer.id).eq('source', 'site')).count ?? 0) > 0 : false;
   const plan = ent?.covers ? { name: ent.plan.name, remaining: ent.remaining, limit: ent.plan.daily_limit } : null;
   const plans = (await getPlans()).map((p) => ({
     id: p.id, name: p.name, status: p.status, ready: Boolean(p.ready[currency]), limit: p.daily_limit, tools: p.tools,
@@ -37,7 +39,7 @@ export default async function MakePage({ searchParams }: PageProps<'/tools/shado
         </div>
         <p className="muted" style={{ maxWidth: '46ch', fontSize: 15 }}>Everything on this page runs in your browser and is free to try. The printable files are built when you buy.</p>
       </div>
-      <Maker currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} example={example} plan={plan} plans={plans} otherPlan={Boolean(ent && !ent.covers)} />
+      <Maker currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} example={example} plan={plan} plans={plans} otherPlan={Boolean(ent && !ent.covers)} viewerName={viewer?.name ?? ''} reviewed={reviewed} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requireViewer } from '@/lib/auth.server';
 import { createClient } from '@/lib/supabase/server';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { formatMoney, isCurrency } from '@/lib/money';
 import { AuthForm } from '@/components/auth-form';
 import { RetryBuild } from '@/components/retry-build';
@@ -27,6 +28,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
     supabase.from('downloads').select('file_id'),
   ]);
   const ent = await entitlement(viewer.id, 'shadow-lamp').catch(() => null);
+  const { data: myReview } = await supabaseAdmin().from('testimonials').select('rating, body, status').eq('user_id', viewer.id).eq('source', 'site').maybeSingle();
   const sub = ent?.sub ?? null;
   const dl = new Map<string, number>();
   for (const d of downloads.data ?? []) dl.set(d.file_id, (dl.get(d.file_id) ?? 0) + 1);
@@ -152,9 +154,21 @@ export default async function Account({ searchParams }: { searchParams: Promise<
           </section>
 
           <section id="review">
-            <h2>Tell others about it</h2>
-            <p className="muted" style={{ marginBottom: 18, maxWidth: '60ch' }}>Made a lamp? A few words help other makers decide. We read every review before it goes on the site{files.data?.length ? ', and yours will be marked as from a verified buyer' : ''}.</p>
-            <ReviewForm name={viewer.name} />
+            <h2>Your review</h2>
+            {myReview ? (
+              <div className="review-mine">
+                <span className="stars" aria-label={`${myReview.rating} of 5`}>{'★'.repeat(myReview.rating)}<span>{'★'.repeat(5 - myReview.rating)}</span></span>
+                <blockquote>{myReview.body}</blockquote>
+                <p className="muted">{myReview.status === 'published' ? 'Published on the site. Thank you!' : 'Thank you! We will publish it once we have read it.'}</p>
+              </div>
+            ) : files.data?.length ? (
+              <>
+                <p className="muted" style={{ marginBottom: 18, maxWidth: '60ch' }}>Made a lamp? A few words help other makers decide. You can write one review, and we read each one before it goes on the site.</p>
+                <ReviewForm name={viewer.name} />
+              </>
+            ) : (
+              <p className="muted">Once you have made your first design you can tell others how it went.</p>
+            )}
           </section>
 
           <section id="profile">

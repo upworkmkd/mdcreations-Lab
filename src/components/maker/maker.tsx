@@ -9,6 +9,7 @@ import { EXAMPLES } from '@/lib/gallery';
 import { track } from '@/components/tracker';
 import { startPlan } from '@/lib/subscribe.client';
 import { PlanChooser, type ChooserPlan, type Choice } from './plan-chooser';
+import { ThankYou } from './thank-you';
 import './maker.css';
 
 type Studio = { designPayload(): unknown; previewJpeg(): string; destroy(): void; loadExample(src: string, name: string): void };
@@ -37,7 +38,9 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 
 export type MakerPlan = { name: string; remaining: number | null; limit: number | null };
 
-export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example, plan: plan0, plans = [], otherPlan = false }: { currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean }) {
+export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false }: { currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean; viewerName?: string; reviewed?: boolean }) {
+  const [thanks, setThanks] = useState<string | null>(null);   // file id while the thank-you window is open
+  const [askedReview, setAskedReview] = useState(reviewed);
   const [plan, setPlan] = useState<MakerPlan | null>(plan0 ?? null);
   const [chooser, setChooser] = useState(false);
   const choice = useRef<Choice>('single');
@@ -48,6 +51,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
   const [signedIn, setSignedIn] = useState(signedIn0);
   const [authOpen, setAuthOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
+  const finish = (fileId: string) => { setPhase({ kind: 'done', fileId }); setThanks(fileId); };
   const [left, setLeft] = useState<number | null | undefined>(plan ? plan.remaining : undefined);   // undefined = no plan
   const onPlan = plan != null && (left == null || left > 0);
 
@@ -70,7 +74,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
       setPhase({ kind: 'working', text: 'Starting the payment…' });
       const co = await post<{ free?: boolean; plan?: boolean; remaining?: number | null; fileId?: string; orderId?: string; keyId: string; providerOrderId: string; amount: number; currency: string; description: string; prefill: { name: string; email: string } }>(
         '/api/checkout', { designId, currency });
-      if (co.free && co.fileId) { if (co.plan) setLeft(co.remaining ?? null); setPhase({ kind: 'done', fileId: co.fileId }); return; }
+      if (co.free && co.fileId) { if (co.plan) setLeft(co.remaining ?? null); finish(co.fileId); return; }
       await loadCheckout();
       const paid = await new Promise<RzpResponse | null>((resolve, reject) => {
         const rzp = new window.Razorpay!({
@@ -88,7 +92,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
       if (!paid) { setPhase({ kind: 'error', text: 'Payment cancelled. Your design is still here; press the button again when you are ready.' }); return; }
       setPhase({ kind: 'working', text: 'Payment received. Building your files (this takes a few seconds)…' });
       const v = await post<{ fileId: string }>('/api/payments/verify', paid);
-      setPhase({ kind: 'done', fileId: v.fileId });
+      finish(v.fileId);
     } catch (e) {
       const err = e as Error & { status?: number; orderId?: string };
       track('purchase_error', err.message, { status: err.status, orderId: err.orderId });
@@ -304,6 +308,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
         <div className="panels" id="panels" />
       </section>
 
+      <ThankYou open={thanks != null} onClose={() => { setThanks(null); setAskedReview(true); }} fileId={thanks} name={viewerName} askReview={!askedReview} />
       <PlanChooser open={chooser} onClose={() => setChooser(false)} onChoose={onChoose} single={amountMinor != null ? price : null} plans={plans} otherPlan={otherPlan} />
       <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} onSignedIn={() => { setSignedIn(true); setAuthOpen(false); proceed(); }}
         next="/tools/shadow-lamp/make" reason="Sign in to buy and download your files. Your design stays right here." />
