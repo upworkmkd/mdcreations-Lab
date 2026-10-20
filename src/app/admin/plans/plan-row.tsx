@@ -13,6 +13,9 @@ export function PlanRow({ id, name, status, limit, tools, inr, usd, rzp }: { id:
           <select name="status" defaultValue={status} className="input" aria-label="Sign-up">
             <option value="live">Open: Subscribe button</option><option value="contact">Contact us button</option><option value="hidden">Hidden</option>
           </select>
+          <select name="tools" defaultValue={tools == null ? 'all' : '1'} className="input" aria-label="Tools">
+            <option value="all">Every tool</option><option value="1">One tool they pick</option>
+          </select>
           <label className="lbl">Designs a day<input name="daily_limit" className="input" inputMode="numeric" defaultValue={limit ?? ''} placeholder="no limit" /></label>
           <label className="lbl">₹ a month<input name="price_INR" className="input" inputMode="decimal" defaultValue={inr != null ? String(inr / 100) : ''} placeholder="not sold" /><span className="id">{rzp.INR ?? (inr != null ? 'no Razorpay plan yet' : '')}</span></label>
           <label className="lbl">$ a month<input name="price_USD" className="input" inputMode="decimal" defaultValue={usd != null ? String(usd / 100) : ''} placeholder="not sold" /><span className="id">{rzp.USD ?? (usd != null ? 'no Razorpay plan yet' : '')}</span></label>

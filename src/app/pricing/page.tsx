@@ -10,15 +10,15 @@ import { Subscribe } from './subscribe';
 
 export const metadata: Metadata = pageMeta({
 	title: 'Pricing – Pay per Design or a Monthly Plan',
-	description: 'Try every tool free. Buy one shadow lamp design at a time, or subscribe: Starter gives 10 designs a day from one tool, Standard covers every tool with no limit. Commercial license included.',
+	description: 'Try every tool free. Buy one shadow lamp design at a time, or subscribe: Starter gives 10 designs a day across every tool, Standard is unlimited. Commercial license included.',
 	path: '/pricing',
 	keywords: ['shadow lamp maker price', 'STL generator subscription', '3D printing tools subscription', 'commercial license STL'],
 });
 
 const FEATURES: Record<string, string[]> = {
 	starter: [
-		'Choose any one tool',
-		'10 designs a day with no charge per design',
+		'Every tool, including each new one as it launches',
+		'10 designs a day in total, across all tools',
 		'Commercial license on every file',
 		'Sell the prints and the files, changed or not',
 		'Every file kept in your account',
@@ -37,14 +37,14 @@ const FEATURES: Record<string, string[]> = {
 	],
 };
 const BLURB: Record<string, string> = {
-	starter: 'For makers who sell one kind of product and print often.',
-	standard: 'For studios and shops that want every tool, with no limits.',
+	starter: 'For makers who print a few designs most days.',
+	standard: 'For studios and shops that design all day, with no limits.',
 };
 
 const FAQ = [
 	{ q: 'What counts as a design?', a: 'Each time you build the files for a design and download the zip. Previews in the maker are always free and unlimited.' },
 	{ q: 'When does the daily limit reset?', a: 'At midnight India time. Designs you do not use do not carry over.' },
-	{ q: 'Can I change my Starter tool later?', a: 'Yes. Write to us and we will move your plan to another live tool.' },
+	{ q: 'Which tools does each plan cover?', a: 'Both plans cover every tool, including new ones as they launch. Starter allows 10 designs a day in total across all tools; Standard has no limit.' },
 	{ q: 'How do payments work?', a: 'Razorpay sets up a monthly payment on your card or UPI Autopay. The first month is charged when you subscribe, and the plan renews on the same date each month until you cancel.' },
 	{ q: 'How do I cancel?', a: 'From your account, any time. Your plan keeps working until the end of the month you have paid for and then stops. Your files stay in your account.' },
 	{ q: 'Can I sell what I make?', a: 'Yes. Every download, on a plan or not, comes with our commercial license: sell the printed objects and the files themselves, as they are or modified.' },

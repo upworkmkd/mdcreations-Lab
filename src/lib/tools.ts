@@ -54,7 +54,7 @@ export const TOOLS: Tool[] = [
       { q: 'Is the Shadow Lamp Maker free?', a: 'Designing and previewing is free and needs no account. You pay once per design when you download the STL files, and you can download them again any time from your account.' },
       { q: 'What pictures work best?', a: 'Bold shapes with a clear outline: silhouettes, logos, line art and photos of a figure against a plain wall. Very thin lines are thickened to the thinnest wall your printer can make, and the preview shows exactly what changes.' },
       { q: 'Can I sell the lamps I print, or the files?', a: 'Yes, both. Every download comes with a commercial license: print and sell as many lamps as you like, and sell or share the STL files themselves, as they are or modified. A copy of the license is in every zip.' },
-      { q: 'Is there a monthly plan?', a: 'Yes. The Starter plan gives you up to 10 designs a day from one tool, and the Standard plan covers every tool with no daily limit. See the pricing page.' },
+      { q: 'Is there a monthly plan?', a: 'Yes. The Starter plan gives you up to 10 designs a day across every tool, and the Standard plan is unlimited. See the pricing page.' },
       { q: 'Which printer and filament?', a: 'Any FDM printer with a bed of at least 160 × 160 mm. Use opaque filament for the walls; a second colour for the plate picture looks best but is optional.' },
       { q: 'Do I pay again to download again?', a: 'No. Every design you buy stays in your account under Files, and you can download it as often as you like.' },
       { q: 'What about refunds?', a: 'Each download is made for your picture, so we cannot take it back. If a file does not print or fit, write to us and we will fix it or refund you.' },

@@ -124,7 +124,7 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
                 <p className="per">per design · {currency === 'INR' ? 'incl. GST where applicable' : 'paid by card'} · download again any time</p>
                 <ul>{tool.youGet.map((x) => <li key={x}>{x}</li>)}</ul>
                 {tool.makePath && <Link href={tool.makePath} className="btn">Start designing <span className="arrow">→</span></Link>}
-                <p className="per" style={{ marginTop: 14 }}>Making lamps often? <Link href="/pricing">A monthly plan</Link> includes up to 10 designs a day.</p>
+                <p className="per" style={{ marginTop: 14 }}>Making lamps often? <Link href="/pricing">A monthly plan</Link> includes up to 10 designs a day, for every tool.</p>
               </div>
             </div>
           </section>

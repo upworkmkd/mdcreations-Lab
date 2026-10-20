@@ -15,8 +15,8 @@ export type Subscription = {
 };
 
 const FALLBACK: Plan[] = [
-  { id: 'starter', name: 'Starter', tools: 1, daily_limit: 10, status: 'live', sort: 1, prices: { INR: 199900, USD: 2000 }, ready: {} },
-  { id: 'standard', name: 'Standard', tools: null, daily_limit: null, status: 'contact', sort: 2, prices: { INR: 399900, USD: 4000 }, ready: {} },
+  { id: 'starter', name: 'Starter', tools: null, daily_limit: 10, status: 'live', sort: 1, prices: { INR: 99900, USD: 1200 }, ready: {} },
+  { id: 'standard', name: 'Standard', tools: null, daily_limit: null, status: 'live', sort: 2, prices: { INR: 199900, USD: 2400 }, ready: {} },
 ];
 
 export async function getPlans(): Promise<Plan[]> {
@@ -30,7 +30,7 @@ export async function getPlans(): Promise<Plan[]> {
       return {
         ...x,
         prices: Object.fromEntries(rows.map((r) => [r.currency, r.amount_minor])),
-        ready: Object.fromEntries(rows.map((r) => [r.currency, Boolean(r.razorpay_plan_id)])),
+        ready: Object.fromEntries(rows.map((r) => [r.currency, Boolean(r.razorpay_plan_id) || Boolean(process.env.RAZORPAY_KEY_ID)])),
       } as Plan;
     });
   } catch { return FALLBACK; }

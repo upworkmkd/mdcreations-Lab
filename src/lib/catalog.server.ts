@@ -6,7 +6,7 @@ import { TOOLS, type Tool, type ToolStatus } from '@/lib/tools';
 import { isCurrency, type Currency } from '@/lib/money';
 
 // Used only when the database cannot be reached (first run, local preview without keys).
-const FALLBACK_PRICES: Record<string, Partial<Record<Currency, number>>> = { 'shadow-lamp': { INR: 59900, USD: 1200 } };
+const FALLBACK_PRICES: Record<string, Partial<Record<Currency, number>>> = { 'shadow-lamp': { INR: 19900, USD: 300 } };
 
 export type CatalogTool = Tool & { prices: Partial<Record<Currency, number>> };
 

@@ -12,7 +12,7 @@ export default function Page() {
       <h2>Plans</h2>
       <ul>
         <li>Plans renew every month on the date you subscribed, until you cancel. Razorpay charges the payment method you approved (card or UPI Autopay).</li>
-        <li>The Starter plan covers the one tool you choose, with up to 10 designs a day (India time). The Standard plan covers every live tool with no daily limit.</li>
+        <li>Both plans cover every live tool. The Starter plan allows up to 10 designs a day in total (India time); the Standard plan has no daily limit.</li>
         <li>You can cancel at any time from your account. You keep your plan until the end of the month you have paid for, and it does not renew after that. Files you made stay in your account.</li>
         <li>A plan is for one person. Sharing an account or reselling plan access is not allowed.</li>
       </ul>

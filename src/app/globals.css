@@ -599,7 +599,7 @@ code { font: 400 .88em/1.4 var(--mono); }
 .plan-card dt { color: var(--ink-3); }
 .plan-card dd { margin: 0; }
 @media (max-width: 640px) { .plan-card { grid-template-columns: minmax(0, 1fr); } }
-.adm-plan-form { display: grid; grid-template-columns: minmax(170px, 1.2fr) repeat(3, minmax(110px, 1fr)) auto; gap: 10px; align-items: end; }
+.adm-plan-form { display: grid; grid-template-columns: minmax(150px, 1.1fr) minmax(130px, 1fr) repeat(3, minmax(100px, 1fr)) auto; gap: 10px; align-items: end; }
 .adm-plan-form .check { grid-column: 1 / -2; font-size: 13.5px; }
 .adm-plan-form .lbl .id { min-height: 1em; }
 .adm-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 14.5px; }

@@ -73,11 +73,11 @@ create policy "read own subscriptions" on public.subscriptions for select using 
 
 -- ---------------------------------------------------------------- seed
 insert into public.plans (id, name, tools, daily_limit, status, sort) values
-  ('starter',  'Starter',  1,    10,   'live',    1),
-  ('standard', 'Standard', null, null, 'contact', 2)
+  ('starter',  'Starter',  null, 10,   'live', 1),
+  ('standard', 'Standard', null, null, 'live', 2)
 on conflict (id) do nothing;
 
 insert into public.plan_prices (plan_id, currency, amount_minor) values
-  ('starter',  'INR', 199900), ('starter',  'USD', 2000),
-  ('standard', 'INR', 399900), ('standard', 'USD', 4000)
+  ('starter',  'INR',  99900), ('starter',  'USD', 1200),
+  ('standard', 'INR', 199900), ('standard', 'USD', 2400)
 on conflict do nothing;

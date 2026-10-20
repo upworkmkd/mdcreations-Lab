@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { createSubscription } from '@/lib/razorpay.server';
+import { createPlan, createSubscription } from '@/lib/razorpay.server';
 import { currentSubscription } from '@/lib/plans.server';
 import { isCurrency } from '@/lib/money';
 import { serverEnv } from '@/lib/env';
@@ -25,7 +25,16 @@ export async function POST(req: Request) {
     db.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
   ]);
   if (!plan || plan.status !== 'live') return NextResponse.json({ error: 'This plan is not open for sign-up. Please contact us.' }, { status: 409 });
-  if (!price?.razorpay_plan_id) return NextResponse.json({ error: `This plan cannot be paid in ${body.currency} yet. Switch the currency at the top of the page or contact us.` }, { status: 409 });
+  if (!price) return NextResponse.json({ error: `This plan cannot be paid in ${body.currency} yet. Switch the currency at the top of the page or contact us.` }, { status: 409 });
+  // A new or changed price has no Razorpay plan yet: make it now (Razorpay plans cannot change price).
+  if (!price.razorpay_plan_id) {
+    try {
+      price.razorpay_plan_id = (await createPlan(price.amount_minor, body.currency, `${plan.name} plan`, `MD Creations Labs ${plan.name} plan, monthly`)).id;
+      await db.from('plan_prices').update({ razorpay_plan_id: price.razorpay_plan_id, updated_at: new Date().toISOString() }).eq('plan_id', plan.id).eq('currency', body.currency);
+    } catch (e) {
+      return NextResponse.json({ error: 'The plan could not be set up with Razorpay: ' + (e as Error).message }, { status: 502 });
+    }
+  }
 
   let tool: string | null = null;
   if (plan.tools === 1) {

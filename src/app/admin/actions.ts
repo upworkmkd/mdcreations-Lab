@@ -66,7 +66,8 @@ export async function savePlan(_: SaveState, form: FormData): Promise<SaveState>
   const db = supabaseAdmin();
   const { data: plan } = await db.from('plans').select('*').eq('id', id).single();
   if (!plan) return { error: 'Plan not found.' };
-  const up = await db.from('plans').update({ status, daily_limit: daily, updated_at: new Date().toISOString() }).eq('id', id);
+  const tools = form.get('tools') === '1' ? 1 : null;
+  const up = await db.from('plans').update({ status, tools, daily_limit: daily, updated_at: new Date().toISOString() }).eq('id', id);
   if (up.error) return { error: up.error.message };
 
   const notes: string[] = [];

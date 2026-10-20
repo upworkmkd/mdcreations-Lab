@@ -183,8 +183,8 @@ insert into public.tools (slug, name, status, sort) values
 on conflict (slug) do nothing;
 
 insert into public.tool_prices (tool_slug, currency, amount_minor) values
-  ('shadow-lamp', 'INR', 59900),
-  ('shadow-lamp', 'USD', 1200)
+  ('shadow-lamp', 'INR', 19900),
+  ('shadow-lamp', 'USD', 300)
 on conflict do nothing;
 
 -- After you sign up on the site, make yourself the admin (see supabase/make_admin.sql):
