@@ -1,5 +1,5 @@
 import 'server-only';
-import { cookies, headers } from 'next/headers';
+import { headers } from 'next/headers';
 import { supabasePublic } from '@/lib/supabase/admin';
 import { supabaseConfigured } from '@/lib/env';
 import { TOOLS, type Tool, type ToolStatus } from '@/lib/tools';
@@ -41,13 +41,8 @@ export async function getTool(slug: string) {
   return (await getCatalog()).find((t) => t.slug === slug) ?? null;
 }
 
-/** The visitor's currency: INR in India and USD everywhere else, unless they switched it themselves from the same country. */
+/** The visitor's currency, from where they are: INR in India, USD everywhere else. There is no switch. */
 export async function getCurrency(): Promise<Currency> {
   const country = (await headers()).get('x-vercel-ip-country');
-  const byPlace: Currency = !country || country === 'IN' ? 'INR' : 'USD';
-  const saved = (await cookies()).get('cur')?.value ?? '';
-  const [choice, madeIn] = saved.split('|');
-  // old cookies without a country ("INR") are ignored, so everyone starts from their location again
-  if (saved.includes('|') && isCurrency(choice) && (!country || !madeIn || madeIn === country)) return choice;
-  return byPlace;
+  return !country || country === 'IN' ? 'INR' : 'USD';
 }

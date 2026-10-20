@@ -77,9 +77,6 @@ p { margin: 0; }
   .site-nav .hide-sm { display: none; }
 }
 
-.cur-switch { display: inline-flex; border: 1px solid var(--line-2); border-radius: 999px; overflow: hidden; }
-.cur-switch button { font: 500 11px/1 var(--mono); letter-spacing: .06em; padding: 6px 9px; border: 0; background: transparent; color: var(--ink-3); cursor: pointer; }
-.cur-switch button[aria-pressed="true"] { background: var(--olive); color: var(--paper); }
 
 /* ------------------------------------------------------------------ buttons and forms */
 .btn {

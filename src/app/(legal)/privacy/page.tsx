@@ -15,7 +15,7 @@ export default function Page() {
       <h2>Why</h2>
       <p>To build and deliver your files, let you download them again, answer support questions and meet tax and accounting rules.</p>
       <h2>Cookies</h2>
-      <p><b>Essential cookies</b> keep you signed in, remember your currency and remember your cookie choice. The site cannot work without them.</p>
+      <p><b>Essential cookies</b> keep you signed in and remember your cookie choice. Prices are shown in rupees in India and in US dollars elsewhere, based on the country your connection comes from. The site cannot work without them.</p>
       <p><b>Analytics cookies</b> are used only if you press “Accept all”. They give your browser a random ID so we can see how the site is used across visits: the pages you open, the buttons you press and the settings you change in the tools, how long you stay, where you came from (the referring site or campaign), your browser, device, screen size and language, your IP address and the approximate place it points to (city and country). If you have an account, or create one later, this activity is linked to your account. We never record passwords, email fields or the pictures you load into the tools. We use this only to understand and improve MD Creations Labs; we do not sell it or use it for advertising.</p>
       <p>You can change your choice at any time with “Cookie settings” at the bottom of every page. Choosing “Essential only” stops the analytics cookies straight away. We keep analytics records for up to 24 months. We also use Vercel Web Analytics, which counts visits without cookies.</p>
       <h2>Your choices</h2>

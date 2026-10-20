@@ -275,7 +275,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                 {onPlan ? <p className="note ok">{left == null ? 'Unlimited designs on your plan.' : `${left} of ${plan!.limit} plan designs left today.`}</p>
                   : plan ? <p className="note">You have used today&apos;s {plan.limit} plan designs. This one is charged separately, or come back after midnight (India time).</p>
                   : !payConfigured ? <p className="note">Payments are being set up. Please check back soon.</p>
-                  : amountMinor == null ? <p className="note">This tool is not sold in {currency} yet. Switch the currency at the top of the page.</p> : null}
+                  : amountMinor == null ? <p className="note">This tool is not sold in {currency} yet. Please contact us to buy it.</p> : null}
                 {phase.kind === 'error' && (
                   <p className="note">{phase.text}{phase.orderId ? <> If you were charged, your files will appear in <Link href="/account">your account</Link> within a few minutes.</> : null}</p>
                 )}

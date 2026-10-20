@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { createOrder } from '@/lib/razorpay.server';
 import { fulfilOrder } from '@/lib/fulfil.server';
-import { isCurrency } from '@/lib/money';
+import { getCurrency } from '@/lib/catalog.server';
 import { serverEnv } from '@/lib/env';
 import { trackServer } from '@/lib/track.server';
 import { entitlement } from '@/lib/plans.server';
@@ -19,8 +19,8 @@ export async function POST(req: Request) {
 
   let body: { designId?: string; currency?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Bad request.' }, { status: 400 }); }
-  if (!body.designId || !isCurrency(body.currency)) return NextResponse.json({ error: 'Bad request.' }, { status: 400 });
-  const currency = body.currency;
+  if (!body.designId) return NextResponse.json({ error: 'Bad request.' }, { status: 400 });
+  const currency = await getCurrency();   // always from where the buyer is, never from the browser
 
   const { data: design } = await supabase.from('designs').select('id, tool_slug, name').eq('id', body.designId).maybeSingle();
   if (!design) return NextResponse.json({ error: 'Design not found.' }, { status: 404 });

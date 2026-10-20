@@ -217,7 +217,7 @@ export function Tracker() {
   if (consent === 'ssr' || (consent !== 'none' && !asking) || pathname.startsWith('/admin')) return null;
   return (
     <div className="consent" role="dialog" aria-live="polite" aria-label="Cookie choices" data-notrack>
-      <p><b>Cookies.</b> We use essential cookies to keep you signed in and remember your currency. With your OK we also record how the site is used (pages, clicks, device, browser and approximate location) so we can make the tools better. <Link href="/privacy">Privacy policy</Link></p>
+      <p><b>Cookies.</b> We use essential cookies to keep you signed in. With your OK we also record how the site is used (pages, clicks, device, browser and approximate location) so we can make the tools better. <Link href="/privacy">Privacy policy</Link></p>
       <div className="consent-btns">
         <button type="button" className="btn small ghost" onClick={() => choose('essential')}>Essential only</button>
         <button type="button" className="btn small" onClick={() => choose('all')}>Accept all</button>

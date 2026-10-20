@@ -1,11 +1,9 @@
 import Link from 'next/link';
 import { Swoosh } from '@/components/brand';
-import { CurrencySwitch } from '@/components/currency-switch';
 import { getViewer } from '@/lib/auth.server';
-import { getCurrency } from '@/lib/catalog.server';
 
 export async function SiteHeader() {
-  const [viewer, currency] = await Promise.all([getViewer(), getCurrency()]);
+  const viewer = await getViewer();
   return (
     <header className="site-head">
       <div className="wrap">
@@ -17,7 +15,6 @@ export async function SiteHeader() {
           <Link href="/#tools" className="hide-sm">Tools</Link>
           <Link href="/tools/shadow-lamp" className="hide-sm">Shadow lamps</Link>
           <Link href="/pricing">Pricing</Link>
-          <CurrencySwitch current={currency} />
           {viewer ? (
             <>
               {viewer.role === 'admin' && <Link href="/admin" className="hide-sm">Admin</Link>}

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { createPlan, createSubscription } from '@/lib/razorpay.server';
 import { currentSubscription } from '@/lib/plans.server';
-import { isCurrency } from '@/lib/money';
+import { getCurrency } from '@/lib/catalog.server';
 import { serverEnv } from '@/lib/env';
 import { trackServer } from '@/lib/track.server';
 
@@ -16,7 +16,8 @@ export async function POST(req: Request) {
 
   let body: { plan?: string; currency?: string; tool?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Bad request.' }, { status: 400 }); }
-  if (!body.plan || !isCurrency(body.currency)) return NextResponse.json({ error: 'Bad request.' }, { status: 400 });
+  if (!body.plan) return NextResponse.json({ error: 'Bad request.' }, { status: 400 });
+  body.currency = await getCurrency();   // always from where the buyer is
 
   const db = supabaseAdmin();
   const [{ data: plan }, { data: price }, { data: profile }] = await Promise.all([
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
     db.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
   ]);
   if (!plan || plan.status !== 'live') return NextResponse.json({ error: 'This plan is not open for sign-up. Please contact us.' }, { status: 409 });
-  if (!price) return NextResponse.json({ error: `This plan cannot be paid in ${body.currency} yet. Switch the currency at the top of the page or contact us.` }, { status: 409 });
+  if (!price) return NextResponse.json({ error: `This plan cannot be paid in ${body.currency} yet. Please contact us.` }, { status: 409 });
   // A new or changed price has no Razorpay plan yet: make it now (Razorpay plans cannot change price).
   if (!price.razorpay_plan_id) {
     try {

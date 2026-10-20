@@ -40,7 +40,7 @@ export function Subscribe({ plan, planName, currency, tools, pickTool, signedIn,
         </label>
       )}
       <button type="button" className="btn" onClick={go} disabled={Boolean(busy) || !ready || (pickTool && !tool)}>{busy ?? label}</button>
-      {!ready && <p className="msg">This plan opens for {currency} payments soon. Switch the currency at the top, or contact us.</p>}
+      {!ready && <p className="msg">This plan opens for {currency} payments soon. Please contact us.</p>}
       {err && <p className="msg err" role="alert">{err}</p>}
     </div>
   );

@@ -108,7 +108,7 @@ export default async function Pricing() {
 						);
 					})}
 				</div>
-				<p className="muted" style={{ fontSize: 14, margin: '18px 0 0' }}>Prices {currency === 'INR' ? 'include GST where applicable' : 'are in US dollars'}. Change the currency at the top of the page.</p>
+				<p className="muted" style={{ fontSize: 14, margin: '18px 0 0' }}>Prices {currency === 'INR' ? 'include GST where applicable' : 'are in US dollars'}.</p>
 
 				<section className="section" style={{ paddingTop: 72 }}>
 					<div className="section-head"><h2>Questions about plans</h2><p>Anything else? <Link href="/contact">Write to us</Link>.</p></div>
