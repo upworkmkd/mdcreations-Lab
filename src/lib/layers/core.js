@@ -320,16 +320,30 @@ function orderLayers(C, G, p) {
   if (m === 'light') return act.sort((a, b) => lum[b] - lum[a]);
   if (m === 'large') return act.sort((a, b) => C.areas[b] - C.areas[a]);
   if (m === 'loose') {
-    const f = Math.max(1, Math.ceil(Math.max(G.nx, G.ny) / 170)), w = Math.floor(G.nx / f), h = Math.floor(G.ny / f);
+    const f = Math.max(1, Math.ceil(Math.max(G.nx, G.ny) / 360)), w = Math.floor(G.nx / f), h = Math.floor(G.ny / f);
     const sc = new Uint8Array(w * h), base = new Uint8Array(w * h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * f * G.nx + x * f; sc[y * w + x] = C.cls[i]; base[y * w + x] = G.region[i] === 1 ? 1 : 0; }
-    const rem = act.slice().sort((a, b) => C.areas[a] - C.areas[b]), out = [], cur = base.slice();
+    // loose pieces summed over every layer of a full front-to-back order
+    const total = (o) => { const cur = base.slice(); let sum = 0; for (let k = 0; k < o.length - 1; k++) { const c = o[k]; for (let i = 0; i < cur.length; i++) if (sc[i] === c) cur[i] = 1; sum += looseScore(cur, w, h); } return sum; };
+    // 1. greedy: at each step put in front the colour that leaves the fewest islands
+    const rem = act.slice().sort((a, b) => C.areas[a] - C.areas[b]), greedy = [], cur = base.slice();
     while (rem.length > 1) {
       let bi = 0, bs = 1e18;
       for (let r = 0; r < rem.length; r++) { const t = cur.slice(); for (let i = 0; i < t.length; i++) if (sc[i] === rem[r]) t[i] = 1; const v = looseScore(t, w, h); if (v < bs - 1e-9) { bs = v; bi = r; } }
-      const k = rem.splice(bi, 1)[0]; out.push(k); for (let i = 0; i < cur.length; i++) if (sc[i] === k) cur[i] = 1;
+      const k = rem.splice(bi, 1)[0]; greedy.push(k); for (let i = 0; i < cur.length; i++) if (sc[i] === k) cur[i] = 1;
     }
-    out.push(rem[0]); return out;
+    greedy.push(rem[0]);
+    // 2. also try the simple orders (light or dark in front, small or large in front) and keep the best
+    const cands = [greedy, act.slice().sort((a, b) => lum[b] - lum[a]), act.slice().sort((a, b) => lum[a] - lum[b]), act.slice().sort((a, b) => C.areas[a] - C.areas[b]), act.slice().sort((a, b) => C.areas[b] - C.areas[a])];
+    let best = greedy, bestS = Infinity;
+    for (const o of cands) { const v = total(o); if (v < bestS - 1e-9) { bestS = v; best = o; } }
+    // 3. polish: swap neighbours while it helps
+    for (let pass = 0; pass < 3; pass++) {
+      let better = false;
+      for (let i = 0; i < best.length - 1; i++) { const o = best.slice(); [o[i], o[i + 1]] = [o[i + 1], o[i]]; const v = total(o); if (v < bestS - 1e-9) { bestS = v; best = o; better = true; } }
+      if (!better) break;
+    }
+    return best;
   }
   return act.sort((a, b) => C.areas[a] - C.areas[b]); // 'small'
 }
@@ -340,13 +354,16 @@ function buildMasks(C, G, order, p) {
   const rank = new Int16Array(256).fill(-1); order.forEach((k, r) => { rank[k] = r; });
   const masks = [], info = [];
   const lim = p.loose === 'all' ? Infinity : p.loose === 'small' ? (p.looseArea || 0) / (s * s) : 0;
+  const keepMax = p.loose === 'limit' ? Math.max(0, Math.round(p.looseMax ?? 2)) : Infinity;   // 'limit': keep only the biggest few islands
   for (let k = 0; k < L; k++) {
     const m = new Uint8Array(n), comb = new Uint8Array(n);
     for (let i = 0; i < n; i++) { const c = C.cls[i]; if (c !== 255 && rank[c] >= 0 && rank[c] <= k) { m[i] = 1; comb[i] = 1; } else if (region[i] === 1) comb[i] = 1; }
     const { lab, sizes, count } = labelComponents(comb, nx, ny);
     let main = 0; for (let c = 1; c <= count; c++) if (sizes[c] > (sizes[main] || 0)) main = c;
     let loose = 0, looseArea = 0, removed = 0; const kill = new Uint8Array(count + 1);
-    for (let c = 1; c <= count; c++) { if (c === main) continue; if (sizes[c] < lim) { kill[c] = 1; removed++; } else { loose++; looseArea += sizes[c]; } }
+    const isl = []; for (let c = 1; c <= count; c++) if (c !== main) isl.push(c);
+    if (keepMax !== Infinity) isl.sort((a, b) => sizes[b] - sizes[a]);
+    isl.forEach((c, j) => { if (sizes[c] < lim || j >= keepMax) { kill[c] = 1; removed++; } else { loose++; looseArea += sizes[c]; } });
     let area = 0;
     for (let i = 0; i < n; i++) { if (kill[lab[i]]) m[i] = 0; if (m[i] || region[i] === 1) area++; }
     masks.push(m); info.push({ loose, looseArea: looseArea * s * s, removed, areaPx: area });
