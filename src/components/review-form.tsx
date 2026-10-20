@@ -34,7 +34,7 @@ export function ReviewForm({ name, tool = 'shadow-lamp', compact }: { name: stri
           <span className="word">{WORDS[shown]}</span>
         </div>
       </fieldset>
-      <label>Your review<textarea name="body" required minLength={10} maxLength={1000} rows={compact ? 3 : 4} className="input" placeholder="How did your lamp come out? Was the maker easy to use?" /></label>
+      <label>Your review<textarea name="body" required minLength={10} maxLength={1000} rows={compact ? 3 : 4} className="input" placeholder={tool === 'layered-sculpture' ? 'How did your sculpture come out? Was the maker easy to use?' : 'How did your lamp come out? Was the maker easy to use?'} /></label>
       <div className="split" style={{ gap: 14 }}>
         <label>Name to show<input name="name" type="text" required maxLength={80} defaultValue={name} placeholder="e.g. Priya S." /></label>
         <label>Your city (optional)<input name="place" type="text" maxLength={80} placeholder="e.g. Pune" /></label>

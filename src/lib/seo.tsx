@@ -17,9 +17,9 @@ export const TOOL_SEO: Record<string, { title: string; description: string; keyw
     keywords: ['photo to statue', 'photo to 3D model', '3D printable bust', 'statue STL maker', 'figurine from photo'],
   },
   'layered-sculpture': {
-    title: 'Layered Sculpture Maker – Stacked Slice Art & Topographic Layers (STL, SVG, DXF)',
-    description: 'Coming soon: slice any 3D model or picture into numbered, keyed layers you can 3D print or laser cut and stack into a sculpture or topographic wall art.',
-    keywords: ['layered sculpture', 'slice 3D model into layers', 'stacked slice sculpture', 'topographic layer art', 'slicer for laser cut layers'],
+    title: 'Layered Sculpture Maker – Turn a Picture into Layered 3D Print Wall Art (STL)',
+    description: 'Upload any picture and turn it into layered colour wall art for your 3D printer: one STL per colour, a frame, alignment pins and a live 3D preview. Commercial license included.',
+    keywords: ['layered sculpture STL', 'layered wall art 3D print', 'picture to layered STL', 'multi colour layer art', 'shadow box 3D print generator'],
   },
   'stl-repair': {
     title: 'STL Repair – Fix Holes, Flipped Normals and Non-Manifold Meshes Online',

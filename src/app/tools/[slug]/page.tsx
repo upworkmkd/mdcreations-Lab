@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getViewer } from '@/lib/auth.server';
 import type { Metadata } from 'next';
 import { getCurrency, getTool } from '@/lib/catalog.server';
 import { TOOLS } from '@/lib/tools';
@@ -27,7 +28,7 @@ export async function generateMetadata({ params }: PageProps<'/tools/[slug]'>): 
 
 export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
   const { slug } = await params;
-  const [tool, currency] = await Promise.all([getTool(slug), getCurrency()]);
+  const [tool, currency, viewer] = await Promise.all([getTool(slug), getCurrency(), getViewer()]);
   if (!tool) notFound();
   const live = tool.status === 'live';
   const price = tool.prices[currency];
@@ -65,7 +66,10 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
               {price != null && <span className="mono muted" style={{ fontSize: 14 }}>Free to try · {formatMoney(price, currency)} to download a design</span>}
             </>
           ) : (
-            <span className="status">Coming soon</span>
+            <>
+              <span className="status">Coming soon</span>
+              {viewer?.role === 'admin' && tool.makePath && <Link href={tool.makePath} className="btn small ghost">Try it (admin preview)</Link>}
+            </>
           )}
         </div>
       </div>

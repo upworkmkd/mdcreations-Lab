@@ -19,7 +19,7 @@ export const metadata = pageMeta({
 const DELIVERABLES: Record<string, { file: string; lines: [string, string?][] }> = {
   'shadow-lamp': { file: 'your-design_shadow_lamp.zip', lines: [['1 top.stl'], ['2 right.stl'], ['3 left.stl'], ['4 bottom.stl'], ['plate.stl'], ['plate picture.stl', 'inlay'], ['Lamp base.stl'], ['Battery cover.stl'], ['shadow preview.jpg'], ['README.txt', 'how-to']] },
   statue: { file: 'your-design_statue.zip', lines: [['statue.stl', 'watertight'], ['statue_hollow.stl', 'resin'], ['base.stl'], ['README.txt']] },
-  'layered-sculpture': { file: 'your-design_layers.zip', lines: [['layers_01-40.stl'], ['layers.svg  layers.dxf'], ['keys.stl', 'alignment'], ['assembly.pdf']] },
+  'layered-sculpture': { file: 'your-design_layered_sculpture.zip', lines: [['L01_frame.stl'], ['L02 … L07 colour layers.stl', 'one per colour'], ['L08_back.stl'], ['preview.jpg'], ['README.txt', 'assembly guide'], ['LICENSE.txt', 'commercial']] },
   'stl-repair': { file: 'your-model_repaired.zip', lines: [['repaired.stl'], ['report.html', 'every fix'], ['before-after.png']] },
 };
 
