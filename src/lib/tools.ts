@@ -1,6 +1,8 @@
 /* The catalogue. Words and pictures live here; status and prices live in the database
  * so they can be changed from the admin page without a deploy. */
 
+import { EXTRA_TOOLS } from '@/lib/tools-extra';
+
 export type ToolStatus = 'live' | 'coming_soon' | 'hidden';
 export type Tool = {
   slug: string;
@@ -20,6 +22,7 @@ export type Tool = {
   files?: boolean;              // false for tools that make no files (calculators)
   specsTitle?: string;          // heading over the specs table
 };
+export type ToolSeo = { title: string; description: string; keywords: string[] };
 
 export const TOOLS: Tool[] = [
   {
@@ -124,5 +127,7 @@ export const TOOLS: Tool[] = [
     steps: [], specs: [], faq: [],
   },
 ];
+
+TOOLS.push(...EXTRA_TOOLS);
 
 export const toolBySlug = (slug: string) => TOOLS.find((t) => t.slug === slug);

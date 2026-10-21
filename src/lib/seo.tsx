@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import { CANONICAL_URL as SITE_URL, SOCIALS, SUPPORT_EMAIL } from '@/lib/env';
+import { EXTRA_SEO } from '@/lib/tools-extra';
 
 export const SITE_NAME = 'MD Creations Labs';
 const DEFAULT_IMAGE = '/images/hero-shadow-lamp.jpg';
 
 /** Search titles and descriptions per tool: what people actually type into Google. */
 export const TOOL_SEO: Record<string, { title: string; description: string; keywords: string[] }> = {
+  ...EXTRA_SEO,
   'shadow-lamp': {
     title: 'Shadow Lamp Maker – Turn Any Picture into a 3D Printable Shadow Lamp (STL)',
     description: 'Make a custom shadow lamp from your own picture. Upload a silhouette or photo, preview the exact shadow on the wall, and download print-ready STL files: walls, base and an inlaid cover plate.',

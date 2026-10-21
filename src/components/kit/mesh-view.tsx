@@ -2,14 +2,16 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
+export type MeshSnap = { jpeg(maxW?: number): string };
 export type ViewPart = { tris: Float32Array; color: string; opacity?: number; offset?: [number, number, number] };
 
 /**
  * A small 3D viewer for the tools: drag to turn, scroll or pinch to zoom. z is up.
  * `fitKey` changes when the model should be re-framed (a new size), not on every small edit.
  */
-export function MeshView({ parts, fitKey, light = 'studio', backlight = false, className, height = 460 }: { parts: ViewPart[]; fitKey?: string; light?: 'studio' | 'soft'; backlight?: boolean; className?: string; height?: number }) {
-  const box = useRef<HTMLDivElement>(null);
+export function MeshView({ parts, fitKey, light = 'studio', backlight = false, className, height = 460, snapRef, bg }: { parts: ViewPart[]; fitKey?: string; light?: 'studio' | 'soft'; backlight?: boolean; className?: string; height?: number; snapRef?: React.RefObject<MeshSnap | null>; bg?: string }) {
+  const box = useRef<HTMLDivElement>(null), bgRef = useRef(bg ?? '#dcddd2');
+  useEffect(() => { bgRef.current = bg ?? '#dcddd2'; }, [bg]);
   const st = useRef<{ r?: THREE.WebGLRenderer; scene?: THREE.Scene; cam?: THREE.PerspectiveCamera; group?: THREE.Group; az: number; el: number; zoom: number; dist: number; target: THREE.Vector3; dirty: boolean; fit?: string; back?: THREE.PointLight; alive: boolean }>({ az: -0.6, el: 0.55, zoom: 1, dist: 300, target: new THREE.Vector3(), dirty: true, alive: true });
 
   useEffect(() => {
@@ -26,6 +28,15 @@ export function MeshView({ parts, fitKey, light = 'studio', backlight = false, c
     const d2 = new THREE.DirectionalLight(0xffffff, 0.22); d2.position.set(1.2, 1, 0.6); scene.add(d2);
     const back = new THREE.PointLight(0xfff1d6, 0, 0); scene.add(back); s.back = back;
     Object.assign(s, { r, scene, cam, group });
+    if (snapRef) snapRef.current = {
+      jpeg(maxW = 900) {
+        const d = s.zoom * s.dist; cam.position.set(s.target.x + d * Math.cos(s.el) * Math.sin(s.az), s.target.y - d * Math.cos(s.el) * Math.cos(s.az), s.target.z + d * Math.sin(s.el)); cam.lookAt(s.target); r.render(scene, cam);
+        const src = r.domElement, k = Math.min(1, maxW / src.width), c = document.createElement('canvas');
+        c.width = Math.round(src.width * k); c.height = Math.round(src.height * k);
+        const g = c.getContext('2d')!; g.fillStyle = bgRef.current; g.fillRect(0, 0, c.width, c.height); g.drawImage(src, 0, 0, c.width, c.height);
+        return c.toDataURL('image/jpeg', 0.85);
+      },
+    };
     const size = () => { const w = el.clientWidth, h = el.clientHeight; r.setSize(w, h, false); r.domElement.style.width = '100%'; r.domElement.style.height = '100%'; cam.aspect = w / Math.max(1, h); cam.updateProjectionMatrix(); s.dirty = true; };
     const ro = new ResizeObserver(size); ro.observe(el); size();
     const pts = new Map<number, [number, number]>(); let pinch = 0;
@@ -51,7 +62,7 @@ export function MeshView({ parts, fitKey, light = 'studio', backlight = false, c
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
-    return () => { s.alive = false; ro.disconnect(); for (const m of group.children as THREE.Mesh[]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); } r.dispose(); r.domElement.remove(); };
+    return () => { s.alive = false; if (snapRef) snapRef.current = null; ro.disconnect(); for (const m of group.children as THREE.Mesh[]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); } r.dispose(); r.domElement.remove(); };
   }, []);
 
   useEffect(() => {
@@ -72,5 +83,5 @@ export function MeshView({ parts, fitKey, light = 'studio', backlight = false, c
     s.dirty = true;
   }, [parts, fitKey, backlight]);
 
-  return <div ref={box} className={`meshview ${className ?? ''}`} style={{ height }} data-light={light} />;
+  return <div ref={box} className={`meshview ${className ?? ''}`} style={{ height, background: bg }} data-light={light} />;
 }
