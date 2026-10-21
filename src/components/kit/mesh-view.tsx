@@ -16,7 +16,7 @@ export function MeshView({ parts, fitKey, light = 'studio', backlight = false, c
 
   useEffect(() => {
     const el = box.current; if (!el) return;
-    const s = st.current; s.alive = true;
+    const s = st.current; s.alive = true; let live = true;   // `live` belongs to this mount only (strict mode mounts twice)
     let r: THREE.WebGLRenderer;
     try { r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); } catch { el.textContent = '3D preview is not available in this browser.'; return; }
     r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); r.outputEncoding = THREE.sRGBEncoding;
@@ -53,7 +53,7 @@ export function MeshView({ parts, fitKey, light = 'studio', backlight = false, c
     r.domElement.addEventListener('pointerup', up); r.domElement.addEventListener('pointercancel', up);
     r.domElement.addEventListener('wheel', wheel, { passive: false });
     const loop = () => {
-      if (!s.alive) return;
+      if (!live) return;
       if (s.dirty) {
         s.dirty = false; const d = s.dist * s.zoom;
         cam.position.set(s.target.x + d * Math.cos(s.el) * Math.sin(s.az), s.target.y - d * Math.cos(s.el) * Math.cos(s.az), s.target.z + d * Math.sin(s.el));
@@ -62,7 +62,7 @@ export function MeshView({ parts, fitKey, light = 'studio', backlight = false, c
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
-    return () => { s.alive = false; if (snapRef) snapRef.current = null; ro.disconnect(); for (const m of group.children as THREE.Mesh[]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); } r.dispose(); r.domElement.remove(); };
+    return () => { live = false; s.alive = false; if (snapRef) snapRef.current = null; ro.disconnect(); for (const m of group.children as THREE.Mesh[]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); } r.dispose(); r.domElement.remove(); };
   }, []);
 
   useEffect(() => {
