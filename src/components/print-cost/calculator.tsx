@@ -3,6 +3,7 @@ import { useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { MONEY, PRINTERS, compute, defaultsFor, fmt, fromHash, toHash, type Filament, type Inputs, type Money } from '@/lib/print-cost/calc';
 import { readSlicedFile } from '@/lib/print-cost/slicer';
 import { track } from '@/components/tracker';
+import './calc.css';
 
 const STORE = 'mdc-print-cost-v1';
 const noop = () => () => {};
