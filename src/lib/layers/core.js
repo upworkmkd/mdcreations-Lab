@@ -546,4 +546,4 @@ function checkManifold(tris) {
 }
 
 
-export { setTriangulator, buildGrid, findPins, adjust, classify, orderLayers, buildMasks, composite, layerMesh, toSTL, checkManifold, nearestFilament, hexToRgb, rgbToHex, labOf, shapeSd, labelComponents, SHAPES, RATIOS, FILAMENTS, clamp };
+export { contours, Pt, setTriangulator, buildGrid, findPins, adjust, classify, orderLayers, buildMasks, composite, layerMesh, toSTL, checkManifold, nearestFilament, hexToRgb, rgbToHex, labOf, shapeSd, labelComponents, SHAPES, RATIOS, FILAMENTS, clamp };

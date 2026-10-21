@@ -54,7 +54,7 @@ export default async function Home() {
                     <span className="thumb"><Image src={t.image} alt="" fill sizes="120px" /></span>
                     <span className="name"><span className="idx">{t.index}</span>{t.name}</span>
                     <span className="desc">{t.short}</span>
-                    <span className={`status ${live ? 'live' : ''}`}>{live ? (price != null ? `Live · ${formatMoney(price, currency)}` : 'Live') : 'Coming soon'}</span>
+                    <span className={`status ${live ? 'live' : ''}`}>{live ? (t.free ? 'Free' : price != null ? `Live · ${formatMoney(price, currency)}` : 'Live') : 'Coming soon'}</span>
                     <span className="go" aria-hidden>→</span>
                   </Link>
                 </li>

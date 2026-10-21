@@ -2,8 +2,10 @@ import Link from 'next/link';
 import { Logo } from '@/components/brand';
 import { SUPPORT_EMAIL, SOCIALS } from '@/lib/env';
 import { CookieSettings } from '@/components/tracker';
+import { getCatalog } from '@/lib/catalog.server';
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const tools = await getCatalog();
   return (
     <footer className="site-foot">
       <div className="wrap">
@@ -14,10 +16,7 @@ export function SiteFooter() {
         <div>
           <h4>Tools</h4>
           <ul>
-            <li><Link href="/tools/shadow-lamp">Shadow Lamp Maker</Link></li>
-            <li><Link href="/tools/statue">Statue Maker</Link></li>
-            <li><Link href="/tools/layered-sculpture">Layered Sculpture Maker</Link></li>
-            <li><Link href="/tools/stl-repair">STL Repair</Link></li>
+            {tools.map((t) => <li key={t.slug}><Link href={`/tools/${t.slug}`}>{t.name}</Link>{t.free ? <span className="foot-free"> · free</span> : null}</li>)}
           </ul>
         </div>
         <div>

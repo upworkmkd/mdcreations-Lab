@@ -16,6 +16,9 @@ export type Tool = {
   steps: { title: string; text: string }[];
   specs: [string, string][];
   faq: { q: string; a: string }[];
+  free?: boolean;               // a free tool: no account, no payment
+  files?: boolean;              // false for tools that make no files (calculators)
+  specsTitle?: string;          // heading over the specs table
 };
 
 export const TOOLS: Tool[] = [
@@ -41,6 +44,7 @@ export const TOOLS: Tool[] = [
       { title: 'Place the shadow', text: 'Drag and resize on the wall preview. The preview shows the real shadow the printed walls will cast, including support bars and corner pieces.' },
       { title: 'Pay once, download', text: 'Sign in, pay for that design, and the files are built for you. They stay in your account to download again whenever you need them.' },
     ],
+    specsTitle: 'The lamp',
     specs: [
       ['Lamp footprint', '120 × 150 mm'],
       ['Wall thickness', '3 mm, prints flat with no supports'],

@@ -1,9 +1,6 @@
 import 'server-only';
 import { supabaseAdmin, FILES_BUCKET } from '@/lib/supabase/admin';
-import { parseDesign } from '@/lib/lamp/design';
-import { buildLampZip } from '@/lib/lamp/build.server';
-import { parseLayerDesign } from '@/lib/layers/design';
-import { buildLayerZip } from '@/lib/layers/build.server';
+import { kitFor } from '@/lib/kits.server';
 import { capturePayment, fetchPayment } from '@/lib/razorpay.server';
 
 type OrderRow = { id: string; user_id: string; design_id: string; tool_slug: string; status: string; amount_minor: number; currency: string; provider_order_id: string | null };
@@ -39,10 +36,9 @@ export async function fulfilOrder(orderId: string): Promise<string> {
       ? new Uint8Array(Buffer.from(design.preview.slice(23), 'base64')) : null;
     const { data: owner } = await db.from('profiles').select('email, full_name').eq('id', order.user_id).maybeSingle();
     const lic = { owner: [owner?.full_name, owner?.email ? `<${owner.email}>` : ''].filter(Boolean).join(' ') || undefined, orderId: order.id };
-    let built: { zip: Uint8Array; fileName: string };
-    if (order.tool_slug === 'shadow-lamp') built = await buildLampZip(parseDesign(design.params), preview, lic);
-    else if (order.tool_slug === 'layered-sculpture') built = await buildLayerZip(parseLayerDesign(design.params), preview, lic);
-    else throw new Error('This tool cannot build files yet.');
+    const kit = kitFor(order.tool_slug);
+    if (!kit) throw new Error('This tool cannot build files yet.');
+    const built = await kit.build(kit.parse(design.params) as never, preview, lic);
     const path = `${order.user_id}/${order.id}/${built.fileName}`;
     const up = await db.storage.from(FILES_BUCKET).upload(path, built.zip, { contentType: 'application/zip', upsert: true });
     if (up.error) throw new Error('Could not store the files: ' + up.error.message);
