@@ -282,3 +282,59 @@ export function volume(tris) {
   }
   return v / 6;
 }
+
+/** Flips every triangle (turns a mesh inside out). */
+export function flip(tris) {
+  const o = tris.slice();
+  for (let i = 0; i < o.length; i += 9) for (let k = 0; k < 3; k++) { const a = o[i + 3 + k]; o[i + 3 + k] = o[i + 6 + k]; o[i + 6 + k] = a; }
+  return o;
+}
+/** Makes sure the faces point outwards (positive volume). */
+export const outward = (tris) => (volume(tris) < 0 ? flip(tris) : tris);
+
+/**
+ * Solid of revolution around the z axis from a closed profile [[r, z], ...] (r > 0, any winding), `n` segments.
+ * `rOf(r, z, angle)` may reshape each point (ripples, polygons, twist) as long as rings stay simple.
+ */
+export function revolve(profile, n = 96, rOf) {
+  const t = new Tris(), m = profile.length, P = (k, i) => {
+    const [r0, z] = profile[k], a = (i % n) / n * Math.PI * 2, r = rOf ? rOf(r0, z, a, k) : r0;
+    return [r * Math.cos(a), r * Math.sin(a), z];
+  };
+  for (let k = 0; k < m; k++) { const k2 = (k + 1) % m; for (let i = 0; i < n; i++) t.quad(P(k, i), P(k2, i), P(k2, i + 1), P(k, i + 1)); }
+  return outward(t.done());
+}
+
+/**
+ * A thick sheet between an inner and an outer surface sampled on a nu × nv grid.
+ * inner(i, j) / outer(i, j) return [x, y, z]. closedU joins column nu-1 back to column 0 (cylinders, spheres).
+ * poleEnd: the last row (j = nv-1) collapses to one point on each surface (sphere tops).
+ */
+export function sheet(nu, nv, inner, outer, { closedU = false, poleEnd = false } = {}) {
+  const t = new Tris(Math.max(4096, nu * nv * 4.4));
+  const I = [], O = [];
+  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) { I.push(inner(i, j)); O.push(outer(i, j)); }
+  const at = (A, i, j) => A[j * nu + ((i + nu) % nu)];
+  const cu = closedU ? nu : nu - 1, lastRow = poleEnd ? nv - 2 : nv - 1;
+  for (let j = 0; j < lastRow; j++) for (let i = 0; i < cu; i++) {
+    t.quad(at(O, i, j), at(O, i + 1, j), at(O, i + 1, j + 1), at(O, i, j + 1));
+    t.quad(at(I, i, j), at(I, i, j + 1), at(I, i + 1, j + 1), at(I, i + 1, j));
+  }
+  if (poleEnd) {
+    const j = nv - 2, po = at(O, 0, nv - 1), pi = at(I, 0, nv - 1);
+    for (let i = 0; i < cu; i++) {
+      const a = at(O, i, j), b = at(O, i + 1, j); t.tri(a[0], a[1], a[2], b[0], b[1], b[2], po[0], po[1], po[2]);
+      const c = at(I, i, j), d = at(I, i + 1, j); t.tri(c[0], c[1], c[2], pi[0], pi[1], pi[2], d[0], d[1], d[2]);
+    }
+  }
+  // rims: bottom row, top row (unless a pole), and the two side columns of an open sheet
+  for (let i = 0; i < cu; i++) {
+    t.quad(at(I, i, 0), at(I, i + 1, 0), at(O, i + 1, 0), at(O, i, 0));
+    if (!poleEnd) t.quad(at(O, i, nv - 1), at(O, i + 1, nv - 1), at(I, i + 1, nv - 1), at(I, i, nv - 1));
+  }
+  if (!closedU) for (let j = 0; j < nv - 1; j++) {
+    t.quad(at(O, 0, j), at(O, 0, j + 1), at(I, 0, j + 1), at(I, 0, j));
+    t.quad(at(I, nu - 1, j), at(I, nu - 1, j + 1), at(O, nu - 1, j + 1), at(O, nu - 1, j));
+  }
+  return outward(t.done());
+}
