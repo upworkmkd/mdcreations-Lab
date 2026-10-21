@@ -695,8 +695,9 @@ code { font: 400 .88em/1.4 var(--mono); }
 .kit { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 0; border: 1px solid var(--line); background: var(--paper-3); min-height: 640px; }
 .kit-side { border-right: 1px solid var(--line); padding: 18px 18px 28px; display: flex; flex-direction: column; gap: 18px; overflow: auto; max-height: min(920px, calc(100vh - 110px)); }
 .kit-main { display: flex; flex-direction: column; min-width: 0; }
-.kit-stage { position: relative; background: #dcddd2; flex: 1; min-height: 420px; }
-.kit-stage .meshview { width: 100%; height: 100% !important; min-height: 420px; }
+.kit-stage { position: relative; background: #dcddd2; flex: 1; min-height: 520px; }
+.kit-stage .meshview { position: absolute; inset: 0; width: auto; height: auto !important; }
+.kit-stage .meshview canvas { position: absolute; inset: 0; }
 .kit-stage canvas.flat { width: 100%; height: 100%; object-fit: contain; display: block; padding: 18px; }
 .kit-bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); font-size: 13px; }
 .kit-foot { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 10px 16px; border-top: 1px solid var(--line); font: 400 12.5px/1.4 var(--mono); color: var(--ink-3); }
@@ -711,6 +712,7 @@ code { font: 400 .88em/1.4 var(--mono); }
 .kit-buy .buy-slot .done .hint, .kit-buy .buy-slot .done a, .kit-buy .buy-slot .done .linkish { color: color-mix(in srgb, var(--paper) 80%, transparent); }
 .kit-buy .buy-slot .hint { font-size: 13px; color: var(--ink-3); margin-top: 10px; }
 .kit-group { display: flex; flex-direction: column; gap: 12px; }
+.kit-group > .hint { font-size: 12.5px; line-height: 1.45; color: var(--ink-3); }
 .kit-group > h3 { font: 600 11px/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
 .kit-ctl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: center; font-size: 13.5px; }
 .kit-ctl output { font: 500 12px/1 var(--mono); color: var(--ink-3); }
@@ -738,6 +740,6 @@ code { font: 400 .88em/1.4 var(--mono); }
   .kit { grid-template-columns: minmax(0, 1fr); }
   .kit-side { border-right: 0; border-bottom: 1px solid var(--line); max-height: none; order: 2; }
   .kit-main { order: 1; }
-  .kit-stage { min-height: 360px; }
+  .kit-stage { min-height: 380px; }
   .kit-buy { grid-template-columns: minmax(0, 1fr); }
 }
