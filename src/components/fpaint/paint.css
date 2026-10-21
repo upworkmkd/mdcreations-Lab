@@ -1,0 +1,10 @@
+/* Filament Painting Maker: the filament rows and the swap guide. */
+.fp-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto; gap: 6px 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.fp-row input[type=color] { width: 34px; height: 30px; border: 1px solid var(--line-2); border-radius: 5px; padding: 0; background: #fff; }
+.fp-row input[type=text] { min-height: 30px; border: 1px solid var(--line-2); border-radius: var(--radius); padding: 4px 8px; font: inherit; font-size: 13.5px; min-width: 0; }
+.fp-td { display: inline-flex; gap: 4px; align-items: center; font: 500 11px/1 var(--mono); color: var(--ink-3); }
+.fp-td input { width: 54px; min-height: 30px; border: 1px solid var(--line-2); border-radius: var(--radius); padding: 3px 6px; font: 500 12.5px/1 var(--mono); }
+.fp-x { border: 1px solid var(--line-2); background: #fff; border-radius: var(--radius); width: 30px; height: 30px; font-size: 18px; cursor: pointer; color: var(--ink-3); }
+.fp-start { grid-column: 1 / -1; display: grid; gap: 2px; font: 400 11.5px/1.3 var(--mono); color: var(--ink-3); }
+.fp-start input { width: 100%; accent-color: var(--olive); }
+.fp-guide { white-space: pre-wrap; font: 400 11.5px/1.55 var(--mono); background: #fff; border: 1px solid var(--line); padding: 10px; color: var(--ink-2); }
