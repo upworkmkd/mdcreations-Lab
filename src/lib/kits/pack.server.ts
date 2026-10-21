@@ -22,11 +22,4 @@ export function packKit({ name, kind, parts, extra = [], readme, preview, licens
   return { zip: zipFiles(files), fileName: `${prefix.replace(/-/g, '_')}_${fileSlug(kind).replace(/-/g, '_')}.zip` };
 }
 
-/** Readable checks for the numbers a browser sends. */
-export const num = (v: unknown, lo: number, hi: number, name: string) => {
-  const n = Number(v); if (!Number.isFinite(n) || n < lo || n > hi) throw new Error(`Setting “${name}” is out of range.`); return n;
-};
-export const pick = <T extends string>(v: unknown, opts: readonly T[], name: string): T => {
-  if (!opts.includes(v as T)) throw new Error(`Setting “${name}” is not valid.`); return v as T;
-};
-export const cleanName = (v: unknown, fallback: string) => String(v ?? fallback).replace(/[^\p{L}\p{N} _-]/gu, '').trim().slice(0, 40) || fallback;
+export { num, pick, cleanName } from './check';
