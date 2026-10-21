@@ -1,0 +1,13 @@
+/* Topographic Map Maker: the map picker. */
+.topo-map { position: absolute; inset: 0; overflow: hidden; background: #cfd5c9; cursor: grab; touch-action: none; user-select: none; }
+.topo-map:active { cursor: grabbing; }
+.topo-map img { position: absolute; width: 256px; height: 256px; pointer-events: none; }
+.topo-frame { position: absolute; inset: 0; pointer-events: none; }
+.topo-zoom { position: absolute; right: 12px; top: 12px; display: grid; border: 1px solid var(--line-2); border-radius: var(--radius); overflow: hidden; background: #fff; }
+.topo-zoom button { width: 34px; height: 34px; border: 0; background: #fff; font-size: 20px; cursor: pointer; }
+.topo-zoom button + button { border-top: 1px solid var(--line); }
+.topo-scale { position: absolute; left: 12px; top: 12px; background: #fff; border: 1px solid var(--line-2); border-radius: 999px; padding: 4px 11px; font: 500 12px/1.3 var(--mono); }
+.topo-attr { position: absolute; right: 0; bottom: 0; background: rgba(255,255,255,.85); padding: 2px 6px; font-size: 11px; }
+.topo-results { list-style: none; display: flex; flex-direction: column; border: 1px solid var(--line); background: #fff; max-height: 220px; overflow: auto; }
+.topo-results button { width: 100%; text-align: left; border: 0; background: none; padding: 7px 10px; font: inherit; font-size: 13px; cursor: pointer; border-bottom: 1px solid var(--line); }
+.topo-results button:hover { background: var(--paper-3); }
