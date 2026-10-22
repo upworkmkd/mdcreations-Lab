@@ -21,19 +21,32 @@ function decode(src, done, fail) {
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     const g = c.getContext('2d', { willReadFrequently: true }); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(im, 0, 0, w, h);
     const img = g.getImageData(0, 0, w, h), d = img.data;
-    let clear = 0, extreme = 0, chroma = 0; const hist = new Float64Array(256);
-    for (let i = 0; i < w * h; i++) { const a = d[4 * i + 3]; if (a < 250) clear++; const l = (d[4 * i] * 299 + d[4 * i + 1] * 587 + d[4 * i + 2] * 114) / 1000; hist[l | 0]++; if (l < 60 || l > 200) extreme++; chroma += Math.max(d[4 * i], d[4 * i + 1], d[4 * i + 2]) - Math.min(d[4 * i], d[4 * i + 1], d[4 * i + 2]); }
+    // Everything is measured on the picture as it would look on white paper: transparent parts count as white,
+    // so a cut-out PNG is read the same way as the same picture on a white background.
+    const L = new Float32Array(w * h);
+    let clear = 0, opaque = 0, extreme = 0, chroma = 0; const hist = new Float64Array(256);
+    for (let i = 0; i < w * h; i++) {
+      const a = d[4 * i + 3] / 255, l = ((d[4 * i] * 299 + d[4 * i + 1] * 587 + d[4 * i + 2] * 114) / 1000) * a + 255 * (1 - a);
+      L[i] = l; hist[Math.min(255, l | 0)]++;
+      if (a < 0.98) clear++;
+      if (a > 0.5) { opaque++; if (l < 60 || l > 200) extreme++; chroma += Math.max(d[4 * i], d[4 * i + 1], d[4 * i + 2]) - Math.min(d[4 * i], d[4 * i + 1], d[4 * i + 2]); }
+    }
     let sum = 0; const tot = w * h; for (let i = 0; i < 256; i++) sum += i * hist[i];
     let sb = 0, wb = 0, best = 0, lo = 128, hi = 128;
     for (let i = 0; i < 256; i++) { wb += hist[i]; if (!wb) continue; const wf = tot - wb; if (!wf) break; sb += i * hist[i]; const mb = sb / wb, mf = (sum - sb) / wf, v = wb * wf * (mb - mf) ** 2; if (v > best * 1.0005) { best = v; lo = hi = i; } else if (v > best * 0.9995) hi = i; }
     const thr = Math.max(1, Math.min(254, Math.round((lo + hi) / 2) + 1));
     // background brightness = median along the border; for dark art on a light ground, set the cut-off
-      // part-way from Otsu towards the background so faint grey dots and splashes are kept
-      const border = []; for (let x = 0; x < w; x += 3) border.push(d[4 * x], d[4 * ((h - 1) * w + x)]); for (let y = 0; y < h; y += 3) border.push(d[4 * y * w], d[4 * (y * w + w - 1)]);
-      border.sort((a, b) => a - b); const bg = border[border.length >> 1];
-      const lvl = bg > thr + 30 ? Math.min(bg - 14, Math.round(thr + 0.6 * (bg - thr))) : thr;
-      const grey = chroma / (w * h) < 14;                     // a black-and-white or grey picture: read it as art
-      done({ img, w, h, otsu: lvl, mode: clear > 0.02 * w * h ? 'alpha' : extreme > 0.9 * w * h || grey ? 'art' : 'photo' });
+    // part-way from Otsu towards the background so faint grey dots and splashes are kept
+    const border = []; for (let x = 0; x < w; x += 3) border.push(L[x], L[(h - 1) * w + x]); for (let y = 0; y < h; y += 3) border.push(L[y * w], L[y * w + w - 1]);
+    border.sort((a, b) => a - b); const bg = border[border.length >> 1];
+    const lvl = bg > thr + 30 ? Math.min(bg - 14, Math.round(thr + 0.6 * (bg - thr))) : thr;
+    const n = Math.max(1, opaque), grey = chroma / n < 14;   // a black-and-white or grey picture: line art or a silhouette
+    // Every picture - photo, cut-out PNG or line art - is read by darkness: dark parts become shadow, light parts let
+    // the light through. Faces, beards, armour and spokes keep their detail this way instead of turning into one solid
+    // shape. Clean art gets the Otsu cut-off; a photo or a coloured cut-out gets the middle grey (128).
+    const art = extreme > 0.9 * n || grey;
+    // the cover plate keeps the solid reading (a clean cut-out of the figure looks best printed flat)
+    done({ img, w, h, otsu: art ? lvl : 128, mode: 'art', plateMode: clear > 0.02 * w * h ? 'alpha' : art ? 'art' : 'photo' });
   };
   im.onerror = fail;
   im.src = src;
@@ -123,8 +136,18 @@ export function mountStudio(root, hooks) {
     if (!quiet) { drawPlate(); schedule(true); }
   }
   function syncPlateSize() { const pc = Math.round(plate.view.mmPerPx / plate.fitMm * 100); $('plateSize').value = Math.max(20, Math.min(250, pc)); $('plateSizeOut').textContent = pc + '%'; }
-  function plateOpts() { return { style: $('plateStyle').value, lineW: +$('plateLine').value, gap: +$('plateGap').value }; }
-  const PLATE_BG = '#3a3d2c', ART = '#e9c78f';
+  function plateOpts() { return { style: $('plateStyle').value, lineW: +$('plateLine').value, gap: +$('plateGap').value, combined: $('plateKind').value === 'combined', plateColor: $('plateCol').value, artColor: $('artCol').value }; }
+  const PLATE_DEF = '#3a3d2c', ART_DEF = '#e9c78f';
+  let PLATE_BG = PLATE_DEF, ART = ART_DEF;
+  const HINT_SEPARATE = 'Drag the picture on the plate to place it. Two prints, no colour change: a 2 mm plate with the picture sunk 1 mm deep, and the picture itself, 1 mm thick, which presses in.';
+  const HINT_COMBINED = 'Drag the picture on the plate to place it. One print with an AMS: a flat 2 mm plate with the picture inlaid in its top 0.6 mm, so it looks drawn on. You get a 3MF that opens in Bambu Studio with both colours ready to map to your filaments, plus the two parts as STLs. No AMS? Choose Two prints.';
+  function plateColours() {
+    const comb = $('plateKind').value === 'combined';
+    $('plateColours').hidden = !comb;
+    PLATE_BG = comb ? $('plateCol').value : PLATE_DEF; ART = comb ? $('artCol').value : ART_DEF;
+    $('plateHint').textContent = comb ? HINT_COMBINED : HINT_SEPARATE;
+  }
+  function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
   function drawPlate() {
     const P = PLATE, W = pcv.width, H = pcv.height, src = plateSrc();
     pctx.setTransform(1, 0, 0, 1, 0, 0); pctx.fillStyle = PLATE_BG; pctx.fillRect(0, 0, W, H);
@@ -132,9 +155,10 @@ export function mountStudio(root, hooks) {
     if (r && !plate.dirty) {                       // the pieces that will be printed
       const im = r.img, c = document.createElement('canvas'); c.width = im.w; c.height = im.h;
       const g = c.getContext('2d'), id = g.createImageData(im.w, im.h);
+      const ac = hexRgb(ART);
       for (let y = 0; y < im.h; y++) for (let x = 0; x < im.w; x++) {
         const k = 4 * ((im.h - 1 - y) * im.w + x);
-        if (im.data[y * im.w + x]) { id.data[k] = 233; id.data[k + 1] = 199; id.data[k + 2] = 143; id.data[k + 3] = 255; }
+        if (im.data[y * im.w + x]) { id.data[k] = ac[0]; id.data[k + 1] = ac[1]; id.data[k + 2] = ac[2]; id.data[k + 3] = 255; }
       }
       g.putImageData(id, 0, 0);
       pctx.imageSmoothingEnabled = true; pctx.drawImage(c, 0, 0, W, H);
@@ -167,7 +191,8 @@ export function mountStudio(root, hooks) {
   }
   function describePlate(r) {
     if (!r) return tagsInto($('plateTags'), []);
-    tagsInto($('plateTags'), r.pieces ? [[r.pieces + (r.pieces === 1 ? ' piece to press in' : ' pieces to press in'), r.pieces > 12], [Math.round(r.W) + ' × ' + Math.round(r.H) + ' × 2 mm plate']] : [['Nothing of the picture lands on the plate', true]]);
+    const comb = $('plateKind').value === 'combined';
+    tagsInto($('plateTags'), r.pieces ? [[comb ? 'picture inlaid flat, 3MF with 2 colours' : r.pieces + (r.pieces === 1 ? ' piece to press in' : ' pieces to press in'), !comb && r.pieces > 12], [Math.round(r.W) + ' × ' + Math.round(r.H) + ' × 2 mm plate']] : [['Nothing of the picture lands on the plate', true]]);
   }
 
   /* ---------- placement ---------- */
@@ -176,21 +201,12 @@ export function mountStudio(root, hooks) {
   }
   function limits() { const o = opts(), D = DEFAULTS, H = o.apex + D.ledge; return { dark: H / (o.apex - D.V1), reach: H / (o.apex - o.Vmax), bx: D.baseX, by: D.baseY }; }
   function autoFit() {
-    const { w, h, field, bbox } = state, L = limits();
-    const bin = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) bin[i] = field[i] > 0.5 ? 1 : 0;
-    const dist = edt(bin, w, h); let bi = 0, bd = -1;
-    const mx = (bbox.x0 + bbox.x1) / 2, my = (bbox.y0 + bbox.y1) / 2, diag = Math.hypot(bbox.x1 - bbox.x0, bbox.y1 - bbox.y0) || 1;
-    for (let y = bbox.y0; y <= bbox.y1; y++) for (let x = bbox.x0; x <= bbox.x1; x++) {
-      const i = y * w + x; if (!bin[i]) continue;
-      const sc = Math.sqrt(dist[i]) * (1 - 0.6 * Math.hypot(x - mx, y - my) / diag);
-      if (sc > bd) { bd = sc; bi = i; }
-    }
-    const cx = state.empty ? w / 2 : bi % w + 0.5, cy = state.empty ? h / 2 : ((bi / w) | 0) + 0.5, r = Math.sqrt(dist[bi]) || 1;
-    const half = Math.hypot(L.bx * L.dark, L.by * L.dark);
-    const need = half / (0.92 * r);
-    const reachX = L.bx * L.reach * 0.96 / Math.max(cx - bbox.x0, bbox.x1 - cx, 1), reachY = L.by * L.reach * 0.96 / Math.max(cy - bbox.y0, bbox.y1 - cy, 1);
+    // centre the picture on the lamp and make it as big as the lamp can throw it (up to about 1.1 m tall)
+    const { w, h, bbox } = state, L = limits();
+    const cx = state.empty ? w / 2 : (bbox.x0 + bbox.x1 + 1) / 2, cy = state.empty ? h / 2 : (bbox.y0 + bbox.y1 + 1) / 2;
+    const reachX = L.bx * L.reach * 0.96 / Math.max((bbox.x1 - bbox.x0 + 1) / 2, 1), reachY = L.by * L.reach * 0.96 / Math.max((bbox.y1 - bbox.y0 + 1) / 2, 1);
     const fitAll = Math.min(reachX, reachY), nice = 1100 / Math.max(bbox.y1 - bbox.y0 + 1, (bbox.x1 - bbox.x0 + 1) * 0.9);
-    state.view.cx = cx; state.view.cy = cy; state.view.mmPerPx = Math.min(fitAll, Math.max(need, Math.min(nice, fitAll)));
+    state.view.cx = cx; state.view.cy = cy; state.view.mmPerPx = Math.min(fitAll, nice);
     syncSize(); schedule(); drawQuick();
   }
   function clampView() { const v = state.view; v.cx = Math.max(-state.w, Math.min(2 * state.w, v.cx)); v.cy = Math.max(-state.h, Math.min(2 * state.h, v.cy)); }
@@ -252,7 +268,7 @@ export function mountStudio(root, hooks) {
   /* ---------- working out the walls (in a worker) ---------- */
   let worker = null, timer = 0, busy = false, queued = false, sent = { walls: true, plate: true };
   try {
-    worker = new Worker('/lamp-worker.js?v=1');
+    worker = new Worker('/lamp-worker.js?v=2');
     worker.onmessage = (e) => finish(e.data);
     worker.onerror = () => { busy = false; setChip('Preview unavailable', false); note('placeNote', 'The preview could not start in this browser. Please try a current version of Chrome, Safari, Edge or Firefox.', false); };
   } catch (e) { worker = null; }
@@ -285,13 +301,23 @@ export function mountStudio(root, hooks) {
     drawPlate(); renderPanels(r); describe(r); describePlate(r.plate);
     setChip(state.isExample ? 'Example' : 'Ready', false);
     hooks.onReady(!state.empty);
+    if (hooks.onResult) hooks.onResult(lampData());
+  }
+  /** What the 3D views need: the walls as they will stand, the plate and where the light sits. */
+  function lampData() {
+    const r = state.result; if (!r) return null;
+    const pl = $('plateOn').checked && r.plate ? r.plate : null;
+    return { panels: r.panels, apex: +$('apex').value, withBase: $('withBase').checked,
+      plate: pl && { img: pl.img, W: pl.W, H: pl.H, hole: pl.hole, combined: $('plateKind').value === 'combined', plateColor: PLATE_BG, artColor: ART } };
   }
   function setChip(t, isBusy) { const c = $('chip'); c.textContent = t; c.classList.toggle('busy', !!isBusy); }
   function note(id, text, ok) { const n = $(id); n.hidden = !text; n.textContent = text || ''; n.classList.toggle('ok', !!ok); }
   function describe(r) {
-    $('readout').textContent = r.widthMm ? 'shadow ' + Math.round(r.widthMm / 10) + ' × ' + Math.round(r.heightMm / 10) + ' cm' : '';
     let lost = 0, extra = 0, tot = 0;
     for (let i = 0; i < r.shadow.length; i++) { if (r.shadow[i] === 2) continue; if (r.ideal[i]) { tot++; if (!r.shadow[i]) lost++; } else if (r.shadow[i]) extra++; }
+    // how much of the picture the real shadow reproduces: shared shadow over everything that is shadow in either one
+    const match = tot ? (tot - lost) / (tot + extra) : 0;
+    $('readout').textContent = r.widthMm ? 'shadow ' + Math.round(r.widthMm / 10) + ' × ' + Math.round(r.heightMm / 10) + ' cm' + (tot ? ' · matches your picture ' + (match * 100).toFixed(1) + '%' : '') : '';
     const bars = r.panels.reduce((a, p) => a + p.stats.struts, 0);
     const msgs = [];
     if (state.empty) msgs.push('No clear figure was found. Change how the picture is read in step 1.');
@@ -375,6 +401,8 @@ export function mountStudio(root, hooks) {
   for (const id of ['loose', 'wrap', 'ribs', 'cuts']) on($(id), 'change', () => schedule());
   on($('guides'), 'change', drawResult); on($('diff'), 'change', drawResult);
   const plateChanged = () => { plate.dirty = true; syncPlateUi(); drawPlate(); schedule(true); };
+  for (const id of ['plateKind', 'plateCol', 'artCol']) on($(id), 'input', () => { plateColours(); drawPlate(); if (state.result) describePlate(state.result.plate); if (hooks.onResult) hooks.onResult(lampData()); });
+  plateColours();
   on($('plateOn'), 'change', plateChanged); on($('plateStyle'), 'change', plateChanged); on($('plateLine'), 'input', plateChanged);
   on($('plateSize'), 'input', () => { plate.view.mmPerPx = plate.fitMm * +$('plateSize').value / 100; $('plateSizeOut').textContent = $('plateSize').value + '%'; plateChanged(); });
   on($('plateFit'), 'click', () => plateFit(false));
@@ -384,7 +412,7 @@ export function mountStudio(root, hooks) {
     const rd = new FileReader();
     rd.onload = () => decode(rd.result, (p) => {
       plate.own = { img: p.img, w: p.w, h: p.h, otsu: p.otsu, name: f.name };
-      $('pMode').value = p.mode; $('pLevel').value = levelFor(p.mode, p.otsu); $('pInvert').checked = false;
+      $('pMode').value = p.plateMode; $('pLevel').value = levelFor(p.plateMode, p.otsu); $('pInvert').checked = false;
       readPlate(); syncPlateUi(); plateFit(false);
     }, () => { $('plateName').textContent = 'That file could not be read as a picture.'; });
     rd.readAsDataURL(f);
