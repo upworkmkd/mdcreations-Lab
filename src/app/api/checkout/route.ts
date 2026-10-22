@@ -31,7 +31,8 @@ export async function POST(req: Request) {
     db.from('tool_prices').select('amount_minor').eq('tool_slug', design.tool_slug).eq('currency', currency).maybeSingle(),
     db.from('profiles').select('role, full_name').eq('id', user.id).single(),
   ]);
-  if (!tool || tool.status !== 'live') return NextResponse.json({ error: 'This tool is not available right now.' }, { status: 409 });
+  // a tool that is not live yet can still be tried end to end by the shop owner
+  if (!tool || (tool.status !== 'live' && profile?.role !== 'admin')) return NextResponse.json({ error: 'This tool is not available right now.' }, { status: 409 });
 
   // On a plan with designs left today: no payment, build straight away.
   const ent = await entitlement(user.id, design.tool_slug);
