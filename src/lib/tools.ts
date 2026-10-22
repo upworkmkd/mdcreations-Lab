@@ -37,7 +37,7 @@ export const TOOLS: Tool[] = [
     slide: { title: 'Any picture, cast in light.', lede: 'Owls, temples, elephants, skylines, names. Upload a picture, place the shadow, and download the walls, base and cover plate of a lamp that throws it across your wall.' },
     youGet: [
       'Four shaped walls (STL) that cast your picture on the wall',
-      'A cover plate with your picture: a press-in picture, or one plate in two colours for AMS printers',
+      'A cover plate with your picture: a press-in picture, or one flat plate in two colours as a 3MF for AMS printers',
       'The lamp base, battery cover and an LED post sized so the light sits exactly where your design needs it',
       'A shadow preview and short print and assembly notes',
       'A commercial license: sell the lamps and the files, changed or not',

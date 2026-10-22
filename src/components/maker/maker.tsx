@@ -258,7 +258,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                   <label className="check"><input type="checkbox" id="pInvert" /> Swap picture and background</label>
                 </div>
                 <div className="field"><label htmlFor="plateKind">How to print it</label>
-                  <select id="plateKind" className="input" defaultValue="separate"><option value="separate">Two prints: plate + press-in picture</option><option value="combined">One plate, picture raised in a second colour</option></select></div>
+                  <select id="plateKind" className="input" defaultValue="separate"><option value="separate">Two prints: plate + press-in picture</option><option value="combined">One plate in two colours, flat (AMS, 3MF)</option></select></div>
                 <div className="row" id="plateColours" hidden>
                   <label className="colour"><input type="color" id="plateCol" defaultValue="#3a3d2c" /> Plate</label>
                   <label className="colour"><input type="color" id="artCol" defaultValue="#e9c78f" /> Picture</label>

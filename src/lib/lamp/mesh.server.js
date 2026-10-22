@@ -495,6 +495,40 @@ export function generateRaisedPlate(sampler, opts, raise = 0.8) {
   return { params: q, tris: new Float32Array(t), plateT: zb, raise, pieces: polys.length };
 }
 
+/* ---------- cover plate, picture inlaid flush in its top layers (two parts, one per colour) ---------- */
+// The plate is the full thickness everywhere; the picture fills a pocket in its top `inlay` mm, so the face is flat and
+// the picture looks drawn on. The two parts share their touching faces exactly, so a slicer prints them as one plate
+// with the picture layers in the second filament.
+export function generateInlaidPlate(sampler, opts, inlay = 0.6) {
+  const A = plateArt(sampler, opts), { q, R, def, pp, art } = A;
+  const polys = maskPolygons(R, art, def, pp, q.simplify), zt = q.floor + q.depth, zf = zt - inlay, hx = q.W / 2, hy = q.H / 2;
+  const rect = [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]], circ = circle(0, 0, q.hole / 2, 72);
+  const holes = []; for (const r of polys) for (const hh of r.holes) holes.push({ loop: hh, a: Math.abs(area(hh)), kids: [] });
+  const roots = [];
+  for (const r of polys) {
+    let parent = null;
+    for (const hh of holes) if (inside(r.raw[0], hh.loop) && r.a < hh.a && (!parent || hh.a < parent.a)) parent = hh;
+    (parent ? parent.kids : roots).push(r.outer);
+  }
+  let holeHost = null;
+  for (const hh of holes) if (inside(circ[0], hh.loop) && (!holeHost || hh.a < holeHost.a)) holeHost = hh;
+  const b = [];
+  capTris(b, [rect, circ], 0, false);                                                  // underside
+  wallTris(b, rect, 0, zt, false); wallTris(b, circ, 0, zt, false);                    // outside and the post hole
+  capTris(b, [rect].concat(holeHost ? [] : [circ], roots), zt, true);                  // top face around the picture
+  for (const hh of holes) capTris(b, [hh.loop].concat(hh === holeHost ? [circ] : [], hh.kids), zt, true);
+  for (const r of polys) {                                                             // the pocket for the picture
+    capTris(b, [r.outer].concat(r.holes), zf, true);
+    wallTris(b, r.outer, zf, zt, true); for (const hh of r.holes) wallTris(b, hh, zf, zt, true);
+  }
+  const a = [];
+  for (const r of polys) {                                                             // the picture that fills it
+    capTris(a, [r.outer].concat(r.holes), zt, true); capTris(a, [r.outer].concat(r.holes), zf, false);
+    wallTris(a, r.outer, zf, zt, false); for (const hh of r.holes) wallTris(a, hh, zf, zt, false);
+  }
+  return { params: q, bodyTris: new Float32Array(b), artTris: new Float32Array(a), plateT: zt, inlay, pieces: polys.length };
+}
+
 /* ---------- LED post ---------- */
 // The tube that holds the LED up at the light point. Its spigot fills the socket in the middle of the base
 // (bore 10.15 mm from the floor at z = 3 up to z = 18.5). The socket has a 3.2 mm wire slot at its foot (z 3 to 6,

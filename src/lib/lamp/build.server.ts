@@ -2,7 +2,8 @@ import 'server-only';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { bytesToMask, fieldFromMask, makeSampler } from './raster.js';
-import { generate, generatePlate, generateRaisedPlate, ledPost, stlBinary, zipFiles } from './mesh.server.js';
+import { generate, generateInlaidPlate, generatePlate, ledPost, stlBinary, zipFiles } from './mesh.server.js';
+import { coloured3mf } from '@/lib/mesh/threemf.js';
 import type { LampDesign, PictureMask } from './design';
 import { licenseText } from '@/lib/license';
 
@@ -31,11 +32,16 @@ const README = (name: string, plate: false | 'separate' | 'combined', base: bool
     'Cover plate: lies on the rim of the base between the walls, with the post through its hole.',
     'Print the plate with the sunk side up. Print the plate picture flat in a second colour and press each piece into its place.'] : []),
   ...(plate === 'combined' ? ['',
-    `Cover plate (one piece, two colours): "${name} plate.stl" is a 2 mm plate with the picture raised 0.8 mm on top.`,
-    'It lies on the rim of the base between the walls, with the post through its hole. Print it flat, picture up, no supports.',
-    'For the two colours, add a filament change at 2.0 mm (the first layer of the picture):',
-    'Bambu Studio / OrcaSlicer: slice, drag the layer slider to 2.0 mm, right-click the + and choose "Change filament" (or "Add pause").',
-    colours ? `Start with the plate colour (${colours.plate}) and change to the picture colour (${colours.art}).` : 'Start with the plate colour and change to the picture colour.'] : []),
+    'Cover plate (one plate, two colours): a flat 2 mm plate with the picture inlaid in its top 0.6 mm, so it looks drawn on.',
+    'It lies on the rim of the base between the walls, with the post through its hole. Print it flat, picture side up, no supports.',
+    `EASIEST (Bambu Studio / OrcaSlicer): open "${name} plate - 2 colours.3mf".`,
+    'It is one plate in two parts, each with its colour. Bambu Studio asks which filament to use for each colour;',
+    'pick your two AMS slots and slice.',
+    `OTHER SLICERS: import "${name} plate - part 1 plate.stl" and "${name} plate - part 2 picture.stl" together and choose`,
+    '"load as a single object with multiple parts" (or "Yes" when asked). Set part 2 to your second filament. Do not move the parts.',
+    'This needs an AMS or another multi-colour setup: the top layers hold both colours side by side, so a single',
+    'filament change will not do it. Without an AMS, pick "Two prints" on the site instead (plate + press-in picture).',
+    colours ? `Colours chosen on the site: plate ${colours.plate}, picture ${colours.art}.` : ''].filter(Boolean) : []),
   ...(base ? ['',
     'Base and battery cover: the same for every design. Print the base with its back on the bed, no supports;',
     'print the cover with its wider face down. It takes a 2 x AA holder and a small rocker switch.'] : []),
@@ -65,9 +71,13 @@ export async function buildLampZip(d: LampDesign, preview?: Uint8Array | null, l
     const pw = d.plate.own ? d.plate.own.w : d.shadow.w, ph = d.plate.own ? d.plate.own.h : d.shadow.h;
     const smp = makeSampler(pf, pw, ph, d.plate.view);
     if (d.plate.opts.combined) {
-      // one piece: the picture is raised on top of the plate and coloured by a filament change
-      const g = generateRaisedPlate(smp, d.plate.opts);
-      files.push({ name: `${base} plate.stl`, data: stlBinary(g.tris, 'plate') });
+      // one plate, two colours: the picture is inlaid flush in the top 0.6 mm. A coloured 3MF (one filament per part)
+      // plus the same two parts as STLs for slicers that do not read 3MF colours.
+      const g = generateInlaidPlate(smp, d.plate.opts);
+      const pc = d.plate.opts.plateColor, ac = d.plate.opts.artColor;
+      files.push({ name: `${base} plate - 2 colours.3mf`, data: coloured3mf([{ name: 'plate', tris: g.bodyTris, color: pc }, { name: 'picture', tris: g.artTris, color: ac }], { title: `${base} plate` }) });
+      files.push({ name: `${base} plate - part 1 plate.stl`, data: stlBinary(g.bodyTris, 'plate') });
+      files.push({ name: `${base} plate - part 2 picture.stl`, data: stlBinary(g.artTris, 'picture') });
       plateInfo = { pieces: g.pieces };
     } else {
       const g = generatePlate(smp, d.plate.opts);
