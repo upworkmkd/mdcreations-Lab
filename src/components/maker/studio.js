@@ -21,23 +21,32 @@ function decode(src, done, fail) {
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     const g = c.getContext('2d', { willReadFrequently: true }); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(im, 0, 0, w, h);
     const img = g.getImageData(0, 0, w, h), d = img.data;
-    let clear = 0, extreme = 0, chroma = 0; const hist = new Float64Array(256);
-    for (let i = 0; i < w * h; i++) { const a = d[4 * i + 3]; if (a < 250) clear++; const l = (d[4 * i] * 299 + d[4 * i + 1] * 587 + d[4 * i + 2] * 114) / 1000; hist[l | 0]++; if (l < 60 || l > 200) extreme++; chroma += Math.max(d[4 * i], d[4 * i + 1], d[4 * i + 2]) - Math.min(d[4 * i], d[4 * i + 1], d[4 * i + 2]); }
+    // Everything is measured on the picture as it would look on white paper: transparent parts count as white,
+    // so a cut-out PNG is read the same way as the same picture on a white background.
+    const L = new Float32Array(w * h);
+    let clear = 0, opaque = 0, extreme = 0, chroma = 0; const hist = new Float64Array(256);
+    for (let i = 0; i < w * h; i++) {
+      const a = d[4 * i + 3] / 255, l = ((d[4 * i] * 299 + d[4 * i + 1] * 587 + d[4 * i + 2] * 114) / 1000) * a + 255 * (1 - a);
+      L[i] = l; hist[Math.min(255, l | 0)]++;
+      if (a < 0.98) clear++;
+      if (a > 0.5) { opaque++; if (l < 60 || l > 200) extreme++; chroma += Math.max(d[4 * i], d[4 * i + 1], d[4 * i + 2]) - Math.min(d[4 * i], d[4 * i + 1], d[4 * i + 2]); }
+    }
     let sum = 0; const tot = w * h; for (let i = 0; i < 256; i++) sum += i * hist[i];
     let sb = 0, wb = 0, best = 0, lo = 128, hi = 128;
     for (let i = 0; i < 256; i++) { wb += hist[i]; if (!wb) continue; const wf = tot - wb; if (!wf) break; sb += i * hist[i]; const mb = sb / wb, mf = (sum - sb) / wf, v = wb * wf * (mb - mf) ** 2; if (v > best * 1.0005) { best = v; lo = hi = i; } else if (v > best * 0.9995) hi = i; }
     const thr = Math.max(1, Math.min(254, Math.round((lo + hi) / 2) + 1));
     // background brightness = median along the border; for dark art on a light ground, set the cut-off
-      // part-way from Otsu towards the background so faint grey dots and splashes are kept
-      const border = []; for (let x = 0; x < w; x += 3) border.push(d[4 * x], d[4 * ((h - 1) * w + x)]); for (let y = 0; y < h; y += 3) border.push(d[4 * y * w], d[4 * (y * w + w - 1)]);
-      border.sort((a, b) => a - b); const bg = border[border.length >> 1];
-      const lvl = bg > thr + 30 ? Math.min(bg - 14, Math.round(thr + 0.6 * (bg - thr))) : thr;
-      const grey = chroma / (w * h) < 14;                     // a black-and-white or grey picture: line art or a silhouette
-      // Every picture is read by darkness: dark parts become shadow, light parts let the light through. Photos keep
-      // their inner detail (faces, beards, spokes) this way, instead of turning into one solid cut-out. Clean art
-      // gets the Otsu cut-off; a photo gets the middle grey (128), which reads faces and clothes the way people expect.
-      const art = extreme > 0.9 * w * h || grey;
-      done({ img, w, h, otsu: art ? lvl : 128, mode: clear > 0.02 * w * h ? 'alpha' : 'art' });
+    // part-way from Otsu towards the background so faint grey dots and splashes are kept
+    const border = []; for (let x = 0; x < w; x += 3) border.push(L[x], L[(h - 1) * w + x]); for (let y = 0; y < h; y += 3) border.push(L[y * w], L[y * w + w - 1]);
+    border.sort((a, b) => a - b); const bg = border[border.length >> 1];
+    const lvl = bg > thr + 30 ? Math.min(bg - 14, Math.round(thr + 0.6 * (bg - thr))) : thr;
+    const n = Math.max(1, opaque), grey = chroma / n < 14;   // a black-and-white or grey picture: line art or a silhouette
+    // Every picture - photo, cut-out PNG or line art - is read by darkness: dark parts become shadow, light parts let
+    // the light through. Faces, beards, armour and spokes keep their detail this way instead of turning into one solid
+    // shape. Clean art gets the Otsu cut-off; a photo or a coloured cut-out gets the middle grey (128).
+    const art = extreme > 0.9 * n || grey;
+    // the cover plate keeps the solid reading (a clean cut-out of the figure looks best printed flat)
+    done({ img, w, h, otsu: art ? lvl : 128, mode: 'art', plateMode: clear > 0.02 * w * h ? 'alpha' : art ? 'art' : 'photo' });
   };
   im.onerror = fail;
   im.src = src;
@@ -403,7 +412,7 @@ export function mountStudio(root, hooks) {
     const rd = new FileReader();
     rd.onload = () => decode(rd.result, (p) => {
       plate.own = { img: p.img, w: p.w, h: p.h, otsu: p.otsu, name: f.name };
-      $('pMode').value = p.mode; $('pLevel').value = levelFor(p.mode, p.otsu); $('pInvert').checked = false;
+      $('pMode').value = p.plateMode; $('pLevel').value = levelFor(p.plateMode, p.otsu); $('pInvert').checked = false;
       readPlate(); syncPlateUi(); plateFit(false);
     }, () => { $('plateName').textContent = 'That file could not be read as a picture.'; });
     rd.readAsDataURL(f);
