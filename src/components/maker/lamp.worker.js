@@ -37,7 +37,11 @@ self.onmessage = (e) => {
       let top = 0;
       for (let j = R.nv - 1; j >= 0 && !top; j--) for (let i = 0; i < R.ns; i++) if (R.own[(j + PAD) * R.w + i + PAD]) { top = p.V0 + (j + 1) * R.res; break; }
       const img = crop(R.own, R.w, R.ns, R.nv, 2); tr.push(img.data.buffer);
-      return { id: q.def.id, n: q.def.n, Lo: q.def.Lo, Lb: q.def.Lb, top, stats: R.stats, fins: q.fins, img, res: R.res * 2, V0: p.V0 };
+      // for the 3D views: the wall as it stands, including corner pieces that print with the neighbouring wall
+      let full = R.own;
+      if (R.wrapped && R.wrapped.length) { full = R.own.slice(); const ids = new Set(R.wrapped.map((q) => q.l)); for (let k = 0; k < full.length; k++) if (ids.has(R.lab[k])) full[k] = 1; }
+      const all = crop(full, R.w, R.ns, R.nv, 3); tr.push(all.data.buffer);
+      return { id: q.def.id, n: q.def.n, Lo: q.def.Lo, Lb: q.def.Lb, top, stats: R.stats, fins: q.fins, img, all, allRes: R.res * 3, res: R.res * 2, V0: p.V0 };
     });
     if (plate) tr.push(plate.img.data.buffer);
     self.postMessage({ id: job.id, keepPlate: !!job.keepPlate, plate, panels, backing: !!p.backing, vmax: p.Vmax, shadow, ideal, W, widthMm: x1 >= x0 ? (x1 - x0 + 1) * mm : 0, heightMm: y1 >= y0 ? (y1 - y0 + 1) * mm : 0 }, tr);

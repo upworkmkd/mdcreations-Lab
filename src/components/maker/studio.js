@@ -123,8 +123,18 @@ export function mountStudio(root, hooks) {
     if (!quiet) { drawPlate(); schedule(true); }
   }
   function syncPlateSize() { const pc = Math.round(plate.view.mmPerPx / plate.fitMm * 100); $('plateSize').value = Math.max(20, Math.min(250, pc)); $('plateSizeOut').textContent = pc + '%'; }
-  function plateOpts() { return { style: $('plateStyle').value, lineW: +$('plateLine').value, gap: +$('plateGap').value }; }
-  const PLATE_BG = '#3a3d2c', ART = '#e9c78f';
+  function plateOpts() { return { style: $('plateStyle').value, lineW: +$('plateLine').value, gap: +$('plateGap').value, combined: $('plateKind').value === 'combined', plateColor: $('plateCol').value, artColor: $('artCol').value }; }
+  const PLATE_DEF = '#3a3d2c', ART_DEF = '#e9c78f';
+  let PLATE_BG = PLATE_DEF, ART = ART_DEF;
+  const HINT_SEPARATE = 'Drag the picture on the plate to place it. Two prints, no colour change: a 2 mm plate with the picture sunk 1 mm deep, and the picture itself, 1 mm thick, which presses in.';
+  const HINT_COMBINED = 'Drag the picture on the plate to place it. One plate in two colours: the files hold the plate and the picture as two parts that fit exactly. Load both together, say yes to “one object with multiple parts”, and give each part its colour (AMS or another multi-colour printer).';
+  function plateColours() {
+    const comb = $('plateKind').value === 'combined';
+    $('plateColours').hidden = !comb;
+    PLATE_BG = comb ? $('plateCol').value : PLATE_DEF; ART = comb ? $('artCol').value : ART_DEF;
+    $('plateHint').textContent = comb ? HINT_COMBINED : HINT_SEPARATE;
+  }
+  function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
   function drawPlate() {
     const P = PLATE, W = pcv.width, H = pcv.height, src = plateSrc();
     pctx.setTransform(1, 0, 0, 1, 0, 0); pctx.fillStyle = PLATE_BG; pctx.fillRect(0, 0, W, H);
@@ -132,9 +142,10 @@ export function mountStudio(root, hooks) {
     if (r && !plate.dirty) {                       // the pieces that will be printed
       const im = r.img, c = document.createElement('canvas'); c.width = im.w; c.height = im.h;
       const g = c.getContext('2d'), id = g.createImageData(im.w, im.h);
+      const ac = hexRgb(ART);
       for (let y = 0; y < im.h; y++) for (let x = 0; x < im.w; x++) {
         const k = 4 * ((im.h - 1 - y) * im.w + x);
-        if (im.data[y * im.w + x]) { id.data[k] = 233; id.data[k + 1] = 199; id.data[k + 2] = 143; id.data[k + 3] = 255; }
+        if (im.data[y * im.w + x]) { id.data[k] = ac[0]; id.data[k + 1] = ac[1]; id.data[k + 2] = ac[2]; id.data[k + 3] = 255; }
       }
       g.putImageData(id, 0, 0);
       pctx.imageSmoothingEnabled = true; pctx.drawImage(c, 0, 0, W, H);
@@ -167,7 +178,8 @@ export function mountStudio(root, hooks) {
   }
   function describePlate(r) {
     if (!r) return tagsInto($('plateTags'), []);
-    tagsInto($('plateTags'), r.pieces ? [[r.pieces + (r.pieces === 1 ? ' piece to press in' : ' pieces to press in'), r.pieces > 12], [Math.round(r.W) + ' × ' + Math.round(r.H) + ' × 2 mm plate']] : [['Nothing of the picture lands on the plate', true]]);
+    const comb = $('plateKind').value === 'combined';
+    tagsInto($('plateTags'), r.pieces ? [[comb ? 'picture in the second colour' : r.pieces + (r.pieces === 1 ? ' piece to press in' : ' pieces to press in'), !comb && r.pieces > 12], [Math.round(r.W) + ' × ' + Math.round(r.H) + ' × 2 mm plate']] : [['Nothing of the picture lands on the plate', true]]);
   }
 
   /* ---------- placement ---------- */
@@ -252,7 +264,7 @@ export function mountStudio(root, hooks) {
   /* ---------- working out the walls (in a worker) ---------- */
   let worker = null, timer = 0, busy = false, queued = false, sent = { walls: true, plate: true };
   try {
-    worker = new Worker('/lamp-worker.js?v=1');
+    worker = new Worker('/lamp-worker.js?v=2');
     worker.onmessage = (e) => finish(e.data);
     worker.onerror = () => { busy = false; setChip('Preview unavailable', false); note('placeNote', 'The preview could not start in this browser. Please try a current version of Chrome, Safari, Edge or Firefox.', false); };
   } catch (e) { worker = null; }
@@ -285,6 +297,14 @@ export function mountStudio(root, hooks) {
     drawPlate(); renderPanels(r); describe(r); describePlate(r.plate);
     setChip(state.isExample ? 'Example' : 'Ready', false);
     hooks.onReady(!state.empty);
+    if (hooks.onResult) hooks.onResult(lampData());
+  }
+  /** What the 3D views need: the walls as they will stand, the plate and where the light sits. */
+  function lampData() {
+    const r = state.result; if (!r) return null;
+    const pl = $('plateOn').checked && r.plate ? r.plate : null;
+    return { panels: r.panels, apex: +$('apex').value, withBase: $('withBase').checked,
+      plate: pl && { img: pl.img, W: pl.W, H: pl.H, hole: pl.hole, combined: $('plateKind').value === 'combined', plateColor: PLATE_BG, artColor: ART } };
   }
   function setChip(t, isBusy) { const c = $('chip'); c.textContent = t; c.classList.toggle('busy', !!isBusy); }
   function note(id, text, ok) { const n = $(id); n.hidden = !text; n.textContent = text || ''; n.classList.toggle('ok', !!ok); }
@@ -375,6 +395,8 @@ export function mountStudio(root, hooks) {
   for (const id of ['loose', 'wrap', 'ribs', 'cuts']) on($(id), 'change', () => schedule());
   on($('guides'), 'change', drawResult); on($('diff'), 'change', drawResult);
   const plateChanged = () => { plate.dirty = true; syncPlateUi(); drawPlate(); schedule(true); };
+  for (const id of ['plateKind', 'plateCol', 'artCol']) on($(id), 'input', () => { plateColours(); drawPlate(); if (state.result) describePlate(state.result.plate); if (hooks.onResult) hooks.onResult(lampData()); });
+  plateColours();
   on($('plateOn'), 'change', plateChanged); on($('plateStyle'), 'change', plateChanged); on($('plateLine'), 'input', plateChanged);
   on($('plateSize'), 'input', () => { plate.view.mmPerPx = plate.fitMm * +$('plateSize').value / 100; $('plateSizeOut').textContent = $('plateSize').value + '%'; plateChanged(); });
   on($('plateFit'), 'click', () => plateFit(false));

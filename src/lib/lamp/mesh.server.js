@@ -467,3 +467,27 @@ export function generatePlate(sampler, opts) {
   for (const r of rec) { wallTris(pt, r.outer, zf, zt, true); for (const hh of r.holes) wallTris(pt, hh, zf, zt, true); }
   return { params: q, plateTris: new Float32Array(pt), inlayTris, pieces: inlay.length, areaMm2: A.areaMm2 };
 }
+
+/* ---------- LED post ---------- */
+// The tube that holds the LED up at the light point. Its spigot drops into the socket in the middle of the base
+// (bore 10.15 mm, floor at z = 3, top at z = 18.5) and stops 3 mm short of the floor, so the wires can come out of
+// the bore and leave through the slot at the foot of the socket. A collar rests on the socket; the stem passes through
+// the 10.8 mm hole in the cover plate. A 5 mm LED sits on top with its rim on the tube, wires down the 5.3 mm bore.
+export function ledPost(params) {
+  const p = Object.assign({ ledge: 10, apex: 75 }, params || {});
+  const top = p.ledge + p.apex - 3, bore = 2.65, n = 96;
+  const prof = [[bore, 6], [4.95, 6], [4.95, 18.5], [7.6, 18.5], [7.6, 20.5], [4.9, 20.5], [4.9, top], [bore, top]];
+  const out = [], P = (k, i) => { const a = (i % n) / n * Math.PI * 2, [r, z] = prof[k]; return [r * Math.cos(a), r * Math.sin(a), z]; };
+  for (let k = 0; k < prof.length; k++) {
+    const k2 = (k + 1) % prof.length;
+    for (let i = 0; i < n; i++) {
+      const a = P(k, i), b = P(k2, i), c = P(k2, i + 1), d = P(k, i + 1);
+      out.push(...a, ...b, ...c, ...a, ...c, ...d);
+    }
+  }
+  // the profile runs anticlockwise in (r, z), so these faces point outwards; check and flip if not
+  const t = new Float32Array(out);
+  let v = 0; for (let i = 0; i < t.length; i += 9) v += t[i] * (t[i + 4] * t[i + 8] - t[i + 5] * t[i + 7]) - t[i + 1] * (t[i + 3] * t[i + 8] - t[i + 5] * t[i + 6]) + t[i + 2] * (t[i + 3] * t[i + 7] - t[i + 4] * t[i + 6]);
+  if (v < 0) for (let i = 0; i < t.length; i += 9) for (let k = 0; k < 3; k++) { const s = t[i + 3 + k]; t[i + 3 + k] = t[i + 6 + k]; t[i + 6 + k] = s; }
+  return { tris: t, height: top - 6, top };
+}
