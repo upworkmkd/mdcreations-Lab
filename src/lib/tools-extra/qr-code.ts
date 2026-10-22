@@ -5,7 +5,7 @@ export const tool: Tool | null = {
   slug: 'qr-code',
   name: 'QR Code to STL',
   short: 'Wi-Fi, UPI, WhatsApp or website QR codes as two-colour printable plates.',
-  lede: 'Type a Wi-Fi password, a UPI ID, a WhatsApp number or a web address and get a 3D printable QR code: a plate and a raised code as two STL files, with a label, rounded corners, a keychain ring or a round coaster shape.',
+  lede: 'Type a Wi-Fi password, a UPI ID, a WhatsApp number or a web address and get a 3D printable QR code: one STL with the code raised on the plate, with a label, rounded corners, a keychain ring or a round coaster shape.',
   status: 'live',
   makePath: '/tools/qr-code/make',
   index: '14',
@@ -13,7 +13,7 @@ export const tool: Tool | null = {
   free: true,
   slide: { title: 'Scan it, print it.', lede: 'Wi-Fi, UPI and WhatsApp codes as two-colour plates, keychains and coasters. Free, made in your browser.' },
   youGet: [
-    'Two STL files: the plate and the raised code (with an optional label)',
+    'One STL: the plate with the code (and an optional label) raised on top',
     'Wi-Fi, UPI payment, WhatsApp, website, contact card, phone, email or text',
     'Rounded, square, keychain or round coaster shapes',
     'A flat PNG of the same code to test the scan first',
@@ -22,14 +22,14 @@ export const tool: Tool | null = {
   steps: [
     { title: 'Choose what it opens', text: 'A Wi-Fi network, a UPI ID, a WhatsApp chat, a website or a contact card. Nothing you type leaves your browser.' },
     { title: 'Shape the plate', text: 'Size, thickness, corners, a label under the code, and a keychain ring or round coaster if you like. Check the scan on screen.' },
-    { title: 'Download and print', text: 'Two STLs for two colours. On a single-nozzle printer, change filament at the height shown.' },
+    { title: 'Download and print', text: 'One STL, ready to slice. For two colours, change filament at the height shown.' },
   ],
   specsTitle: 'The plate',
   specs: [
     ['Code size', '20 to 150 mm wide'],
     ['Shapes', 'Rounded, square, keychain with ring hole, round coaster'],
     ['Thickness', 'Plate 0.8 to 6 mm, code 0.4 to 3 mm'],
-    ['Files', 'Two binary STLs, a PNG and print notes in a zip'],
+    ['Files', 'One binary STL, a PNG and print notes in a zip'],
     ['Price', 'Free, no account'],
   ],
   faq: [

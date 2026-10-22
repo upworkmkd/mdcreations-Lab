@@ -81,16 +81,15 @@ export function QrMaker() {
       'Made with the free QR Code to STL tool - labs.themdcreations.com/tools/qr-code', '',
       `Size: ${model.size[0].toFixed(1)} x ${model.size[1].toFixed(1)} mm, ${(baseT + codeT).toFixed(1)} mm tall`,
       `QR: ${qr.size} x ${qr.size} modules of ${model.module.toFixed(2)} mm, error correction ${ecc}`, '',
-      'FILES', `  ${name}_base.stl   the plate (${baseT} mm)`, `  ${name}_code.stl   the raised code${labelShown ? ' and label' : ''} (${codeT} mm)`, '',
+      'FILES', `  ${name}.stl   one solid piece: the ${baseT} mm plate with the code${labelShown ? ' and label' : ''} raised ${codeT} mm on top`, '',
       'PRINTING',
-      '  Two colours (AMS, MMU or a tool changer): load both STLs as one object with two parts and give each its colour.',
-      `  One nozzle: print both together and change filament at ${baseT.toFixed(2)} mm (the first layer of the code).`,
+      `  Two colours: add a filament change (or an AMS colour change) at ${baseT.toFixed(2)} mm, the first layer of the code.`,
+      '  In Bambu Studio / OrcaSlicer: slice, drag the layer slider to that height, right-click + and choose "Change filament".',
       '  Layer height 0.2 mm or finer; use the darker colour for the code so phones can read it.',
       '  Test the scan with your phone before printing many: the flat PNG in this zip is the same code.', '',
     ];
     const zip = storeZip([
-      { name: `${name}_base.stl`, data: stlBinary(model.base, 'QR plate') },
-      { name: `${name}_code.stl`, data: stlBinary(model.code, 'QR code') },
+      { name: `${name}.stl`, data: stlBinary(model.solid, 'QR code plate') },
       { name: `${name}_flat.png`, data: png },
       { name: 'README.txt', data: new TextEncoder().encode(readme.join('\r\n')) },
     ]);
@@ -157,7 +156,7 @@ export function QrMaker() {
         <div className="kit-buy">
           <div>
             <p className="eyebrow">Free download</p>
-            <p style={{ marginTop: 8, fontSize: 14.5 }}>Two STL files (plate and code) for two-colour printing, a flat PNG of the same code and print notes. Made in your browser; nothing you type is sent to us.</p>
+            <p style={{ marginTop: 8, fontSize: 14.5 }}>One STL with the code raised on the plate (change filament at the height shown for two colours), a flat PNG of the same code and print notes. Made in your browser; nothing you type is sent to us.</p>
           </div>
           <div className="buy-slot">
             <button type="button" className="btn buybtn" disabled={!model} onClick={download}>Download the STL files <span className="arrow">↓</span></button>
