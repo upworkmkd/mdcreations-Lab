@@ -1,4 +1,4 @@
-/* Server kit for the Cookie Cutter & Stamp Maker: rebuilds the parts from the saved masks. */
+/* Server kit for the Rangoli Stencil & Cookie Cutter Maker: rebuilds the parts from the saved masks. */
 import 'server-only';
 import type { Kit } from './types';
 import { packKit } from './pack.server';

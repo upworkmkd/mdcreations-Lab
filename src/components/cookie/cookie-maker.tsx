@@ -45,18 +45,18 @@ const place = (src: Uint8Array, sw: number, sh: number, W: number, H: number) =>
 
 export function CookieMaker(buy: KitBuy) {
   const [source, setSource] = useState<Source>('preset');
-  const [preset, setPreset] = useState<Preset>('heart');
+  const [preset, setPreset] = useState<Preset>('mandala');
   const [pic, setPic] = useState<Pic | null>(null), [thumb, setThumb] = useState<string | null>(null);
   const [text, setText] = useState('A'), [fontOk, setFontOk] = useState(false);
   const [thr, setThr] = useState<number | null>(null), [printed, setPrinted] = useState<'drawing' | 'cutout'>('drawing'), [invert, setInvert] = useState(false), [fill, setFill] = useState(true), [largest, setLargest] = useState(true), [useDetail, setUseDetail] = useState(true);
   const [plateShape, setPlateShape] = useState<'circle' | 'square' | 'rounded'>('circle');
-  const [name, setName] = useState('Heart');
-  const [p, setP] = useState<CookieParams>({ mode: 'cutter', size: 80, height: 15, wall: 1.2, edge: 0.6, flange: 3, flangeT: 1.6, plateT: 2.4, reliefT: 1.5, clearance: 0.8, handle: true, stampToo: true, stencilT: 1.2, rim: 4, islands: 'join', bridge: 1.2 });
+  const [name, setName] = useState('Rangoli mandala');
+  const [p, setP] = useState<CookieParams>({ mode: 'stencil', size: 160, height: 15, wall: 1.2, edge: 0.6, flange: 3, flangeT: 1.6, plateT: 2.4, reliefT: 1.5, clearance: 0.8, handle: true, stampToo: true, stencilT: 1.2, rim: 4, islands: 'join', bridge: 1.2 });
   const snap = useRef<MeshSnap | null>(null);
   const set = <K extends keyof CookieParams>(k: K, v: CookieParams[K]) => setP((o) => ({ ...o, [k]: v }));
 
   useEffect(() => { let ok = true; loadGoogleFont('Poppins', 800).then(() => ok && setFontOk(true)); return () => { ok = false; }; }, []);
-  const mode = (m: CookieMode) => { setP((o) => ({ ...o, mode: m, size: m === 'stencil' ? 160 : o.mode === 'stencil' ? 80 : o.size })); if (m === 'stencil' && source === 'preset' && preset !== 'rangoli') { setPreset('rangoli'); setName('Rangoli'); } };
+  const mode = (m: CookieMode) => { setP((o) => ({ ...o, mode: m, size: m === 'stencil' ? 160 : o.mode === 'stencil' ? 80 : o.size })); if (m !== 'stencil' && source === 'preset' && (preset === 'mandala' || preset === 'rangoli')) { setPreset('heart'); setName('Heart'); } if (m === 'stencil' && source === 'preset' && preset !== 'rangoli' && preset !== 'mandala') { setPreset('mandala'); setName('Rangoli mandala'); } };
 
   // the masks, at the resolution the server uses
   // shapes are drawn on a canvas, which only exists in the browser (the page is also rendered once on the server)
@@ -81,8 +81,13 @@ export function CookieMaker(buy: KitBuy) {
       const ink = place(d2.m, d2.w, d2.h, W, H);
       // 'drawing': the picture itself is printed and the gaps inside its outline are cut through;
       // 'cutout': the picture is cut out of a solid plate
-      const detail = printed === 'drawing' ? fillHoles(ink, W, H).map((v, i) => (v && !ink[i] ? 1 : 0)) : ink;
-      return { px, W, H, alpha: d2.alpha ?? false, thr: d2.thr ?? 128, shape: plate, detail, n: pieces(plate.map((v, i) => (v && !detail[i] ? 1 : 0)), W, H).count };
+      let detail = printed === 'drawing' ? fillHoles(ink, W, H).map((v, i) => (v && !ink[i] ? 1 : 0)) : ink, solidPic = false;
+      if (printed === 'drawing') {
+        // a solid picture (no enclosed gaps) would leave nothing to cut: cut its shape out instead
+        let gaps = 0, area = 0; for (let i = 0; i < W * H; i++) { if (ink[i]) area++; if (detail[i]) gaps++; }
+        if (gaps < area * 0.02) { detail = ink; solidPic = true; }
+      }
+      return { px, W, H, solidPic, alpha: d2.alpha ?? false, thr: d2.thr ?? 128, shape: plate, detail, n: pieces(plate.map((v, i) => (v && !detail[i] ? 1 : 0)), W, H).count };
     }
     const pad = Math.ceil((p.wall + p.flange + 3) * px), W = raw.w + 2 * pad, H = raw.h + 2 * pad;
     const all = place(raw.m, raw.w, raw.h, W, H);
@@ -127,7 +132,7 @@ export function CookieMaker(buy: KitBuy) {
       youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>{p.mode === 'cutter' ? 'The cutter STL' + (masks?.detail && p.stampToo ? ', a matching stamp that presses the inner lines, and a handle' : '') : p.mode === 'stamp' ? 'The stamp plate, its raised details and a handle' : 'The stencil STL'}, print notes and a commercial license to sell what you print.</p></>}
       side={<>
         <Group title="What to make">
-          <Seg<CookieMode> label="Type" value={p.mode} onChange={mode} options={[['cutter', 'Cookie cutter'], ['stamp', 'Stamp'], ['stencil', 'Rangoli stencil']]} />
+          <Seg<CookieMode> label="Type" value={p.mode} onChange={mode} options={[['stencil', 'Rangoli stencil'], ['cutter', 'Cookie cutter'], ['stamp', 'Stamp']]} />
         </Group>
         <Group title="Shape">
           <Seg<Source> label="From" value={source} onChange={setSource} options={[['preset', 'Ready shapes'], ['picture', 'A picture'], ['text', 'Letters']]} />
@@ -167,6 +172,7 @@ export function CookieMaker(buy: KitBuy) {
           <Range label="Thickness" value={p.stencilT} onChange={(v) => set('stencilT', v)} min={0.6} max={3} step={0.1} fmt={(v) => `${v.toFixed(1)} mm`} />
           <Range label="Solid rim" value={p.rim} onChange={(v) => set('rim', v)} min={0} max={15} step={0.5} fmt={(v) => `${v} mm`} />
           <Seg<'drawing' | 'cutout'> label="The picture is" value={printed} onChange={setPrinted} options={[['drawing', 'Printed (gaps cut)'], ['cutout', 'Cut out']]} />
+          {masks && 'solidPic' in masks && masks.solidPic && <p className="hint" style={{ color: '#8a3b12' }}>This picture is solid shapes with no gaps inside, so its shapes are cut out of the plate instead.</p>}
           <p className="hint">{printed === 'drawing' ? 'The stencil looks like your picture: its lines are plastic and the spaces between them are open for the powder.' : 'The picture is cut out of a solid plate: the powder lands in its shape.'}</p>
           <Seg<'join' | 'remove' | 'keep'> label="Loose pieces" value={p.islands} onChange={(v) => set('islands', v)} options={[['join', 'Join with bridges'], ['remove', 'Remove'], ['keep', 'Keep']]} />
           {p.islands === 'join' && <Range label="Bridge width" value={p.bridge} onChange={(v) => set('bridge', v)} min={0.6} max={3} step={0.1} fmt={(v) => `${v.toFixed(1)} mm`} />}

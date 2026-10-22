@@ -5,17 +5,17 @@ import { KitPage, previewNote } from '@/components/kit/kit-page';
 import { CookieMaker } from '@/components/cookie/cookie-maker';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Cookie Cutter & Stamp STL Maker – Plus Rangoli Stencils',
+  title: 'Rangoli Stencil Maker for Diwali – 3D Printed Rangoli Stencils, Cookie Cutters & Stamps (STL)',
   absoluteTitle: true,
-  description: 'Turn any picture, shape or letter into a 3D printable cookie cutter with a matching stamp, a fondant or clay stamp, or a rangoli stencil. Print-ready STL files.',
+  description: 'Turn any rangoli, mandala or kolam design into a 3D printable rangoli stencil for Diwali, with loose parts joined automatically. Also cookie cutters with matching stamps and fondant stamps.',
   path: '/tools/cookie-cutter/make',
-  keywords: ['cookie cutter stl generator', 'custom cookie cutter', 'cookie stamp stl', 'rangoli stencil 3d print', 'fondant stamp stl', 'picture to cookie cutter'],
+  keywords: ['rangoli stencil maker', '3d printed rangoli', 'diwali rangoli stencil', 'rangoli stencil stl', 'mandala stencil', 'kolam stencil', 'cookie cutter stl generator', 'cookie stamp stl'],
 });
 
 export default async function MakeCookie() {
   const c = await makerContext('cookie-cutter');
   return (
-    <KitPage slug="cookie-cutter" name="Cookie Cutter & Stamp Maker" title="Make a cookie cutter or stencil" note={previewNote(c.live, 'Free to try. Your picture stays in your browser; the printable files are built when you download.')}>
+    <KitPage slug="cookie-cutter" name="Rangoli Stencil & Cookie Cutter Maker" title="Make a rangoli stencil or cookie cutter" note={previewNote(c.live, 'Free to try. Your picture stays in your browser; the printable files are built when you download.')}>
       <CookieMaker {...c.buy} />
     </KitPage>
   );
