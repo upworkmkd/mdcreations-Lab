@@ -9,7 +9,7 @@ export const pxFor = (size) => Math.max(3, Math.min(6, Math.floor(1100 / size)))
 const and = (a, b) => { const o = new Uint8Array(a.length); for (let i = 0; i < a.length; i++) o[i] = a[i] && b[i] ? 1 : 0; return o; };
 const andNot = (a, b) => { const o = new Uint8Array(a.length); for (let i = 0; i < a.length; i++) o[i] = a[i] && !b[i] ? 1 : 0; return o; };
 
-/** Labels 4-connected pieces; returns { count, keepLargest(mask) }. */
+/** Labels 4-connected pieces; returns { count, lab, big, largest() }. */
 export function pieces(m, w, h) {
   const lab = new Int32Array(w * h), sizes = [0]; let n = 0; const st = [];
   for (let s = 0; s < w * h; s++) {
@@ -19,12 +19,44 @@ export function pieces(m, w, h) {
     sizes.push(c);
   }
   let big = 0; for (let k = 1; k <= n; k++) if (sizes[k] > sizes[big]) big = k;
-  return { count: n, largest: () => { const o = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) o[i] = lab[i] === big ? 1 : 0; return o; } };
+  return { count: n, lab, big, sizes, largest: () => { const o = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) o[i] = lab[i] === big ? 1 : 0; return o; } };
+}
+
+/**
+ * Ties every loose island to the main piece with a thin straight-ish bridge (the shortest way across the gap),
+ * so a stencil prints as one piece and keeps every part of the design.
+ */
+export function joinIslands(plate0, w, h, widthPx, minPx = 4) {
+  // specks too small to print are dropped instead of bridged
+  let plate = plate0, pc = pieces(plate, w, h);
+  if (pc.count < 2) return plate;
+  if (pc.sizes.some((n, k) => k && k !== pc.big && n < minPx)) { plate = plate.slice(); for (let i = 0; i < w * h; i++) { const k = pc.lab[i]; if (k && k !== pc.big && pc.sizes[k] < minPx) plate[i] = 0; } pc = pieces(plate, w, h); if (pc.count < 2) return plate; }
+  const { lab, big } = pc, dist = new Int32Array(w * h).fill(-1), par = new Int32Array(w * h).fill(-1), q = new Int32Array(w * h);
+  let qh = 0, qt = 0;
+  for (let i = 0; i < w * h; i++) if (lab[i] === big) { dist[i] = 0; q[qt++] = i; }
+  const nb = [-1, 1, -w, w, -w - 1, -w + 1, w - 1, w + 1];
+  while (qh < qt) {
+    const i = q[qh++], x = i % w;
+    for (let k = 0; k < 8; k++) {
+      const j = i + nb[k]; if (j < 0 || j >= w * h) continue;
+      const xj = j % w; if (Math.abs(xj - x) > 1) continue;
+      if (dist[j] >= 0) continue;
+      dist[j] = dist[i] + 1; par[j] = i; q[qt++] = j;   // spreads everywhere, so islands nested inside other islands are reached too
+    }
+  }
+  // for each island, its pixel closest to the main piece
+  const bestAt = new Int32Array(pc.count + 1).fill(-1);
+  for (let i = 0; i < w * h; i++) { const k = lab[i]; if (k && k !== big && dist[i] >= 0 && (bestAt[k] < 0 || dist[i] < dist[bestAt[k]])) bestAt[k] = i; }
+  const path = new Uint8Array(w * h);
+  for (let k = 1; k <= pc.count; k++) { let i = bestAt[k]; if (k === big || i < 0) continue; while (i >= 0 && lab[i] !== big) { path[i] = 1; i = par[i]; } }
+  const fat = grow(path, w, h, Math.max(1, widthPx / 2));
+  const out = plate.slice(); for (let i = 0; i < w * h; i++) if (fat[i]) out[i] = 1;
+  return out;
 }
 
 /**
  * shape: filled outline mask, detail: inner line mask (or null), both w × h at px px/mm (with room for the walls around).
- * p: { mode, height, wall, edge, flange, flangeT, plateT, reliefT, clearance, handle, stencilT, rim, islands: 'keep'|'remove' }
+ * p: { mode, height, wall, edge, flange, flangeT, plateT, reliefT, clearance, handle, stencilT, rim, islands: 'keep'|'remove'|'join', bridge }
  */
 export function buildCookie(p, shape, detail, w, h, px) {
   const mm = 1 / px, R = (v) => Math.max(1, Math.round(v * px)), out = [];
@@ -46,6 +78,7 @@ export function buildCookie(p, shape, detail, w, h, px) {
     if (p.rim > 0) { const inner = shrink(shape, w, h, R(p.rim)); for (let i = 0; i < w * h; i++) if (shape[i] && !inner[i]) plate[i] = 1; }
     const pc = pieces(plate, w, h);
     if (p.islands === 'remove' && pc.count > 1) plate = pc.largest();
+    if (p.islands === 'join' && pc.count > 1) plate = joinIslands(plate, w, h, Math.round(p.bridge * px), Math.round(0.8 * px * 0.8 * px));
     const t = new Tris(); extrude(t, maskPolys(plate, w, h, mm, 0.02, 1), 0, p.stencilT);
     out.push({ file: 'stencil', label: 'Stencil', tris: t.done(), pieces: pc.count });
   }
