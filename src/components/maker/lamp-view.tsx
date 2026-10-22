@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Tris, extrude, maskPolys } from '@/lib/mesh/mesh.js';
 
@@ -65,6 +65,7 @@ function glowSprite() {
 }
 
 export function LampView({ data, mode, height }: { data: LampData | null; mode: '3d' | 'wall'; height?: number }) {
+  const [lightOn, setLightOn] = useState(true);
   const box = useRef<HTMLDivElement>(null);
   const st = useRef<{ r?: THREE.WebGLRenderer; scene?: THREE.Scene; cam?: THREE.PerspectiveCamera; lamp?: THREE.Group; light?: THREE.PointLight; amb?: THREE.AmbientLight; hemi?: THREE.HemisphereLight; key?: THREE.DirectionalLight; wall?: THREE.Mesh; glow?: THREE.Sprite; led?: THREE.Mesh; az: number; el: number; dist: number; target: THREE.Vector3; dirty: boolean }>({ az: 0.55, el: 0.35, dist: 420, target: new THREE.Vector3(0, 0, 45), dirty: true });
 
@@ -146,23 +147,58 @@ export function LampView({ data, mode, height }: { data: LampData | null; mode: 
     const ledZ = G.ledge + data.apex;
     const post = new THREE.Mesh(new THREE.CylinderGeometry(4.9, 4.9, ledZ - 3 - 3, 32), new THREE.MeshStandardMaterial({ color: 0xd9d4c4, roughness: 0.5 }));
     post.rotation.x = Math.PI / 2; post.position.set(0, 0, (ledZ - 3 + 3) / 2); post.castShadow = false; g.add(post);
+    // screws: two M2.5 pan heads low on every wall, where the printed walls have their holes
+    const screwMat = new THREE.MeshStandardMaterial({ color: 0xb8bcc2, metalness: 0.85, roughness: 0.3 });
+    const slotMat = new THREE.MeshStandardMaterial({ color: 0x2b2d30, metalness: 0.5, roughness: 0.6 });
+    const NORMAL: Record<string, [number, number, number]> = { top: [0, 1, 0], bottom: [0, -1, 0], right: [1, 0, 0], left: [-1, 0, 0] };
+    for (const p of data.panels) {
+      const hs = p.id === 'top' || p.id === 'bottom' ? 30 : 40, nrm = new THREE.Vector3(...NORMAL[p.id]);
+      for (const sgn of [-1, 1]) {
+        const at = toLamp(p.id, new Float32Array([sgn * hs, 9.25, 0]));
+        const head = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 1.3, 24), screwMat);
+        head.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), nrm);
+        head.position.set(at[0], at[1], at[2]).addScaledVector(nrm, 0.65); head.castShadow = true; g.add(head);
+        const slot = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.5, 0.6), slotMat);
+        slot.quaternion.copy(head.quaternion); slot.position.copy(head.position).addScaledVector(nrm, 0.5); g.add(slot);
+      }
+    }
+    // the rocker switch, in its notch at the foot of the left wall (wall 3)
+    const sw = new THREE.Group(), bodyMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.5 });
+    const rockerMat = new THREE.MeshStandardMaterial({ color: lightOn ? 0xb3262d : 0x1d1d1d, roughness: 0.45 });
+    sw.add(new THREE.Mesh(new THREE.BoxGeometry(2.2, 14.2, 11.6), bodyMat));
+    const rocker = new THREE.Mesh(new THREE.BoxGeometry(2.4, 12, 9.4), rockerMat); rocker.position.x = -1.4; rocker.rotation.y = lightOn ? 0.12 : -0.12; sw.add(rocker);
+    sw.position.set(-G.baseX - 0.6, (17.86 + 32.06) / 2, G.ledge + 6.05); g.add(sw);
     s.led!.position.set(0, 0, ledZ); s.glow!.position.set(0, 0, ledZ); s.light!.position.set(0, 0, ledZ);
     s.dirty = true;
-  }, [walls, data]);
+  }, [walls, data, lightOn]);
 
   // daylight studio for the 3D view, a dark room lit only by the LED for the wall view
   useEffect(() => {
     const s = st.current; if (!s.scene) return;
     const wallView = mode === 'wall';
     s.scene.background = new THREE.Color(wallView ? '#0d0e0a' : '#dcddd2');
-    s.hemi!.intensity = wallView ? 0.04 : 0.75; s.key!.intensity = wallView ? 0 : 0.6; s.amb!.intensity = wallView ? 0.02 : 0.05;
-    s.light!.intensity = wallView ? 1.8 : 0.35; s.light!.castShadow = wallView;
-    s.wall!.visible = wallView; s.glow!.visible = wallView;
-    (s.led!.material as THREE.MeshBasicMaterial).color.set(wallView ? 0xfff6e2 : 0xf3e7c4);
-    if (wallView) { s.target.set(0, 0, 0); s.az = 0.18; s.el = -0.08; s.dist = 2600; }
+    // with the light off, the wall view is a dim room so the lamp itself can still be seen
+    s.hemi!.intensity = wallView ? (lightOn ? 0.04 : 0.35) : 0.75; s.key!.intensity = wallView ? (lightOn ? 0 : 0.25) : 0.6; s.amb!.intensity = wallView ? 0.02 : 0.05;
+    s.light!.intensity = lightOn ? (wallView ? 1.8 : 0.35) : 0; s.light!.castShadow = wallView && lightOn;
+    s.wall!.visible = wallView; s.glow!.visible = wallView && lightOn;
+    (s.led!.material as THREE.MeshBasicMaterial).color.set(lightOn ? (wallView ? 0xfff6e2 : 0xfff0c8) : 0xcfcabb);
+    if (s.scene.background instanceof THREE.Color && wallView) s.scene.background.set(lightOn ? '#0d0e0a' : '#55574a');
+    s.dirty = true;
+  }, [mode, lightOn]);
+  // a fresh view of the lamp or the wall each time the view changes
+  useEffect(() => {
+    const s = st.current;
+    if (mode === 'wall') { s.target.set(0, 0, 0); s.az = 0.18; s.el = -0.08; s.dist = 2600; }
     else { s.target.set(0, 0, 40); s.az = 0.6; s.el = 0.35; s.dist = 430; }
     s.dirty = true;
   }, [mode]);
 
-  return <div ref={box} className="lampview" style={height ? { height } : undefined} />;
+  return (
+    <div className="lampviewwrap">
+      <div ref={box} className="lampview" style={height ? { height } : undefined} />
+      <button type="button" className={`lampswitch${lightOn ? ' on' : ''}`} aria-pressed={lightOn} onClick={() => setLightOn((v) => !v)}>
+        <span className="rocker" aria-hidden="true" />{lightOn ? 'Light on' : 'Light off'}
+      </button>
+    </div>
+  );
 }

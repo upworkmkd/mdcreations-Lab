@@ -127,7 +127,7 @@ export function mountStudio(root, hooks) {
   const PLATE_DEF = '#3a3d2c', ART_DEF = '#e9c78f';
   let PLATE_BG = PLATE_DEF, ART = ART_DEF;
   const HINT_SEPARATE = 'Drag the picture on the plate to place it. Two prints, no colour change: a 2 mm plate with the picture sunk 1 mm deep, and the picture itself, 1 mm thick, which presses in.';
-  const HINT_COMBINED = 'Drag the picture on the plate to place it. One plate in two colours: the files hold the plate and the picture as two parts that fit exactly. Load both together, say yes to “one object with multiple parts”, and give each part its colour (AMS or another multi-colour printer).';
+  const HINT_COMBINED = 'Drag the picture on the plate to place it. One print: a 2 mm plate with the picture raised 0.8 mm on top. Change filament at 2 mm and the picture comes out in its own colour, with or without an AMS.';
   function plateColours() {
     const comb = $('plateKind').value === 'combined';
     $('plateColours').hidden = !comb;
@@ -179,7 +179,7 @@ export function mountStudio(root, hooks) {
   function describePlate(r) {
     if (!r) return tagsInto($('plateTags'), []);
     const comb = $('plateKind').value === 'combined';
-    tagsInto($('plateTags'), r.pieces ? [[comb ? 'picture in the second colour' : r.pieces + (r.pieces === 1 ? ' piece to press in' : ' pieces to press in'), !comb && r.pieces > 12], [Math.round(r.W) + ' × ' + Math.round(r.H) + ' × 2 mm plate']] : [['Nothing of the picture lands on the plate', true]]);
+    tagsInto($('plateTags'), r.pieces ? [[comb ? 'picture raised 0.8 mm, colour change at 2 mm' : r.pieces + (r.pieces === 1 ? ' piece to press in' : ' pieces to press in'), !comb && r.pieces > 12], [Math.round(r.W) + ' × ' + Math.round(r.H) + ' × 2 mm plate']] : [['Nothing of the picture lands on the plate', true]]);
   }
 
   /* ---------- placement ---------- */
