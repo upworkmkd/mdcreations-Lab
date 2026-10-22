@@ -32,8 +32,12 @@ function decode(src, done, fail) {
       const border = []; for (let x = 0; x < w; x += 3) border.push(d[4 * x], d[4 * ((h - 1) * w + x)]); for (let y = 0; y < h; y += 3) border.push(d[4 * y * w], d[4 * (y * w + w - 1)]);
       border.sort((a, b) => a - b); const bg = border[border.length >> 1];
       const lvl = bg > thr + 30 ? Math.min(bg - 14, Math.round(thr + 0.6 * (bg - thr))) : thr;
-      const grey = chroma / (w * h) < 14;                     // a black-and-white or grey picture: read it as art
-      done({ img, w, h, otsu: lvl, mode: clear > 0.02 * w * h ? 'alpha' : extreme > 0.9 * w * h || grey ? 'art' : 'photo' });
+      const grey = chroma / (w * h) < 14;                     // a black-and-white or grey picture: line art or a silhouette
+      // Every picture is read by darkness: dark parts become shadow, light parts let the light through. Photos keep
+      // their inner detail (faces, beards, spokes) this way, instead of turning into one solid cut-out. Clean art
+      // gets the Otsu cut-off; a photo gets the middle grey (128), which reads faces and clothes the way people expect.
+      const art = extreme > 0.9 * w * h || grey;
+      done({ img, w, h, otsu: art ? lvl : 128, mode: clear > 0.02 * w * h ? 'alpha' : 'art' });
   };
   im.onerror = fail;
   im.src = src;
@@ -188,21 +192,12 @@ export function mountStudio(root, hooks) {
   }
   function limits() { const o = opts(), D = DEFAULTS, H = o.apex + D.ledge; return { dark: H / (o.apex - D.V1), reach: H / (o.apex - o.Vmax), bx: D.baseX, by: D.baseY }; }
   function autoFit() {
-    const { w, h, field, bbox } = state, L = limits();
-    const bin = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) bin[i] = field[i] > 0.5 ? 1 : 0;
-    const dist = edt(bin, w, h); let bi = 0, bd = -1;
-    const mx = (bbox.x0 + bbox.x1) / 2, my = (bbox.y0 + bbox.y1) / 2, diag = Math.hypot(bbox.x1 - bbox.x0, bbox.y1 - bbox.y0) || 1;
-    for (let y = bbox.y0; y <= bbox.y1; y++) for (let x = bbox.x0; x <= bbox.x1; x++) {
-      const i = y * w + x; if (!bin[i]) continue;
-      const sc = Math.sqrt(dist[i]) * (1 - 0.6 * Math.hypot(x - mx, y - my) / diag);
-      if (sc > bd) { bd = sc; bi = i; }
-    }
-    const cx = state.empty ? w / 2 : bi % w + 0.5, cy = state.empty ? h / 2 : ((bi / w) | 0) + 0.5, r = Math.sqrt(dist[bi]) || 1;
-    const half = Math.hypot(L.bx * L.dark, L.by * L.dark);
-    const need = half / (0.92 * r);
-    const reachX = L.bx * L.reach * 0.96 / Math.max(cx - bbox.x0, bbox.x1 - cx, 1), reachY = L.by * L.reach * 0.96 / Math.max(cy - bbox.y0, bbox.y1 - cy, 1);
+    // centre the picture on the lamp and make it as big as the lamp can throw it (up to about 1.1 m tall)
+    const { w, h, bbox } = state, L = limits();
+    const cx = state.empty ? w / 2 : (bbox.x0 + bbox.x1 + 1) / 2, cy = state.empty ? h / 2 : (bbox.y0 + bbox.y1 + 1) / 2;
+    const reachX = L.bx * L.reach * 0.96 / Math.max((bbox.x1 - bbox.x0 + 1) / 2, 1), reachY = L.by * L.reach * 0.96 / Math.max((bbox.y1 - bbox.y0 + 1) / 2, 1);
     const fitAll = Math.min(reachX, reachY), nice = 1100 / Math.max(bbox.y1 - bbox.y0 + 1, (bbox.x1 - bbox.x0 + 1) * 0.9);
-    state.view.cx = cx; state.view.cy = cy; state.view.mmPerPx = Math.min(fitAll, Math.max(need, Math.min(nice, fitAll)));
+    state.view.cx = cx; state.view.cy = cy; state.view.mmPerPx = Math.min(fitAll, nice);
     syncSize(); schedule(); drawQuick();
   }
   function clampView() { const v = state.view; v.cx = Math.max(-state.w, Math.min(2 * state.w, v.cx)); v.cy = Math.max(-state.h, Math.min(2 * state.h, v.cy)); }
@@ -309,9 +304,11 @@ export function mountStudio(root, hooks) {
   function setChip(t, isBusy) { const c = $('chip'); c.textContent = t; c.classList.toggle('busy', !!isBusy); }
   function note(id, text, ok) { const n = $(id); n.hidden = !text; n.textContent = text || ''; n.classList.toggle('ok', !!ok); }
   function describe(r) {
-    $('readout').textContent = r.widthMm ? 'shadow ' + Math.round(r.widthMm / 10) + ' × ' + Math.round(r.heightMm / 10) + ' cm' : '';
     let lost = 0, extra = 0, tot = 0;
     for (let i = 0; i < r.shadow.length; i++) { if (r.shadow[i] === 2) continue; if (r.ideal[i]) { tot++; if (!r.shadow[i]) lost++; } else if (r.shadow[i]) extra++; }
+    // how much of the picture the real shadow reproduces: shared shadow over everything that is shadow in either one
+    const match = tot ? (tot - lost) / (tot + extra) : 0;
+    $('readout').textContent = r.widthMm ? 'shadow ' + Math.round(r.widthMm / 10) + ' × ' + Math.round(r.heightMm / 10) + ' cm' + (tot ? ' · matches your picture ' + (match * 100).toFixed(1) + '%' : '') : '';
     const bars = r.panels.reduce((a, p) => a + p.stats.struts, 0);
     const msgs = [];
     if (state.empty) msgs.push('No clear figure was found. Change how the picture is read in step 1.');

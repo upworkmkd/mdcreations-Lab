@@ -193,13 +193,13 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                 ))}
               </div>
             </div>
-            <p className="hint">Best: a black silhouette, or a cut-out PNG with a clear background. A photo works when the background is one plain colour. Small grey dots missing? Move the cut-off slider to the right. You can also drop or paste a picture.</p>
+            <p className="hint">Any picture works: dark parts become shadow and light parts let the light through, so a photo keeps its face, beard or spokes. Bold, high-contrast pictures read best. Too much or too little shadow? Move the darkness cut-off. You can also drop or paste a picture.</p>
             <div className="row">
               <div className="field">
                 <label htmlFor="mode">How to read it</label>
                 <select id="mode" className="input" defaultValue="art">
                   <option value="art">Dark parts become shadow</option>
-                  <option value="photo">Remove the plain background</option>
+                  <option value="photo">Solid cut-out (remove a plain background)</option>
                   <option value="alpha">Use the transparent background</option>
                 </select>
               </div>
@@ -211,7 +211,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
             <div className="row">
               <div className="field">
                 <label htmlFor="smooth">Smooth the outline<output id="smoothOut" /></label>
-                <input type="range" id="smooth" min={0} max={40} defaultValue={12} />
+                <input type="range" id="smooth" min={0} max={40} defaultValue={4} />
               </div>
               <label className="check"><input type="checkbox" id="invert" /> Swap light and shadow</label>
             </div>
