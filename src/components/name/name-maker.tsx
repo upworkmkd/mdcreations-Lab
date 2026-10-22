@@ -46,8 +46,8 @@ export function NameMaker(buy: KitBuy) {
 
   const getDesign = useCallback(() => {
     if (!mask) return null;
-    return { design: { name: lines.join(' ').slice(0, 40) || 'Name', text: lines.join(' / '), font: font.family, p, w: mask.w, h: mask.h, mask: encodeRle(mask.mask) }, preview: snap.current?.jpeg() ?? '' };
-  }, [mask, lines, font.family, p]);
+    return { design: { name: lines.join(' ').slice(0, 40) || 'Name', text: lines.join(' / '), font: font.family, p, w: mask.w, h: mask.h, mask: encodeRle(mask.mask), colors: { base: baseCol, letters: topCol } }, preview: snap.current?.jpeg() ?? '' };
+  }, [mask, lines, font.family, p, baseCol, topCol]);
 
   return (
     <Workbench tool="name-sign" next="/tools/name-sign/make" ready={Boolean(model)} getDesign={getDesign} buy={buy}
@@ -56,7 +56,7 @@ export function NameMaker(buy: KitBuy) {
       bar={<span className="muted">Drag to turn, scroll to zoom. Letters are drawn in your browser, in any language your keyboard can type.</span>}
       stage={<MeshView parts={parts} fitKey={`${dp.p.mode}-${dp.mask?.w}-${dp.mask?.h}`} snapRef={snap} />}
       stats={model ? <><span>Size <b>{model.size[0].toFixed(0)} × {model.size[1].toFixed(0)} mm</b></span><span>Height <b>{model.size[2].toFixed(1)} mm</b></span>{p.letterT > 0 && <span>Colour change at <b>{p.baseT.toFixed(1)} mm</b></span>}{tooThin && <span style={{ color: '#8a3b12' }}>Small letters: thicken them a little so they print cleanly.</span>}</> : <span>Type a name to begin.</span>}
-      youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>{p.letterT > 0 ? 'Two STL files (backing and raised letters) for two colours' : 'One STL file'}{p.mode === 'keychain' ? ' with the key ring hole' : p.mode === 'topper' ? ' with cake stakes' : ''}, a preview, print notes and a commercial license to sell what you print.</p></>}
+      youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>{p.letterT > 0 ? 'A two-colour 3MF (opens in Bambu Studio and OrcaSlicer with your colours) plus two STL files (backing and raised letters)' : 'One STL file'}{p.mode === 'keychain' ? ' with the key ring hole' : p.mode === 'topper' ? ' with cake stakes' : ''}, a preview, print notes and a commercial license to sell what you print.</p></>}
       side={<>
         <Group title="What to make">
           <Seg<NameMode> label="Type" value={p.mode} onChange={mode} options={[['keychain', 'Keychain'], ['sign', 'Name sign'], ['topper', 'Cake topper']]} />
