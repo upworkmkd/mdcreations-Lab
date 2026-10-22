@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { MeshView, type MeshSnap } from '@/components/kit/mesh-view';
 import { Check, Group, PicturePick, Range, Select, Seg, Text } from '@/components/kit/controls';
 import { Workbench, type KitBuy } from '@/components/kit/workbench';
@@ -9,6 +9,7 @@ import type { CookieMode, CookieParams } from '@/lib/cookie/design';
 import { loadGoogleFont, textMask } from '@/lib/mesh/text-mask';
 import { encodeRle } from '@/lib/layers/rle.js';
 
+const noop = () => () => {};
 type Pic = CanvasImageSource & { width: number; height: number };
 type Source = 'preset' | 'picture' | 'text';
 type Part = { file: string; tris: Float32Array; offset?: [number, number, number]; pieces?: number };
@@ -47,7 +48,10 @@ export function CookieMaker(buy: KitBuy) {
   const mode = (m: CookieMode) => { setP((o) => ({ ...o, mode: m, size: m === 'stencil' ? 160 : o.mode === 'stencil' ? 80 : o.size })); if (m === 'stencil' && source === 'preset' && preset !== 'rangoli') { setPreset('rangoli'); setName('Rangoli'); } };
 
   // the masks, at the resolution the server uses
+  // shapes are drawn on a canvas, which only exists in the browser (the page is also rendered once on the server)
+  const inBrowser = useSyncExternalStore(noop, () => true, () => false);
   const masks = useMemo(() => {
+    if (!inBrowser) return null;
     const px = pxFor(p.size), long = Math.round(p.size * px);
     let raw: { m: Uint8Array; w: number; h: number } | null = null;
     if (source === 'picture' && pic) raw = darkMask(pic, long, thr, invert);
@@ -74,7 +78,7 @@ export function CookieMaker(buy: KitBuy) {
     const inner = shrink(shape, W, H, Math.round(Math.max(1.6, p.wall + 0.6) * px)), detail = new Uint8Array(W * H);
     let has = false; for (let i = 0; i < W * H; i++) if (all[i] && inner[i] && useDetail && source !== 'text') { detail[i] = 1; has = true; }
     return { px, W, H, shape, detail: has ? detail : null, n: pc.count };
-  }, [source, pic, preset, text, fontOk, thr, invert, fill, largest, useDetail, plateShape, p.size, p.mode, p.wall, p.flange, p.rim]);
+  }, [inBrowser, source, pic, preset, text, fontOk, thr, invert, fill, largest, useDetail, plateShape, p.size, p.mode, p.wall, p.flange, p.rim]);
 
   const live = useMemo(() => ({ p, masks }), [p, masks]);
   const dp = useDeferredValue(live);
