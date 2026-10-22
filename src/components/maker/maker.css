@@ -72,3 +72,21 @@
 .maker .platebox canvas { width: 100%; height: auto; }
 .maker .platectl { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .maker [hidden] { display: none !important; }
+
+/* plate colours (one plate in two colours) */
+.colour { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; margin-right: 16px; cursor: pointer; }
+.colour input[type=color] { width: 36px; height: 28px; padding: 0; border: 1px solid var(--line-2); border-radius: 5px; background: #fff; cursor: pointer; }
+
+/* view tabs and the 3D views */
+.maker .viewtabs { display: inline-grid; grid-auto-flow: column; border: 1px solid var(--line-2); border-radius: var(--radius); overflow: hidden; background: #fff; align-self: flex-start; }
+.maker .viewtabs button { border: 0; background: transparent; padding: 7px 14px; cursor: pointer; font: inherit; font-size: 13.5px; }
+.maker .viewtabs button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.maker .lampbox { position: relative; }
+.maker .lampview { width: 100%; aspect-ratio: 1 / 1; background: #dcddd2; }
+.maker .lamphint { display: block; font-size: 13px; color: var(--ink-3); margin-top: 8px; }
+.maker .wallbox[hidden] { display: none; }
+.maker .lampviewwrap { position: relative; }
+.maker .lampswitch { position: absolute; right: 12px; top: 12px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line-2); background: #fff; border-radius: 999px; padding: 6px 12px 6px 8px; font: 500 13px/1 var(--sans, inherit); cursor: pointer; }
+.maker .lampswitch .rocker { width: 26px; height: 15px; border-radius: 4px; background: #1d1d1d; position: relative; box-shadow: inset 0 0 0 1px #000; }
+.maker .lampswitch .rocker::after { content: ''; position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 3px; background: #555; transition: left .15s, background .15s; }
+.maker .lampswitch.on .rocker::after { left: 13px; background: #d23a3f; }
