@@ -13,7 +13,7 @@ const COLOURS = ['#f4f1e8', '#161616', '#c0392b', '#1f5fa8', '#2e7d4f', '#f2c14e
 const PRESET: Record<NameMode, Partial<NameParams> & { size: number }> = {
   keychain: { size: 10, border: 2.5, baseT: 2.4, letterT: 1.2, backing: 'outline', corner: 3 },
   sign: { size: 26, border: 6, baseT: 3, letterT: 2, backing: 'plate', corner: 6 },
-  topper: { size: 30, border: 3, baseT: 3, letterT: 0, backing: 'outline', corner: 3 },
+  topper: { size: 30, border: 1, baseT: 3, letterT: 0, backing: 'outline', corner: 3 },
 };
 
 export function NameMaker(buy: KitBuy) {
@@ -71,7 +71,7 @@ export function NameMaker(buy: KitBuy) {
         </Group>
         <Group title="Backing">
           <Seg<'outline' | 'plate'> label="Shape" value={p.backing} onChange={(v) => set('backing', v)} options={[['outline', 'Follows the letters'], ['plate', 'Rounded plate']]} />
-          <Range label="Border" value={p.border} onChange={(v) => set('border', v)} min={1} max={12} step={0.5} fmt={(v) => `${v} mm`} />
+          <Range label="Border" value={p.border} onChange={(v) => set('border', v)} min={p.mode === 'topper' ? 0.5 : 1} max={12} step={0.5} fmt={(v) => `${v} mm`} />
           {p.backing === 'plate' && <Range label="Corner radius" value={p.corner} onChange={(v) => set('corner', v)} min={0} max={15} step={0.5} fmt={(v) => `${v} mm`} />}
           <Range label="Backing thickness" value={p.baseT} onChange={(v) => set('baseT', v)} min={1} max={8} step={0.2} fmt={(v) => `${v.toFixed(1)} mm`} />
           <Range label="Raised letters" value={p.letterT} onChange={(v) => set('letterT', v)} min={0} max={6} step={0.2} fmt={(v) => (v ? `${v.toFixed(1)} mm` : 'flat (one colour)')} />

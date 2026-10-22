@@ -20,6 +20,65 @@ const disc = (m, w, h, cx, cy, r, v) => {
 };
 const rect = (m, w, x0, y0, x1, y1, v) => { for (let y = Math.max(0, y0); y < y1; y++) for (let x = Math.max(0, x0); x < Math.min(w, x1); x++) m[y * w + x] = v; };
 
+/** 4-connected pieces: label per pixel, and per piece its pixel count and box. */
+function pieces(m, w, h) {
+  const lab = new Int32Array(w * h), info = [null], st = [];
+  for (let i0 = 0; i0 < w * h; i0++) {
+    if (!m[i0] || lab[i0]) continue;
+    const id = info.length, q = { n: 0, x0: w, x1: -1, y0: h, y1: -1 }; info.push(q);
+    lab[i0] = id; st.push(i0);
+    while (st.length) {
+      const i = st.pop(), x = i % w, y = (i / w) | 0; q.n++;
+      if (x < q.x0) q.x0 = x; if (x > q.x1) q.x1 = x; if (y < q.y0) q.y0 = y; if (y > q.y1) q.y1 = y;
+      for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) if (j >= 0 && m[j] && !lab[j]) { lab[j] = id; st.push(j); }
+    }
+  }
+  return { lab, info };
+}
+/** Fills enclosed gaps smaller than `minArea` pixels (slivers too small to print), keeps the bigger ones open. */
+function fillSmallHoles(m, w, h, minArea) {
+  const inv = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) inv[i] = m[i] ? 0 : 1;
+  const { lab, info } = pieces(inv, w, h), out = m.slice();
+  for (let i = 0; i < w * h; i++) { const q = info[lab[i]]; if (q && q.n < minArea && q.x0 > 0 && q.y0 > 0 && q.x1 < w - 1 && q.y1 < h - 1) out[i] = 1; }
+  return out;
+}
+/**
+ * Cake topper shape: the letters themselves with a thin outline, so the word reads letter by letter (the inside of
+ * a, o, e stays open). Letters that do not touch are joined by a bar along the foot of the word, and anything still
+ * loose (the dot of an i, an accent) by a short upright to the piece below it.
+ */
+function topperShape(letters, w, h, b, PX) {
+  let B = fillSmallHoles(grow(letters, w, h, Math.max(1, b)), w, h, Math.round((1.6 * PX) ** 2));
+  let { lab, info } = pieces(B, w, h);
+  if (info.length <= 2) return B;
+  // the baseline: the row where most letters end (descenders and swash tails go on below it)
+  const rows = new Int32Array(h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (letters[y * w + x]) rows[y]++;
+  let base = 0, drop = -1; for (let y = 0; y < h - 1; y++) { const d = rows[y] - rows[y + 1]; if (d > drop) { drop = d; base = y; } }
+  const foot = base + b, barH = Math.round(Math.max(2.5 * PX, 1.6 * b));
+  const onLine = info.slice(1).filter((q) => q.y0 <= foot && q.y1 >= foot - barH);
+  if (onLine.length > 1) {
+    const bx0 = Math.min(...onLine.map((q) => q.x0)), bx1 = Math.max(...onLine.map((q) => q.x1)), r = barH / 2;
+    rect(B, w, bx0, foot - barH + 1, bx1 + 1, foot + 1, 1);
+    disc(B, w, h, bx0, foot - r + 1, r, 1); disc(B, w, h, bx1, foot - r + 1, r, 1);
+  }
+  const half = Math.max(1, Math.round(0.8 * PX));
+  for (let pass = 0; pass < 12; pass++) {
+    ({ lab, info } = pieces(B, w, h));
+    if (info.length <= 2) break;
+    let main = 1; for (let k = 2; k < info.length; k++) if (info[k].n > info[main].n) main = k;
+    for (let k = 1; k < info.length; k++) {
+      if (k === main) continue;
+      const q = info[k], cx = Math.round((q.x0 + q.x1) / 2);
+      // straight down from the middle of the loose piece to the first pixel of the main piece, else straight up
+      let hit = -1; for (let y = q.y1 + 1; y < h; y++) if (lab[y * w + cx] === main) { hit = y; break; }
+      if (hit >= 0) { rect(B, w, cx - half, q.y1 - half, cx + half + 1, hit + half, 1); continue; }
+      for (let y = q.y0 - 1; y >= 0; y--) if (lab[y * w + cx] === main) { hit = y; break; }
+      if (hit >= 0) rect(B, w, cx - half, hit - half, cx + half + 1, q.y0 + half, 1);
+    }
+  }
+  return B;
+}
+
 /**
  * text: { mask, w, h } at PX px/mm.  p: { mode, backing: 'outline'|'plate', border, bold, baseT, letterT, hole, holes, stake, corner }
  * Returns { base, letters, size: [x, y, z] } as closed meshes.
@@ -47,6 +106,8 @@ export function buildName(p, text) {
       if (dx * dx + dy * dy <= r * r) B[y * W + x] = 1;
     }
     if (p.mode === 'sign' && p.holes) { const hr = 1.9 * PX, inset = Math.max(hr + 2, b / 2); disc(B, W, H, bx0 + inset + hr, by0 + inset, hr, 0); disc(B, W, H, bx1 - inset - hr, by0 + inset, hr, 0); }
+  } else if (p.mode === 'topper') {
+    B = topperShape(letters, W, H, b, PX);
   } else {
     B = fillHoles(grow(letters, W, H, Math.max(1, b)), W, H);
   }
