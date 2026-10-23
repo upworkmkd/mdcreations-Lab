@@ -34,7 +34,7 @@ function coarse(v: Uint8Array, G: { w: number; h: number; pitch: number }) {
 export function ReliefMaker(buy: KitBuy) {
   const [img, setImg] = useState<Pic | null>(null), [thumb, setThumb] = useState<string | null>(null);
   const [name, setName] = useState('Photo relief');
-  const [p, setP] = useState<ReliefParams>({ shape: 'rounded', width: 140, ratio: '4:3', corner: 10, base: 2, relief: 3, frame: 5, frameUp: 1, raise: 'dark', detail: 'standard', hole: 0 });
+  const [p, setP] = useState<ReliefParams>({ shape: 'rounded', width: 140, ratio: '4:3', height: 105, corner: 10, base: 2, relief: 3, frame: 5, frameUp: 1, raise: 'dark', detail: 'standard', hole: 0 });
   const [fr, setFr] = useState<Framing>({ zoom: 1, x: 0, y: 0 });
   const [adj, setAdj] = useState({ brightness: 0, contrast: 0.15, gamma: 1 });
   const [soft, setSoft] = useState(0.4);
@@ -44,6 +44,8 @@ export function ReliefMaker(buy: KitBuy) {
 
   useEffect(() => { let ok = true; loadImage(DEMO).then((im) => { if (ok) setImg((cur) => cur ?? im); }).catch(() => {}); return () => { ok = false; }; }, []);
 
+  const free = p.shape !== 'circle' && p.shape !== 'heart';
+  const plaqueH = p.ratio === 'custom' ? p.height : Math.round(p.width / (RATIOS[p.ratio as keyof typeof RATIOS] ?? 4 / 3));
   const G = useMemo(() => gridFor(p), [p]);
   const v = useMemo(() => (img ? blur(adjust(grayGrid(img, G.w, G.h, fr), adj), G.w, G.h, Math.round(soft / G.pitch)) : null), [img, G, fr, adj, soft]);
   const live = useMemo(() => ({ p, v, G }), [p, v, G]);
@@ -64,7 +66,7 @@ export function ReliefMaker(buy: KitBuy) {
       doneBlurb="Your relief is built. Print it flat, picture up, and try a dry-brush of paint to bring out the detail."
       busy={dp !== live ? 'Updating…' : null}
       bar={<><span className="muted">Finish (preview only):</span><div className="kit-swatches">{FINISH.map(([c, l]) => <button key={c} type="button" aria-label={l} title={l} aria-pressed={finish === c} style={{ background: c }} onClick={() => setFinish(c)} />)}</div></>}
-      stage={<MeshView parts={parts} fitKey={`${dp.p.shape}-${dp.p.width}-${dp.p.ratio}`} snapRef={snap} />}
+      stage={<MeshView parts={parts} fitKey={`${dp.p.shape}-${dp.p.width}-${dp.p.ratio}-${dp.p.ratio === 'custom' ? dp.p.height : ''}`} snapRef={snap} />}
       stats={model ? <><span>Size <b>{model.size[0].toFixed(0)} × {model.size[1].toFixed(0)} × {model.size[2].toFixed(1)} mm</b></span><span>Relief <b>{p.relief} mm</b></span><span>Detail <b>{G.pitch} mm</b></span></> : <span>Upload a photo to begin.</span>}
       youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>The plaque STL with your picture in relief, a preview, print tips and a commercial license. Your photo stays in your browser; only the brightness grid is sent when you download.</p></>}
       side={<>
@@ -81,8 +83,9 @@ export function ReliefMaker(buy: KitBuy) {
         </Group>
         <Group title="Plaque">
           <Select<Plaque> label="Shape" value={p.shape} onChange={(s) => set('shape', s)} options={SHAPES} />
-          {p.shape !== 'circle' && p.shape !== 'heart' && <Select label="Proportions" value={p.ratio} onChange={(r) => set('ratio', r)} options={Object.keys(RATIOS).map((k) => [k, k.replace(':', ' : ')] as [string, string])} />}
+          {free && <Select label="Proportions" value={p.ratio} onChange={(r) => setP((o) => ({ ...o, ratio: r, height: r === 'custom' ? plaqueH : o.height }))} options={[...Object.keys(RATIOS).map((k) => [k, k.replace(':', ' : ')] as [string, string]), ['custom', 'Custom: set width and height']]} />}
           <Range label="Width" value={p.width} onChange={(x) => set('width', x)} min={50} max={250} step={5} fmt={(x) => `${x} mm`} />
+          {free && <Range label="Height" value={plaqueH} onChange={(x) => setP((o) => ({ ...o, ratio: 'custom', height: x }))} min={40} max={250} step={5} fmt={(x) => `${x} mm`} hint={p.ratio === 'custom' ? 'Your own size. Pick a proportion above to lock the shape again.' : 'Follows the proportion. Move it to set your own height.'} />}
           {p.shape === 'rounded' && <Range label="Corner radius" value={p.corner} onChange={(x) => set('corner', x)} min={2} max={40} step={1} fmt={(x) => `${x} mm`} />}
           <Range label="Base" value={p.base} onChange={(x) => set('base', x)} min={1} max={6} step={0.2} fmt={(x) => `${x.toFixed(1)} mm`} />
           <Range label="Relief depth" value={p.relief} onChange={(x) => set('relief', x)} min={0.6} max={10} step={0.2} fmt={(x) => `${x.toFixed(1)} mm`} />

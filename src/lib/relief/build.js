@@ -9,7 +9,8 @@ const MAX = 160_000;
 /** Plaque size in mm and the sample grid (the picture fills the whole plaque; the frame is drawn over it). */
 export function gridFor(p) {
   const r = p.shape === 'circle' ? 1 : p.shape === 'heart' ? 1.08 : RATIOS[p.ratio] ?? 4 / 3;
-  const wmm = p.width, hmm = p.width / r;
+  const free = p.shape !== 'circle' && p.shape !== 'heart' && p.ratio === 'custom';   // width and height set separately
+  const wmm = p.width, hmm = free ? p.height : p.width / r;
   let pitch = p.detail === 'fine' ? 0.3 : 0.4;
   while ((Math.round(wmm / pitch) + 1) * (Math.round(hmm / pitch) + 1) > MAX) pitch += 0.02;
   pitch = +pitch.toFixed(2);
