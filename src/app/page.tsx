@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { getCatalog, getCurrency } from '@/lib/catalog.server';
+import { getCatalog, getCurrency, type CatalogTool } from '@/lib/catalog.server';
+import type { Currency } from '@/lib/money';
 import { formatMoney } from '@/lib/money';
 import { HeroSlider, type Slide } from '@/components/hero-slider';
 import { LAMP_GALLERY, KIND_LABEL } from '@/lib/gallery';
@@ -11,58 +12,122 @@ import { pageMeta } from '@/lib/seo';
 export const metadata = pageMeta({
   title: 'MD Creations Labs – Shadow Lamp Maker & 3D Printing Tools',
   absoluteTitle: true,
-  description: 'Make a custom 3D printed shadow lamp from any picture, preview the shadow on your wall and download print-ready STL files. More tools for makers coming: statue maker, layered sculptures and STL repair.',
+  description: 'Design 3D prints in your browser: custom shadow lamps from any picture, rangoli stencils for Diwali, photo lithophanes, name signs and keychains and more. Download print-ready STL and 3MF files, or have us print and ship it.',
   path: '/',
-  keywords: ['shadow lamp maker', '3D printing tools', 'custom shadow lamp STL', 'photo to STL', 'MD Creations'],
+  keywords: ['3D printing tools', 'shadow lamp maker', '3D printed rangoli stencil', 'lithophane maker', 'name keychain STL', 'custom shadow lamp STL', 'photo to STL', 'MD Creations'],
 });
 
-const DELIVERABLES: Record<string, { file: string; lines: [string, string?][] }> = {
-  'shadow-lamp': { file: 'your-design_shadow_lamp.zip', lines: [['1 top.stl'], ['2 right.stl'], ['3 left.stl'], ['4 bottom.stl'], ['plate.stl'], ['plate picture.stl', 'inlay'], ['Lamp base.stl'], ['Battery cover.stl'], ['shadow preview.jpg'], ['README.txt', 'how-to']] },
-  statue: { file: 'your-design_statue.zip', lines: [['statue.stl', 'watertight'], ['statue_hollow.stl', 'resin'], ['base.stl'], ['README.txt']] },
-  'layered-sculpture': { file: 'your-design_layered_sculpture.zip', lines: [['L01_frame.stl'], ['L02 … L07 colour layers.stl', 'one per colour'], ['L08_back.stl'], ['preview.jpg'], ['README.txt', 'assembly guide'], ['LICENSE.txt', 'commercial']] },
-  'stl-repair': { file: 'your-model_repaired.zip', lines: [['repaired.stl'], ['report.html', 'every fix'], ['before-after.png']] },
-};
+// The tools in the slider at the top, in this order, with the little badge on each. Everything else is listed below.
+const FEATURED: { slug: string; badge: string }[] = [
+  { slug: 'shadow-lamp', badge: 'Most loved' },
+  { slug: 'cookie-cutter', badge: 'Diwali special' },
+  { slug: 'lithophane', badge: 'Perfect gift' },
+  { slug: 'name-sign', badge: 'Best seller' },
+];
+
+function chip(t: CatalogTool, currency: Currency) {
+  const p = t.prices[currency];
+  if (t.status !== 'live') return { text: 'Coming soon', cls: 'soon' };
+  if (t.free) return { text: 'Free', cls: 'free' };
+  return { text: p != null ? `from ${formatMoney(p, currency)}` : 'Live', cls: 'live' };
+}
+
+function ToolCard({ t, currency }: { t: CatalogTool; currency: Currency }) {
+  const c = chip(t, currency);
+  return (
+    <li className={`tcard ${t.status === 'live' ? 'live' : 'soon'}`}>
+      <Link href={`/tools/${t.slug}`}>
+        <span className="pic">
+          <Image src={t.image} alt="" fill sizes="(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 380px" />
+          <span className={`chip ${c.cls}`}>{c.text}</span>
+        </span>
+        <span className="body">
+          <span className="head"><span className="name">{t.name}</span><span className="go" aria-hidden>→</span></span>
+          <span className="desc">{t.short}</span>
+        </span>
+      </Link>
+    </li>
+  );
+}
 
 export default async function Home() {
   const [tools, currency] = await Promise.all([getCatalog(), getCurrency()]);
-  const slides: Slide[] = tools.map((t) => {
+  const slides: Slide[] = FEATURED.flatMap(({ slug, badge }) => {
+    const t = tools.find((x) => x.slug === slug); if (!t) return [];
     const live = t.status === 'live', p = t.prices[currency];
-    return {
-      slug: t.slug, index: t.index, name: t.name, live, price: live && p != null ? formatMoney(p, currency) : null,
+    return [{
+      slug: t.slug, index: t.index, name: t.name, badge, live, price: live && !t.free && p != null ? formatMoney(p, currency) : null,
       title: t.slide.title, lede: t.slide.lede, image: t.image,
       primary: live && t.makePath ? { href: t.makePath, label: 'Start designing' } : { href: `/tools/${t.slug}`, label: 'See what is coming' },
       secondary: live ? { href: `/tools/${t.slug}`, label: 'How it works' } : { href: '/#tools', label: 'All tools' },
-    };
+    }];
   });
+  // live tools first, then the ones that are coming; the free utilities get their own row
+  const order = (a: CatalogTool, b: CatalogTool) => (a.status === 'live' ? 0 : 1) - (b.status === 'live' ? 0 : 1);
+  const design = tools.filter((t) => !t.free).sort(order), free = tools.filter((t) => t.free).sort(order);
+  const liveCount = tools.filter((t) => t.status === 'live').length;
 
   return (
     <>
       <HeroSlider slides={slides} />
 
-      <section className="section" id="tools">
+      <section className="section ways">
         <div className="wrap">
-          <div className="section-head">
-            <h2>The workbench</h2>
-            <p>Small, careful tools that turn pictures and models into files your 3D printer understands. Each tool has its own page. Trying them is free; you pay only when you download the files for a design.</p>
+          <div className="ways-head">
+            <p className="eyebrow">Labs · {liveCount} {liveCount === 1 ? 'tool' : 'tools'} live, more every month</p>
+            <h2>Design it in your browser.<br /><em>Print it yourself, or let us print it for you.</em></h2>
+            <p className="lede">Shape your shadow lamp, rangoli stencil, lithophane or name sign with a live 3D preview. Then take the print-ready files to your own printer, or place an order and we print it in our workshop and ship it to your door.</p>
           </div>
-          <ul className="catalog">
-            {tools.map((t) => {
-              const price = t.prices[currency], live = t.status === 'live';
-              return (
-                <li key={t.slug} className={live ? 'live' : 'soon'}>
-                  <Link className="row" href={`/tools/${t.slug}`}>
-                    <span className="thumb"><Image src={t.image} alt="" fill sizes="120px" /></span>
-                    <span className="name"><span className="idx">{t.index}</span>{t.name}</span>
-                    <span className="desc">{t.short}</span>
-                    <span className={`status ${live ? 'live' : ''}`}>{live ? (t.free ? 'Free' : price != null ? `Live · ${formatMoney(price, currency)}` : 'Live') : 'Coming soon'}</span>
-                    <span className="go" aria-hidden>→</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="ways-grid">
+            <div className="way">
+              <p className="num">Way 1 · For makers</p>
+              <h3>Print it on your printer</h3>
+              <p>Download the files for your design and print them at home or in your shop.</p>
+              <ul>
+                <li>Print-ready STL and two-colour 3MF files</li>
+                <li>Print notes with layer heights and colour changes</li>
+                <li>Commercial license: sell what you print</li>
+              </ul>
+              <div className="actions"><Link href="#tools" className="btn">Pick a tool <span className="arrow">→</span></Link></div>
+            </div>
+            <div className="way dark">
+              <p className="num">Way 2 · No printer needed <span className="soon">Coming soon</span></p>
+              <h3>We print it and ship it</h3>
+              <p>Customise any design, place your order, and we print it in our workshop and deliver it to your address.</p>
+              <ul>
+                <li>Your design, your colours, printed by us</li>
+                <li>Checked and packed by hand</li>
+                <li>Delivered across India</li>
+              </ul>
+              <div className="actions"><span className="btn light" aria-disabled="true">Ordering opens soon</span><span className="note">Design now, order when it opens.</span></div>
+            </div>
+          </div>
         </div>
       </section>
+
+      <section className="section" id="tools">
+        <div className="wrap">
+          <div className="center-head">
+            <p className="eyebrow">The workbench</p>
+            <h2>Design tools</h2>
+            <p>Pick a tool and shape your design with a live preview. A tool for every idea, from gifts to Diwali decor.</p>
+          </div>
+          <ul className={`toolgrid${design.length < 4 ? ' few' : ''}`}>{design.map((t) => <ToolCard key={t.slug} t={t} currency={currency} />)}</ul>
+        </div>
+      </section>
+
+      {free.length > 0 && (
+        <section className="section soft" id="free-tools">
+          <div className="wrap">
+            <div className="center-head">
+              <p className="eyebrow">No account needed</p>
+              <h2>Free tools</h2>
+              <p>Handy utilities for the jobs around printing. Nothing to install and nothing to pay.</p>
+            </div>
+            <ul className={`toolgrid${free.length < 4 ? ' few' : ''}`}>{free.map((t) => <ToolCard key={t.slug} t={t} currency={currency} />)}</ul>
+          </div>
+        </section>
+      )}
 
       <section className="section band">
         <div className="wrap">
@@ -103,26 +168,6 @@ export default async function Home() {
           <div style={{ marginTop: 28, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link href="/tools/shadow-lamp/make" className="btn">Make one from your picture <span className="arrow">→</span></Link>
             <Link href="/tools/shadow-lamp#gallery" className="btn ghost">See all designs</Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="wrap">
-          <div className="section-head">
-            <h2>Every download is ready for the slicer.</h2>
-            <p>One zip per design, named after it, with every part and a short note on how to print and put it together.</p>
-          </div>
-          <div className="deliver">
-            {tools.map((t) => {
-              const d = DELIVERABLES[t.slug]; if (!d) return null;
-              return (
-                <div key={t.slug} className="card">
-                  <div className="top"><b>{t.name}</b><span className={`status ${t.status === 'live' ? 'live' : ''}`}>{t.status === 'live' ? 'Live' : 'Soon'}</span></div>
-                  <pre className="manifest small"><span className="dir">{d.file}</span>{'\n'}{d.lines.map(([a, b]) => `  ${a}${b ? `  ` : ''}`).map((l, i) => <span key={i}>{l}{d.lines[i][1] ? <span className="dim">· {d.lines[i][1]}</span> : null}{'\n'}</span>)}</pre>
-                </div>
-              );
-            })}
           </div>
         </div>
       </section>
