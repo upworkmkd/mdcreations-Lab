@@ -12,7 +12,7 @@ import { pageMeta } from '@/lib/seo';
 export const metadata = pageMeta({
   title: 'MD Creations Labs – Shadow Lamp Maker & 3D Printing Tools',
   absoluteTitle: true,
-  description: 'Design 3D prints in your browser: custom shadow lamps from any picture, rangoli stencils for Diwali, photo lithophanes, name signs and keychains, QR codes and more. Live 3D preview, print-ready STL and 3MF files.',
+  description: 'Design 3D prints in your browser: custom shadow lamps from any picture, rangoli stencils for Diwali, photo lithophanes, name signs and keychains and more. Download print-ready STL and 3MF files, or have us print and ship it.',
   path: '/',
   keywords: ['3D printing tools', 'shadow lamp maker', '3D printed rangoli stencil', 'lithophane maker', 'name keychain STL', 'custom shadow lamp STL', 'photo to STL', 'MD Creations'],
 });
@@ -22,6 +22,7 @@ const FEATURED: { slug: string; badge: string }[] = [
   { slug: 'shadow-lamp', badge: 'Most loved' },
   { slug: 'cookie-cutter', badge: 'Diwali special' },
   { slug: 'lithophane', badge: 'Perfect gift' },
+  { slug: 'name-sign', badge: 'Best seller' },
 ];
 
 function chip(t: CatalogTool, currency: Currency) {
@@ -55,10 +56,10 @@ export default async function Home() {
     const t = tools.find((x) => x.slug === slug); if (!t) return [];
     const live = t.status === 'live', p = t.prices[currency];
     return [{
-      slug: t.slug, name: t.name, badge, live, price: live && !t.free && p != null ? formatMoney(p, currency) : null,
+      slug: t.slug, index: t.index, name: t.name, badge, live, price: live && !t.free && p != null ? formatMoney(p, currency) : null,
       title: t.slide.title, lede: t.slide.lede, image: t.image,
       primary: live && t.makePath ? { href: t.makePath, label: 'Start designing' } : { href: `/tools/${t.slug}`, label: 'See what is coming' },
-      secondary: { href: `/tools/${t.slug}`, label: 'How it works' },
+      secondary: live ? { href: `/tools/${t.slug}`, label: 'How it works' } : { href: '/#tools', label: 'All tools' },
     }];
   });
   // live tools first, then the ones that are coming; the free utilities get their own row
@@ -68,16 +69,40 @@ export default async function Home() {
 
   return (
     <>
-      <section className="intro">
+      <HeroSlider slides={slides} />
+
+      <section className="section ways">
         <div className="wrap">
-          <p className="intro-badge"><span className="dot" aria-hidden /> Labs · {liveCount} {liveCount === 1 ? 'tool' : 'tools'} live, more every month</p>
-          <h1>Design it in your browser.<br /><em>Print it on your printer.</em></h1>
-          <p className="intro-lede">Small, careful tools that turn your pictures, names and ideas into print-ready files: shadow lamps, rangoli stencils, lithophanes, name signs and more. Free to try; you pay only for the files you keep.</p>
-          <ul className="intro-points">
-            <li>Live 3D preview</li><li>STL and 3MF, ready to slice</li><li>Commercial license included</li>
-          </ul>
+          <div className="ways-head">
+            <p className="eyebrow">Labs · {liveCount} {liveCount === 1 ? 'tool' : 'tools'} live, more every month</p>
+            <h2>Design it in your browser.<br /><em>Print it yourself, or let us print it for you.</em></h2>
+            <p className="lede">Shape your shadow lamp, rangoli stencil, lithophane or name sign with a live 3D preview. Then take the print-ready files to your own printer, or place an order and we print it in our workshop and ship it to your door.</p>
+          </div>
+          <div className="ways-grid">
+            <div className="way">
+              <p className="num">Way 1 · For makers</p>
+              <h3>Print it on your printer</h3>
+              <p>Download the files for your design and print them at home or in your shop.</p>
+              <ul>
+                <li>Print-ready STL and two-colour 3MF files</li>
+                <li>Print notes with layer heights and colour changes</li>
+                <li>Commercial license: sell what you print</li>
+              </ul>
+              <div className="actions"><Link href="#tools" className="btn">Pick a tool <span className="arrow">→</span></Link></div>
+            </div>
+            <div className="way dark">
+              <p className="num">Way 2 · No printer needed <span className="soon">Coming soon</span></p>
+              <h3>We print it and ship it</h3>
+              <p>Customise any design, place your order, and we print it in our workshop and deliver it to your address.</p>
+              <ul>
+                <li>Your design, your colours, printed by us</li>
+                <li>Checked and packed by hand</li>
+                <li>Delivered across India</li>
+              </ul>
+              <div className="actions"><span className="btn light" aria-disabled="true">Ordering opens soon</span><span className="note">Design now, order when it opens.</span></div>
+            </div>
+          </div>
         </div>
-        <div className="wrap"><HeroSlider slides={slides} /></div>
       </section>
 
       <section className="section" id="tools">
@@ -85,7 +110,7 @@ export default async function Home() {
           <div className="center-head">
             <p className="eyebrow">The workbench</p>
             <h2>Design tools</h2>
-            <p>Pick a tool, shape your design with a live preview, and download files your slicer understands. A tool for every idea, from gifts to Diwali decor.</p>
+            <p>Pick a tool and shape your design with a live preview. A tool for every idea, from gifts to Diwali decor.</p>
           </div>
           <ul className={`toolgrid${design.length < 4 ? ' few' : ''}`}>{design.map((t) => <ToolCard key={t.slug} t={t} currency={currency} />)}</ul>
         </div>
