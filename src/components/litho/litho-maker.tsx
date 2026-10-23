@@ -95,6 +95,10 @@ export function LithoMaker(buy: KitBuy) {
   }, [gray, name, p, G]);
 
   const round = p.shape === 'cylinder' || p.shape === 'moon';
+
+  const panel = p.shape === 'flat' || p.shape === 'curved';
+
+  const panelH = p.ratio === 'custom' ? p.height : Math.round(p.width / (RATIOS[p.ratio as keyof typeof RATIOS] ?? 4 / 3));
   const sizeText = model ? model.size.filter((v) => v > 0).map((v) => v.toFixed(0)).join(' × ') + ' mm' : '';
 
   return (
@@ -122,8 +126,9 @@ export function LithoMaker(buy: KitBuy) {
         </Group>
         <Group title="Shape">
           <Select<LithoShape> label="Shape" value={p.shape} onChange={(v) => set('shape', v)} options={SHAPES} />
-          {(p.shape === 'flat' || p.shape === 'curved') && <Select label="Proportions" value={p.ratio} onChange={(v) => set('ratio', v)} options={Object.keys(RATIOS).map((k) => [k, k.replace(':', ' : ')] as [string, string])} />}
+          {panel && <Select label="Proportions" value={p.ratio} onChange={(v) => setP((o) => ({ ...o, ratio: v, height: v === 'custom' ? panelH : o.height }))} options={[...Object.keys(RATIOS).map((k) => [k, k.replace(':', ' : ')] as [string, string]), ['custom', 'Custom: set width and height']]} />}
           {!round && <Range label="Width" value={p.width} onChange={(v) => set('width', v)} min={50} max={250} step={5} fmt={(v) => `${v} mm`} />}
+          {panel && <Range label="Height" value={panelH} onChange={(v) => setP((o) => ({ ...o, ratio: 'custom', height: v }))} min={40} max={250} step={5} fmt={(v) => `${v} mm`} hint={p.ratio === 'custom' ? 'Your own size. Pick a proportion above to lock the shape again.' : 'Follows the proportion. Move it to set your own height.'} />}
           {round && <Range label="Diameter" value={p.diameter} onChange={(v) => set('diameter', v)} min={p.shape === 'moon' ? 60 : 50} max={p.shape === 'moon' ? 180 : 160} step={5} fmt={(v) => `${v} mm`} />}
           {p.shape === 'cylinder' && <Range label="Height" value={p.height} onChange={(v) => set('height', v)} min={50} max={220} step={5} fmt={(v) => `${v} mm`} />}
           {p.shape === 'curved' && <Range label="Curve" value={p.angle} onChange={(v) => set('angle', v)} min={40} max={200} step={5} fmt={(v) => `${v}°`} />}

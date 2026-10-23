@@ -14,7 +14,7 @@ export function parseLithoDesign(x: unknown): LithoDesign {
   const p: LithoParams = {
     shape: pick(q.shape, SHAPES as LithoShape[], 'shape'),
     width: num(q.width, 40, 300, 'width'),
-    ratio: pick(q.ratio, Object.keys(RATIOS), 'proportions'),
+    ratio: pick(q.ratio, [...Object.keys(RATIOS), 'custom'], 'proportions'),
     diameter: num(q.diameter, 50, 200, 'diameter'),
     height: num(q.height, 40, 250, 'height'),
     angle: num(q.angle, 30, 220, 'curve'),

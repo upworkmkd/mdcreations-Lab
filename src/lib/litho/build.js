@@ -11,6 +11,7 @@ export function gridFor(p) {
   let wmm, hmm;
   if (p.shape === 'cylinder') { wmm = Math.PI * p.diameter; hmm = p.height; }
   else if (p.shape === 'moon') { wmm = Math.PI * p.diameter; hmm = wmm / 2; }
+  else if (p.shape !== 'heart' && p.ratio === 'custom') { wmm = p.width; hmm = p.height; }   // width and height set separately
   else { const r = p.shape === 'heart' ? 1.08 : RATIOS[p.ratio] ?? 4 / 3; wmm = p.width; hmm = p.width / r; }
   let pitch = p.detail === 'fine' ? 0.3 : 0.4;
   const n = (pp) => (Math.round(wmm / pp) + 1) * (Math.round(hmm / pp) + 1);
