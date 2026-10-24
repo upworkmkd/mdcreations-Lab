@@ -1,11 +1,12 @@
 /* What the browser sends to save a lithophane: the settings and the brightness grid (not the photo itself). */
-import { SHAPES, RATIOS, gridFor } from './build.js';
+import { SHAPES, RATIOS, BASES, gridFor } from './build.js';
 import { num, pick, cleanName } from '@/lib/kits/check';
 
 export type LithoShape = 'flat' | 'curved' | 'cylinder' | 'heart' | 'moon';
 export type LithoParams = {
   shape: LithoShape; width: number; ratio: string; diameter: number; height: number; angle: number;
   minT: number; maxT: number; border: number; detail: 'standard' | 'fine'; stand: boolean;
+  base: string; baseLen: number;   // base style for the shape (see BASES) and the stand's own length in mm
 };
 export type LithoDesign = { name: string; p: LithoParams; w: number; h: number; gray: string };
 
@@ -23,7 +24,12 @@ export function parseLithoDesign(x: unknown): LithoDesign {
     border: num(q.border, 0, 15, 'border'),
     detail: pick(q.detail, ['standard', 'fine'] as const, 'detail'),
     stand: Boolean(q.stand),
+    base: '', baseLen: q.baseLen == null ? 0 : num(q.baseLen, 30, 260, 'base length'),
   };
+  const bases = BASES[p.shape] as string[];
+  // designs saved before base styles only said whether there was a stand
+  p.base = q.base == null ? (p.stand ? bases[0] : 'none') : pick(q.base, bases, 'base');
+  p.stand = p.base !== 'none';
   if (p.maxT <= p.minT + 0.2) throw new Error('The thickest part must be thicker than the thinnest.');
   const G = gridFor(p);
   if (Number(d.w) !== G.w || Number(d.h) !== G.h) throw new Error('This lithophane was saved with different settings. Please open it in the maker again.');
