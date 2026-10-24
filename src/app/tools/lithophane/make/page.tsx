@@ -15,7 +15,7 @@ export const metadata: Metadata = pageMeta({
 export default async function MakeLithophane() {
   const c = await makerContext('lithophane');
   return (
-    <KitPage slug="lithophane" name="Lithophane Maker" title="Make a lithophane" note={previewNote(c.live, 'Free to try. Your photo stays in your browser; the printable files are built when you download.')}>
+    <KitPage slug="lithophane" name="Lithophane Maker" title="Make a lithophane" note={previewNote(c.live, 'Free to try. Your photo stays in your browser unless you choose to share it; the printable files are built when you download.')}>
       <LithoMaker {...c.buy} />
     </KitPage>
   );

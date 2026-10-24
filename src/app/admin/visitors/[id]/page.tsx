@@ -5,6 +5,8 @@ import { UUID_RE } from '@/lib/consent';
 import { Card, Filters, PageHead, Pager, Stat, ago, country, duration, emails, num, pageNum, place, shortId, str, when } from '../../ui';
 import { NOISE, Timeline, type Ev, type Sess } from '../../timeline';
 import { BulkForm, DeleteOne } from '../../bulk';
+import { PictureGrid, type SharedPicture } from '../../pictures/grid';
+import { ScoreBadge } from '../score';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Visitor' };
@@ -24,11 +26,18 @@ export default async function Visitor({ params, searchParams }: { params: Promis
   if (!v) notFound();
   let evq = db.from('visitor_events').select('*', { count: 'exact' }).eq('visitor_id', id);
   if (f === 'key') evq = evq.not('type', 'in', `(${NOISE.join(',')})`);
-  const [ev, sessions, others] = await Promise.all([
+  const [ev, sessions, others, ov, pics] = await Promise.all([
     evq.order('created_at', { ascending: false }).order('id', { ascending: false }).range((page - 1) * SIZE, page * SIZE - 1),
     db.from('visitor_sessions').select('*').eq('visitor_id', id).order('started_at', { ascending: false }).limit(200),
     v.user_id ? db.from('visitors').select('id, last_seen, browser, os, device_type, city').eq('user_id', v.user_id).neq('id', id).order('last_seen', { ascending: false }) : Promise.resolve({ data: [] as { id: string; last_seen: string; browser: string | null; os: string | null; device_type: string | null; city: string | null }[] }),
+    db.from('visitor_overview').select('score, referral, pictures_chosen, pictures_kept').eq('id', id).maybeSingle(),
+    // pictures this browser shared, and (when they have an account) the ones shared while signed in elsewhere
+    (v.user_id ? db.from('shared_pictures').select('id, visitor_id, user_id, tool, name, width, height, bytes, created_at').or(`visitor_id.eq.${id},user_id.eq.${v.user_id}`)
+               : db.from('shared_pictures').select('id, visitor_id, user_id, tool, name, width, height, bytes, created_at').eq('visitor_id', id)).order('created_at', { ascending: false }).limit(60),
   ]);
+  const o = ov.data as { score: number; referral: string | null; pictures_chosen: number; pictures_kept: number } | null;
+  const shared = (pics.data ?? []) as SharedPicture[];
+  const chosen = (await db.from('visitor_events').select('name, props, created_at, path').eq('visitor_id', id).eq('type', 'file').order('created_at', { ascending: false }).limit(30)).data ?? [];
   const u = v.user_id ? (await emails([v.user_id])).get(v.user_id) : null;
   const sess = (sessions.data ?? []) as Sess[];
   const totalTime = sess.reduce((a, s) => a + (new Date(s.last_seen).getTime() - new Date(s.started_at).getTime()) / 1000, 0);
@@ -41,7 +50,8 @@ export default async function Visitor({ params, searchParams }: { params: Promis
       </PageHead>
 
       <div className="adm-stats">
-        <Stat label="Visits" value={num(v.visits)} note={v.visits > 1 ? 'returning visitor' : 'first visit'} />
+        <Stat label="Score" value={o ? <ScoreBadge n={o.score} /> : '—'} note="0–100, from what they did" />
+        <Stat label="Visits" value={num(v.visits)} note={v.visits > 1 ? 'returning visitor' : 'new visitor'} />
         <Stat label="Pages viewed" value={num(v.pageviews)} />
         <Stat label="Actions" value={num(v.events)} />
         <Stat label="Time on site" value={duration(totalTime)} />
@@ -72,6 +82,7 @@ export default async function Visitor({ params, searchParams }: { params: Promis
         </Card>
         <Card title="How they found us">
           <Facts rows={[
+            ['Referral', o?.referral ?? 'Direct'],
             ['First came from', v.first_referrer ? <a href={v.first_referrer} target="_blank" rel="noreferrer">{v.first_referrer.slice(0, 60)}</a> : 'Direct / unknown'],
             ['First page', v.first_landing ? <code>{v.first_landing}</code> : null],
             ['utm_source', v.utm_source], ['utm_medium', v.utm_medium], ['utm_campaign', v.utm_campaign], ['utm_term', v.utm_term], ['utm_content', v.utm_content],
@@ -87,6 +98,17 @@ export default async function Visitor({ params, searchParams }: { params: Promis
           )}
         </Card>
       </div>
+
+      <Card title={`Pictures${shared.length ? ` they shared (${shared.length})` : ''}`}>
+        {shared.length > 0
+          ? <PictureGrid rows={shared} />
+          : <p className="muted">{chosen.length ? 'They loaded a picture into a tool but did not tick “keep a copy”, so it stayed in their browser.' : 'No picture loaded into a tool.'}</p>}
+        {chosen.length > 0 && (
+          <ul className="adm-list" style={{ marginTop: 14 }}>
+            {chosen.map((c, i) => { const pr = (c.props ?? {}) as { type?: string; kb?: number; ext?: string }; return <li key={i}><b>{String(c.name ?? 'file')}</b> <span className="muted">{[pr.ext, pr.kb != null ? `${pr.kb} KB` : null, c.path].filter(Boolean).join(' · ')} · {ago(c.created_at)}</span></li>; })}
+          </ul>
+        )}
+      </Card>
 
       <Card title="Visits" flush>
         <div className="tbl-wrap"><table className="tbl adm-tbl">

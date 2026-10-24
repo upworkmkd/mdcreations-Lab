@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { mountLayerStudio } from './studio.js';
 import { BuyBox, type BuyBoxProps } from '@/components/buy-box';
 import './studio.css';
+import { KeepPicture } from '@/components/keep-picture';
 
 type Studio = { designPayload(): unknown; previewJpeg(): string; destroy(): void; isReady(): boolean };
 
@@ -32,13 +33,14 @@ export function LayerMaker(props: Omit<BuyBoxProps, 'tool' | 'next' | 'ready' | 
             <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="3" y="3" width="22" height="22" rx="3" fill="var(--line-2)" /><rect x="6" y="6" width="22" height="22" rx="3" fill="var(--muted)" /><rect x="9" y="9" width="22" height="22" rx="3" fill="var(--accent)" /><circle cx="20" cy="20" r="6.5" fill="var(--panel)" /></svg>
             <div>
               <h1>Layered Sculpture Maker</h1>
-              <p>One picture in, a stack of printable colour layers out. Everything runs in your browser.</p>
+              <p>One picture in, a stack of printable colour layers out. Everything runs in your browser; your picture is only shared if you tick the box.</p>
             </div>
           </div>
           <div className="top-actions">
             <input className="vh" id="file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
             <label className="btn primary" htmlFor="file">Upload your picture</label>
             <button className="btn" id="btn-sample" type="button">Sample artwork</button>
+            <KeepPicture className="on-top" />
           </div>
         </header>
 

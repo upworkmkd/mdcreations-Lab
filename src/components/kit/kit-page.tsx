@@ -17,5 +17,5 @@ export function KitPage({ slug, name, title, note, children }: { slug: string; n
   );
 }
 
-export const previewNote = (live: boolean, free = 'Free to try. Your picture stays in your browser; the printable files are built when you download.') =>
+export const previewNote = (live: boolean, free = 'Free to try. Your picture stays in your browser unless you choose to share it; the printable files are built when you download.') =>
   live ? free : 'Admin preview: this tool is not live yet. Try it, download for free, and switch it to Live in Admin → Tools and prices when you are happy.';

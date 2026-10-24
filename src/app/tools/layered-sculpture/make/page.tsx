@@ -41,7 +41,7 @@ export default async function MakeLayers() {
           <nav className="crumbs" aria-label="Breadcrumb"><Link href="/#tools">Tools</Link><span>/</span><Link href="/tools/layered-sculpture">Layered Sculpture Maker</Link></nav>
           <h1 className="serif" style={{ font: '500 clamp(34px, 4.4vw, 52px)/1.02 var(--serif)', marginTop: 12 }}>Make a layered sculpture</h1>
         </div>
-        <p className="muted" style={{ maxWidth: '50ch', fontSize: 15 }}>{live ? 'Free to try. Your picture stays in your browser; the printable files are built when you download.' : 'Admin preview: this tool is not live yet. Try it, download for free, and switch it to Live in Admin → Tools and prices when you are happy.'}</p>
+        <p className="muted" style={{ maxWidth: '50ch', fontSize: 15 }}>{live ? 'Free to try. Your picture stays in your browser unless you choose to share it; the printable files are built when you download.' : 'Admin preview: this tool is not live yet. Try it, download for free, and switch it to Live in Admin → Tools and prices when you are happy.'}</p>
       </div>
       <LayerMaker currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} plan={plan} plans={plans}
         otherPlan={Boolean(ent && !ent.covers)} viewerName={viewer?.name ?? ''} reviewed={reviewed} preview={!live && admin} />

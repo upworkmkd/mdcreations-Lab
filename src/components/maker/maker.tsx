@@ -12,6 +12,7 @@ import { PlanChooser, type ChooserPlan, type Choice } from './plan-chooser';
 import { ThankYou } from './thank-you';
 import { LampView, type LampData } from './lamp-view';
 import './maker.css';
+import { KeepPicture } from '@/components/keep-picture';
 
 type Studio = { designPayload(): unknown; previewJpeg(): string; destroy(): void; loadExample(src: string, name: string): void };
 type Phase = { kind: 'idle' } | { kind: 'working'; text: string } | { kind: 'done'; fileId: string } | { kind: 'error'; text: string; orderId?: string };
@@ -183,6 +184,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                 </div>
               </div>
             </div>
+            <KeepPicture />
             <div className="field">
               <span className="hint">Or start from an example</span>
               <div className="examples">
@@ -251,6 +253,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                   <button type="button" className="btn small ghost" id="plateSame" hidden>Use the shadow picture</button>
                   <input type="file" id="plateFile" accept="image/*" hidden />
                 </div>
+                <KeepPicture />
                 <div className="platectl" id="plateRead" hidden>
                   <div className="field"><label htmlFor="pMode">How to read it</label>
                     <select id="pMode" className="input" defaultValue="art"><option value="art">Dark parts become the picture</option><option value="photo">Remove the plain background</option><option value="alpha">Use the transparent background</option></select></div>

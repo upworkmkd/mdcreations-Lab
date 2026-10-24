@@ -112,10 +112,10 @@ export function LithoMaker(buy: KitBuy) {
       stage={<>{view === '3d' && <MeshView parts={parts} fitKey={`${dp.p.shape}-${dp.p.width}-${dp.p.diameter}-${dp.p.height}-${dp.p.ratio}-${dp.p.stand}`} snapRef={snap} />}
         <canvas ref={lit} className="flat" hidden={view !== 'lit'} style={{ background: '#2a2620' }} /></>}
       stats={model ? <><span>Size <b>{sizeText}</b></span><span>Thickness <b>{p.minT}–{p.maxT} mm</b></span><span>Detail <b>{G.pitch} mm</b></span><span>Files <b>{model.parts.length} STL</b></span></> : <span>Upload a photo to begin.</span>}
-      youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>The lithophane STL{p.stand ? (round ? (p.shape === 'moon' ? ' and its stand' : ' and its lamp base') : ' and a stand') : ''}, a preview picture, print settings and a commercial license. Your photo stays in your browser; only the brightness grid is sent when you download.</p></>}
+      youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>The lithophane STL{p.stand ? (round ? (p.shape === 'moon' ? ' and its stand' : ' and its lamp base') : ' and a stand') : ''}, a preview picture, print settings and a commercial license. Your photo stays in your browser unless you choose to share it; only the brightness grid is sent when you download.</p></>}
       side={<>
         <Group title="Photo">
-          <PicturePick onImage={onImage} preview={thumb} label={thumb ? 'Change the photo' : 'Upload a photo'} />
+          <PicturePick tool="lithophane" onImage={onImage} preview={thumb} label={thumb ? 'Change the photo' : 'Upload a photo'} />
           {p.shape === 'moon' && <button type="button" className="btn small ghost" onClick={() => { const m = moonSurface(Math.floor(Math.random() * 1e6) + 1); setImg(m); setThumb(m.toDataURL('image/jpeg', 0.7)); setName('Moon lamp'); setFr({ zoom: 1, x: 0, y: 0 }); }}>Use a moon surface instead</button>}
           <Range label="Zoom" value={fr.zoom} onChange={(v) => setFr((o) => ({ ...o, zoom: v }))} min={1} max={3} step={0.05} fmt={(v) => `${v.toFixed(2)}×`} />
           <Range label="Move left / right" value={fr.x} onChange={(v) => setFr((o) => ({ ...o, x: v }))} min={-1} max={1} step={0.02} fmt={(v) => v.toFixed(2)} />
