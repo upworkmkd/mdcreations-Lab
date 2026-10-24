@@ -4,7 +4,7 @@ import { Card, Filters, PageHead, Pager, pageNum, str, visitorNames } from '../u
 import { PictureGrid, type SharedPicture } from './grid';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Shared pictures' };
+export const metadata = { title: 'Pictures' };
 const SIZE = 60;
 
 export default async function Pictures({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -19,7 +19,7 @@ export default async function Pictures({ searchParams }: { searchParams: Promise
   const names = await visitorNames([...new Set(rows.map((r) => r.visitor_id).filter(Boolean) as string[])]);
   return (
     <>
-      <PageHead title="Shared pictures" sub="Pictures visitors chose to share by ticking “Help improve this tool” under an upload. Private: only admins can open them, search engines never see them, and each one is deleted after 10 days." />
+      <PageHead title="Pictures" sub="Pictures loaded into the tools while “Keep a copy of my picture” was ticked under the upload (it is ticked unless the visitor unticks it). Private: only admins can open them, search engines never see them, and each one is deleted after 10 days." />
       <Filters name="tool" base="/admin/pictures" current={tool} options={[['', 'All tools'], ['shadow-lamp', 'Shadow lamp'], ['shadow-lamp-plate', 'Lamp plate'], ['lithophane', 'Lithophane'], ['photo-relief', 'Photo relief'], ['cookie-cutter', 'Rangoli / cutter'], ['layered-sculpture', 'Layered sculpture']]} />
       {error && <div className="adm-alert">{error.message}. Have you run the 20261024000000_visitor_overview_pictures.sql migration?</div>}
       <Card><PictureGrid rows={rows} showVisitor names={names} /></Card>

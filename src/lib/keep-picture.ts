@@ -1,19 +1,22 @@
-/* "Help improve this tool": the visitor may let us keep a copy of the picture they upload, for 10 days.
- * Off unless they tick the box. Their answer is remembered in a cookie, so every upload box on the site agrees.
+/* "Keep a copy of my picture for 10 days to help improve this tool": ticked to start with.
+ * Unticking keeps pictures in the browser only, and deletes the copy of a picture uploaded just before.
+ * The answer is remembered in a cookie (0 = unticked), so every upload box on the site agrees.
  * Browser-only module (the tools' upload handlers call offerPicture). */
 
 const COOKIE = 'mdl_keep_pic', EVENT = 'mdl:keep-picture', MAX_SIDE = 1200;
-type Pending = { blob: Blob; tool: string; name: string; sent: boolean };
+type Pending = { blob: Blob; tool: string; name: string; sent: boolean; id?: string; receipt?: string };
 let last: Pending | null = null;
 
+/** Ticked unless this browser unticked it. */
 export function keepOptedIn() {
-  if (typeof document === 'undefined') return false;
-  return document.cookie.split('; ').some((c) => c === `${COOKIE}=1`);
+  if (typeof document === 'undefined') return true;
+  return !document.cookie.split('; ').some((c) => c === `${COOKIE}=0`);
 }
 export function setKeepOptIn(on: boolean) {
   document.cookie = `${COOKIE}=${on ? 1 : 0}; Max-Age=${60 * 60 * 24 * 365}; Path=/; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
   window.dispatchEvent(new CustomEvent(EVENT, { detail: on }));
-  if (on && last && !last.sent) void send(last);     // ticked after choosing the picture: keep that one
+  if (on && last && !last.sent) void send(last);     // ticked again after choosing the picture: keep that one
+  if (!on && last && last.sent) void unsend(last);   // unticked just after uploading: delete that copy now
 }
 export function onKeepChange(fn: (on: boolean) => void) {
   const h = (e: Event) => fn(Boolean((e as CustomEvent).detail));
@@ -46,6 +49,17 @@ async function send(p: Pending) {
     const s = await shrink(p.blob); if (!s) return;
     const f = new FormData();
     f.set('file', s.out, 'picture.jpg'); f.set('tool', p.tool); f.set('name', p.name); f.set('w', String(s.w)); f.set('h', String(s.h)); f.set('consent', 'yes');
-    await fetch('/api/pictures', { method: 'POST', body: f, credentials: 'same-origin' });
-  } catch { /* sharing is optional; never get in the way of the tool */ }
+    const r = await fetch('/api/pictures', { method: 'POST', body: f, credentials: 'same-origin' });
+    const j = (await r.json().catch(() => ({}))) as { id?: string; receipt?: string };
+    if (j.id && j.receipt) { p.id = j.id; p.receipt = j.receipt; }
+    if (!keepOptedIn()) await unsend(p);             // unticked while it was still uploading
+  } catch { /* keeping a copy is optional; never get in the way of the tool */ }
+}
+
+async function unsend(p: Pending) {
+  p.sent = false;
+  if (!p.id || !p.receipt) return;
+  const body = JSON.stringify({ id: p.id, receipt: p.receipt });
+  p.id = undefined; p.receipt = undefined;
+  try { await fetch('/api/pictures', { method: 'DELETE', body, headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' }); } catch { /* ignore */ }
 }

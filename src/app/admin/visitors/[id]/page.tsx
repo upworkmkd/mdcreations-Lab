@@ -99,10 +99,10 @@ export default async function Visitor({ params, searchParams }: { params: Promis
         </Card>
       </div>
 
-      <Card title={`Pictures${shared.length ? ` they shared (${shared.length})` : ''}`}>
+      <Card title={`Pictures${shared.length ? ` kept (${shared.length})` : ''}`}>
         {shared.length > 0
           ? <PictureGrid rows={shared} />
-          : <p className="muted">{chosen.length ? 'They loaded a picture into a tool but did not tick “keep a copy”, so it stayed in their browser.' : 'No picture loaded into a tool.'}</p>}
+          : <p className="muted">{chosen.length ? 'They loaded a picture into a tool with “Keep a copy” unticked (or before it was saved), so none is kept.' : 'No picture loaded into a tool.'}</p>}
         {chosen.length > 0 && (
           <ul className="adm-list" style={{ marginTop: 14 }}>
             {chosen.map((c, i) => { const pr = (c.props ?? {}) as { type?: string; kb?: number; ext?: string }; return <li key={i}><b>{String(c.name ?? 'file')}</b> <span className="muted">{[pr.ext, pr.kb != null ? `${pr.kb} KB` : null, c.path].filter(Boolean).join(' · ')} · {ago(c.created_at)}</span></li>; })}

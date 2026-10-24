@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const GROUPS: { title: string; links: [string, string, string][] }[] = [
-  { title: 'Insights', links: [['/admin', 'Overview', '▦'], ['/admin/activity', 'Live activity', '◉'], ['/admin/visitors', 'Visitors', '◎'], ['/admin/anonymous', 'Anonymous visits', '◌'], ['/admin/pictures', 'Shared pictures', '▣']] },
+  { title: 'Insights', links: [['/admin', 'Overview', '▦'], ['/admin/activity', 'Live activity', '◉'], ['/admin/visitors', 'Visitors', '◎'], ['/admin/anonymous', 'Anonymous visits', '◌'], ['/admin/pictures', 'Pictures', '▣']] },
   { title: 'Customers', links: [['/admin/users', 'Users', '☺'], ['/admin/subscriptions', 'Subscriptions', '↻'], ['/admin/designs', 'Designs', '◆'], ['/admin/orders', 'Orders', '▤'], ['/admin/payments', 'Payments', '₹'], ['/admin/downloads', 'Downloads', '⬇'], ['/admin/reviews', 'Reviews', '❝']] },
   { title: 'Shop', links: [['/admin/tools', 'Tools and prices', '⚙'], ['/admin/plans', 'Plans', '★']] },
 ];

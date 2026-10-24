@@ -33,7 +33,7 @@ export function LayerMaker(props: Omit<BuyBoxProps, 'tool' | 'next' | 'ready' | 
             <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="3" y="3" width="22" height="22" rx="3" fill="var(--line-2)" /><rect x="6" y="6" width="22" height="22" rx="3" fill="var(--muted)" /><rect x="9" y="9" width="22" height="22" rx="3" fill="var(--accent)" /><circle cx="20" cy="20" r="6.5" fill="var(--panel)" /></svg>
             <div>
               <h1>Layered Sculpture Maker</h1>
-              <p>One picture in, a stack of printable colour layers out. Everything runs in your browser; your picture is only shared if you tick the box.</p>
+              <p>One picture in, a stack of printable colour layers out. Everything runs in your browser. We keep a copy of your picture for 10 days to improve the tool, unless you untick the box.</p>
             </div>
           </div>
           <div className="top-actions">

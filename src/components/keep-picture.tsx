@@ -3,14 +3,14 @@ import { useId, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { keepOptedIn, onKeepChange, setKeepOptIn } from '@/lib/keep-picture';
 
-/** The opt-in under every upload box. Unticked by default; the answer is shared by all upload boxes on the site. */
+/** Under every upload box. Ticked to start with; unticking keeps pictures in the browser only. Shared by all upload boxes. */
 export function KeepPicture({ className = '' }: { className?: string }) {
   const id = useId();
-  const on = useSyncExternalStore((cb) => onKeepChange(() => cb()), keepOptedIn, () => false);
+  const on = useSyncExternalStore((cb) => onKeepChange(() => cb()), keepOptedIn, () => true);
   return (
     <label htmlFor={id} className={`keep-pic ${className}`}>
       <input id={id} type="checkbox" checked={on} onChange={(e) => setKeepOptIn(e.target.checked)} />
-      <span>Help improve this tool: let MD Creations keep a copy of my picture for 10 days. <Link href="/privacy#pictures">How we use it</Link></span>
+      <span>Keep a copy of my picture for 10 days to help improve this tool. Untick to keep it only in your browser. <Link href="/privacy#pictures">How we use it</Link></span>
     </label>
   );
 }

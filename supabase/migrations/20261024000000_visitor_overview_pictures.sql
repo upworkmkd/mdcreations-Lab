@@ -1,10 +1,10 @@
 -- MD Creations Labs: richer visitor list (referral, time on site, new or returning, score, device, pictures)
--- and pictures that visitors chose to share (opt-in, kept for 10 days, admin only).
+-- and copies of pictures loaded into the tools (unless the visitor unticks the box; kept for 10 days, admin only).
 -- Paste into the Supabase SQL editor and press Run (after the earlier migrations). Safe to run again.
 
 
 -- ---------------------------------------------------------------- pictures visitors chose to share
--- Only saved when the visitor ticks "Help improve this tool: keep a copy of my picture for 10 days".
+-- Saved while "Keep a copy of my picture for 10 days" is ticked under the upload (ticked unless the visitor unticks it).
 create table if not exists public.shared_pictures (
   id            uuid primary key default gen_random_uuid(),
   visitor_id    uuid references public.visitors (id) on delete set null,   -- when they also accepted analytics cookies

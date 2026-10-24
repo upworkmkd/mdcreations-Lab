@@ -40,7 +40,7 @@ export default async function Visitors({ searchParams }: { searchParams: Promise
 
   return (
     <>
-      <PageHead title="Visitors" sub="Every browser that accepted analytics cookies. Score (0–100) shows how far someone got: pages and clicks a little, a picture or a saved design more, checkout, sign-up, payment and downloads the most. Picture: whether they loaded one into a tool, and how many they chose to share.">
+      <PageHead title="Visitors" sub="Every browser that accepted analytics cookies. Score (0–100) shows how far someone got: pages and clicks a little, a picture or a saved design more, checkout, sign-up, payment and downloads the most. Picture: whether they loaded one into a tool, and how many copies were kept.">
         <form className="adm-search" action="/admin/visitors">
           {f && <input type="hidden" name="f" value={f} />}
           {sort && <input type="hidden" name="sort" value={sort} />}
@@ -74,7 +74,7 @@ export default async function Visitors({ searchParams }: { searchParams: Promise
                   <td>{v.visits > 1 ? <span className="adm-tag ret">Returning</span> : <span className="adm-tag new">New</span>}<div className="id">{num(v.visits)} {v.visits === 1 ? 'visit' : 'visits'} · {num(v.pageviews)} pages</div></td>
                   <td className="num">{duration(v.time_s)}</td>
                   <td><ScoreBadge n={v.score} /></td>
-                  <td>{v.pictures_chosen > 0 ? <span className="adm-tag pic">Yes{v.pictures_kept ? ` · ${v.pictures_kept} shared` : ''}</span> : <span className="muted">No</span>}</td>
+                  <td>{v.pictures_chosen > 0 ? <span className="adm-tag pic">Yes{v.pictures_kept ? ` · ${v.pictures_kept} kept` : ''}</span> : <span className="muted">No</span>}</td>
                   <td title={when(v.last_seen)}>{ago(v.last_seen)}<div className="id">{v.last_path}</div></td>
                   <td className="act"><RowDelete id={v.id} /></td>
                 </tr>

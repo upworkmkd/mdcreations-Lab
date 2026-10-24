@@ -1,4 +1,5 @@
 import 'server-only';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
 /** Private bucket for pictures visitors chose to share. Nothing in it is public. */
@@ -24,4 +25,13 @@ export function sniffImage(b: Uint8Array): 'image/jpeg' | 'image/png' | 'image/w
   if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
   if (b.length > 12 && String.fromCharCode(...b.subarray(0, 4)) === 'RIFF' && String.fromCharCode(...b.subarray(8, 12)) === 'WEBP') return 'image/webp';
   return null;
+}
+
+// A receipt the browser gets back for each kept picture, so unticking the box can delete that picture
+// (and nobody else's: the receipt is signed, and only the browser that uploaded the picture has it).
+const secret = () => process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || 'mdl-dev-pictures';
+export const pictureReceipt = (id: string) => createHmac('sha256', secret()).update(`picture:${id}`).digest('base64url');
+export function receiptOk(id: string, receipt: string) {
+  const a = Buffer.from(pictureReceipt(id)), b = Buffer.from(receipt);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
