@@ -15,7 +15,7 @@ export const metadata: Metadata = pageMeta({
 export default async function MakeRelief() {
   const c = await makerContext('photo-relief');
   return (
-    <KitPage slug="photo-relief" name="Photo Relief Maker" title="Make a photo relief" note={previewNote(c.live, 'Free to try. Your photo stays in your browser; the printable files are built when you download.')}>
+    <KitPage slug="photo-relief" name="Photo Relief Maker" title="Make a photo relief" note={previewNote(c.live, 'Free to try. We keep a copy of your photo for 10 days to improve the tool, unless you untick the box under the upload; the printable files are built when you download.')}>
       <ReliefMaker {...c.buy} />
     </KitPage>
   );

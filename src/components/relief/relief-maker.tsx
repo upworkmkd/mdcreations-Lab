@@ -68,10 +68,10 @@ export function ReliefMaker(buy: KitBuy) {
       bar={<><span className="muted">Finish (preview only):</span><div className="kit-swatches">{FINISH.map(([c, l]) => <button key={c} type="button" aria-label={l} title={l} aria-pressed={finish === c} style={{ background: c }} onClick={() => setFinish(c)} />)}</div></>}
       stage={<MeshView parts={parts} fitKey={`${dp.p.shape}-${dp.p.width}-${dp.p.ratio}-${dp.p.ratio === 'custom' ? dp.p.height : ''}`} snapRef={snap} />}
       stats={model ? <><span>Size <b>{model.size[0].toFixed(0)} × {model.size[1].toFixed(0)} × {model.size[2].toFixed(1)} mm</b></span><span>Relief <b>{p.relief} mm</b></span><span>Detail <b>{G.pitch} mm</b></span></> : <span>Upload a photo to begin.</span>}
-      youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>The plaque STL with your picture in relief, a preview, print tips and a commercial license. Your photo stays in your browser; only the brightness grid is sent when you download.</p></>}
+      youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>The plaque STL with your picture in relief, a preview, print tips and a commercial license. We keep a copy of your photo for 10 days to improve the tool, unless you untick the box under the upload. Your files are built from a brightness grid when you download.</p></>}
       side={<>
         <Group title="Photo">
-          <PicturePick onImage={onImage} preview={thumb} label={thumb ? 'Change the photo' : 'Upload a photo'} />
+          <PicturePick tool="photo-relief" onImage={onImage} preview={thumb} label={thumb ? 'Change the photo' : 'Upload a photo'} />
           <Range label="Zoom" value={fr.zoom} onChange={(x) => setFr((o) => ({ ...o, zoom: x }))} min={1} max={3} step={0.05} fmt={(x) => `${x.toFixed(2)}×`} />
           <Range label="Move left / right" value={fr.x} onChange={(x) => setFr((o) => ({ ...o, x }))} min={-1} max={1} step={0.02} fmt={(x) => x.toFixed(2)} />
           <Range label="Move up / down" value={fr.y} onChange={(y) => setFr((o) => ({ ...o, y }))} min={-1} max={1} step={0.02} fmt={(y) => y.toFixed(2)} />
