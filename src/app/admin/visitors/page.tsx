@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { BulkForm, RowDelete, Sel } from '../bulk';
 import { ScoreBadge } from './score';
+import { FACE } from '../feedback/drawer';
 import { Card, Filters, PageHead, Pager, ago, duration, emails, num, pageNum, place, shortId, str, when, sinceIso, isLive } from '../ui';
 
 const refName = (r: string | null) => (r ? r.replace(/^utm: /, 'utm ') : 'Direct');
@@ -24,6 +25,10 @@ export default async function Visitors({ searchParams }: { searchParams: Promise
   if (f === 'hot') query = query.gte('score', 50);
   if (f === 'mobile') query = query.in('device_type', ['mobile', 'tablet']);
   if (f === 'desktop') query = query.or('device_type.is.null,device_type.eq.desktop');
+  if (f === 'feedback') {
+    const { data: fb } = await db.from('feedback').select('visitor_id').not('visitor_id', 'is', null).order('created_at', { ascending: false }).limit(1000);
+    query = query.in('id', [...new Set((fb ?? []).map((r) => r.visitor_id as string))].concat('00000000-0000-0000-0000-000000000000'));
+  }
   if (q) {
     if (q.includes('@')) {
       const { data: ps } = await db.from('profiles').select('id').ilike('email', `%${q}%`).limit(50);
@@ -36,7 +41,13 @@ export default async function Visitors({ searchParams }: { searchParams: Promise
   const sort = str(sp.sort);
   const order: [string, boolean] = sort === 'score' ? ['score', false] : sort === 'time' ? ['time_s', false] : ['last_seen', false];
   const { data, count, error } = await query.order(order[0], { ascending: order[1] }).order('last_seen', { ascending: false }).range((page - 1) * SIZE, page * SIZE - 1);
-  const who = await emails((data ?? []).map((v) => v.user_id));
+  const [who, fbq] = await Promise.all([
+    emails((data ?? []).map((v) => v.user_id)),
+    (data ?? []).length ? db.from('feedback').select('id, visitor_id, rating, created_at').in('visitor_id', (data ?? []).map((v) => v.id)).order('created_at', { ascending: false }) : Promise.resolve({ data: [] as { id: string; visitor_id: string; rating: number; created_at: string }[] }),
+  ]);
+  // the feedback each visitor sent, newest first (the table may not exist before its migration is run)
+  const feedback = new Map<string, { id: string; rating: number }[]>();
+  for (const r of (fbq.data ?? []) as { id: string; visitor_id: string; rating: number }[]) feedback.set(r.visitor_id, [...(feedback.get(r.visitor_id) ?? []), r]);
 
   return (
     <>
@@ -48,14 +59,14 @@ export default async function Visitors({ searchParams }: { searchParams: Promise
         </form>
       </PageHead>
       <div className="adm-filterbar">
-        <Filters base={`/admin/visitors${sort ? `?sort=${sort}` : ''}`} current={f} options={[['', 'All'], ['online', 'Online now'], ['new', 'New today'], ['returning', 'Returning'], ['hot', 'Hot (score 50+)'], ['pictures', 'Uploaded a picture'], ['mobile', 'Mobile'], ['desktop', 'Desktop'], ['known', 'Signed up'], ['anon', 'Anonymous']]} />
+        <Filters base={`/admin/visitors${sort ? `?sort=${sort}` : ''}`} current={f} options={[['', 'All'], ['online', 'Online now'], ['new', 'New today'], ['returning', 'Returning'], ['hot', 'Hot (score 50+)'], ['pictures', 'Uploaded a picture'], ['feedback', 'Left feedback'], ['mobile', 'Mobile'], ['desktop', 'Desktop'], ['known', 'Signed up'], ['anon', 'Anonymous']]} />
         <Filters name="sort" base={`/admin/visitors${f ? `?f=${f}` : ''}`} current={sort} options={[['', 'Latest'], ['score', 'Top score'], ['time', 'Most time']]} />
       </div>
       {error && <div className="adm-alert">{error.message}. Have you run the visitors SQL migration?</div>}
       <Card flush>
         <BulkForm kind="visitors" noun="visitor" warn="Their visits and activity go too.">
 <div className="tbl-wrap"><table className="tbl adm-tbl">
-          <thead><tr><th className="sel" /><th>Visitor</th><th>Referral</th><th>Device</th><th>Visits</th><th className="num">Time spent</th><th>Score</th><th>Picture</th><th>Last seen</th><th /></tr></thead>
+          <thead><tr><th className="sel" /><th>Visitor</th><th>Referral</th><th>Device</th><th>Visits</th><th className="num">Time spent</th><th>Score</th><th>Picture</th><th>Feedback</th><th>Last seen</th><th /></tr></thead>
           <tbody>
             {(data ?? []).map((v) => {
               const u = v.user_id ? who.get(v.user_id) : null;
@@ -75,12 +86,14 @@ export default async function Visitors({ searchParams }: { searchParams: Promise
                   <td className="num">{duration(v.time_s)}</td>
                   <td><ScoreBadge n={v.score} /></td>
                   <td>{v.pictures_chosen > 0 ? <span className="adm-tag pic">Yes{v.pictures_kept ? ` · ${v.pictures_kept} kept` : ''}</span> : <span className="muted">No</span>}</td>
+                  <td>{(() => { const fb = feedback.get(v.id); if (!fb?.length) return <span className="muted">—</span>;
+                    return <Link href={`/admin/feedback?visitor=${v.id}&open=${fb[0].id}`} scroll={false} className="adm-fb" title={`${fb.length} note${fb.length === 1 ? '' : 's'}, latest ${fb[0].rating}/5`}>{FACE[fb[0].rating]} {fb[0].rating}/5{fb.length > 1 ? <small> · {fb.length}</small> : null}</Link>; })()}</td>
                   <td title={when(v.last_seen)}>{ago(v.last_seen)}<div className="id">{v.last_path}</div></td>
                   <td className="act"><RowDelete id={v.id} /></td>
                 </tr>
               );
             })}
-            {!data?.length && <tr><td colSpan={10} className="muted">No visitors match.</td></tr>}
+            {!data?.length && <tr><td colSpan={11} className="muted">No visitors match.</td></tr>}
           </tbody>
         </table></div>
         </BulkForm>
