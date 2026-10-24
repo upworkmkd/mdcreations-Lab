@@ -874,3 +874,6 @@ code { font: 400 .88em/1.4 var(--mono); }
 .adm-drawer-body { padding: 20px 24px 28px; overflow: auto; display: grid; gap: 18px; align-content: start; }
 .adm-quote { margin: 0; padding: 16px 18px; border-left: 3px solid var(--olive-2); background: #fff; border-radius: 4px; font-size: 16px; line-height: 1.55; white-space: pre-wrap; }
 .adm-drawer-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+/* lithophane "Light on" view: the piece at its real proportions, about as big as in the 3D view */
+.kit-stage .litho-glow { position: absolute; inset: 0; display: grid; place-items: center; container-type: size; background: radial-gradient(60% 60% at 50% 50%, #3a3428 0%, #221f19 100%); }
+.kit-stage .litho-glow canvas { max-width: 62cqw; max-height: 62cqh; width: auto; height: auto; filter: drop-shadow(0 0 28px rgba(255, 210, 140, .28)); }
