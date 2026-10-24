@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import * as Core from '@/lib/layers/core.js';
 import { encodeRle } from '@/lib/layers/rle.js';
+import { offerPicture } from '../../lib/keep-picture';
 
 export function mountLayerStudio(root, opts = {}) {
   const $ = (s, r) => (r || root).querySelector(s);
@@ -369,6 +370,7 @@ export function mountLayerStudio(root, opts = {}) {
   function setImage(img, w, h, sample) { S.img = img; S.imgW = w; S.imgH = h; S.isSample = sample; S.overrides = {}; $('#tag-sample').hidden = !sample; invalidate('A'); }
   function loadFile(file) {
     if (!file || !/^image\//.test(file.type)) { toast('That file is not an image. Use a PNG, JPG or WebP.'); return; }
+    offerPicture(file, 'layered-sculpture', file.name);
     const url = URL.createObjectURL(file), im = new Image();
     im.onload = () => { setImage(im, im.naturalWidth, im.naturalHeight, false); if (!P.prefix || P.prefix === DEF.prefix) { P.prefix = slug(file.name.replace(/\.[^.]+$/, '')).slice(0, 30) || DEF.prefix; refreshControls(); persist(); } };
     im.onerror = () => { URL.revokeObjectURL(url); toast('This image could not be opened. Try saving it as PNG first.'); };

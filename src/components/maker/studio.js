@@ -2,6 +2,7 @@
  * Plain DOM code on purpose - it redraws canvases on every pointer move and does not need React for that.
  * mountStudio() wires everything inside `root` and returns an api the React wrapper uses for checkout. */
 import { DEFAULTS, PLATE, edt, gaussBlur, label, maskToBytes } from '../../lib/lamp/raster.js';
+import { offerPicture } from '../../lib/keep-picture';
 
 const PW = 704, SPAN = 1760;              // preview pixels and the wall width they cover (mm)
 
@@ -409,6 +410,7 @@ export function mountStudio(root, hooks) {
   on($('platePick'), 'click', () => $('plateFile').click());
   const takePlateFile = (f) => {
     if (!f || !/^image\//.test(f.type)) { $('plateName').textContent = 'Choose a picture file (PNG, JPG or WebP).'; return; }
+    offerPicture(f, 'shadow-lamp-plate', f.name);
     const rd = new FileReader();
     rd.onload = () => decode(rd.result, (p) => {
       plate.own = { img: p.img, w: p.w, h: p.h, otsu: p.otsu, name: f.name };
@@ -436,7 +438,7 @@ export function mountStudio(root, hooks) {
   on(pbox, 'wheel', (e) => { e.preventDefault(); plate.view.mmPerPx *= Math.exp(-e.deltaY * 0.0012); syncPlateSize(); plate.dirty = true; drawPlate(); schedule(true); }, { passive: false });
   on($('plateGap'), 'input', () => { out(); plateChanged(); });
   on($('pick'), 'click', () => $('file').click());
-  const takeFile = (f) => { if (!f || !/^image\//.test(f.type)) { $('fname').textContent = 'Choose a picture file (PNG, JPG or WebP).'; return; } const rd = new FileReader(); rd.onload = () => loadImage(rd.result, f.name, false); rd.readAsDataURL(f); };
+  const takeFile = (f) => { if (!f || !/^image\//.test(f.type)) { $('fname').textContent = 'Choose a picture file (PNG, JPG or WebP).'; return; } offerPicture(f, 'shadow-lamp', f.name); const rd = new FileReader(); rd.onload = () => loadImage(rd.result, f.name, false); rd.readAsDataURL(f); };
   on($('file'), 'change', (e) => takeFile(e.target.files[0]));
   const drop = $('drop');
   for (const el of [drop, $('wallbox')]) {

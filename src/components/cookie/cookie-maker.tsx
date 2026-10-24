@@ -138,7 +138,7 @@ export function CookieMaker(buy: KitBuy) {
           <Seg<Source> label="From" value={source} onChange={setSource} options={[['preset', 'Ready shapes'], ['picture', 'A picture'], ['text', 'Letters']]} />
           {source === 'preset' && <Select<Preset> label="Shape" value={preset} onChange={(v) => { setPreset(v); setName(PRESETS.find((q) => q[0] === v)![1]); }} options={PRESETS} />}
           {source === 'picture' && <>
-            <PicturePick onImage={onImage} preview={thumb} label={thumb ? 'Change the picture' : 'Upload a picture'} />
+            <PicturePick tool="cookie-cutter" onImage={onImage} preview={thumb} label={thumb ? 'Change the picture' : 'Upload a picture'} />
             <p className="hint">A dark shape or a line drawing on a light background. PNGs with a transparent background work best.</p>
             {masks?.alpha
               ? <p className="hint">Transparent background found: every visible part of the picture is used, whatever its colour.</p>

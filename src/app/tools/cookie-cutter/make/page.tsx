@@ -15,7 +15,7 @@ export const metadata: Metadata = pageMeta({
 export default async function MakeCookie() {
   const c = await makerContext('cookie-cutter');
   return (
-    <KitPage slug="cookie-cutter" name="Rangoli Stencil & Cookie Cutter Maker" title="Make a rangoli stencil or cookie cutter" note={previewNote(c.live, 'Free to try. Your picture stays in your browser; the printable files are built when you download.')}>
+    <KitPage slug="cookie-cutter" name="Rangoli Stencil & Cookie Cutter Maker" title="Make a rangoli stencil or cookie cutter" note={previewNote(c.live, 'Free to try. We keep a copy of your picture for 10 days to improve the tool, unless you untick the box under the upload; the printable files are built when you download.')}>
       <CookieMaker {...c.buy} />
     </KitPage>
   );

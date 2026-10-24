@@ -96,7 +96,7 @@ export const TOOLS: Tool[] = [
       'A commercial license: sell the prints and the files, changed or not',
     ],
     steps: [
-      { title: 'Upload a picture', text: 'Artwork, a logo, a photo or an illustration. PNGs with a transparent background can become a silhouette. Your picture stays in your browser.' },
+      { title: 'Upload a picture', text: 'Artwork, a logo, a photo or an illustration. PNGs with a transparent background can become a silhouette. We keep a copy of your picture for 10 days to improve the tool, unless you untick the box under the upload.' },
       { title: 'Shape the layers', text: 'Choose how many colours, the order they stack in, the frame shape and size, and clean up specks and loose pieces, with a live 3D preview of the stack.' },
       { title: 'Download and print', text: 'Get one STL per colour. Print each flat in its colour, then stack and glue them back to front.' },
     ],

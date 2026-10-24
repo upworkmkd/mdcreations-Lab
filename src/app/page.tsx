@@ -137,7 +137,7 @@ export default async function Home() {
           </div>
           <div className="steps3">
             {[
-              ['Bring a picture or a model', 'A photo, a drawing, a logo, a scan or an STL. It stays in your browser while you work.'],
+              ['Bring a picture or a model', 'A photo, a drawing, a logo, a scan or an STL. A copy is kept for 10 days to improve the tools, unless you untick the box under the upload.'],
               ['Shape it, free', 'Size, place and tune it with a live preview of the finished piece. Try as many versions as you like.'],
               ['Pay once, keep it', 'Buy the design you like and the print-ready files are built for you. They stay in your account to download again.'],
             ].map(([h, p], i) => (
