@@ -818,4 +818,3 @@ code { font: 400 .88em/1.4 var(--mono); }
   .kit-stage { min-height: 380px; }
   .kit-buy { grid-template-columns: minmax(0, 1fr); }
 }
-
