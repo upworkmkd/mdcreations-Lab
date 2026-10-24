@@ -1,5 +1,5 @@
 import 'server-only';
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { supabasePublic } from '@/lib/supabase/admin';
 import { supabaseConfigured } from '@/lib/env';
 import { TOOLS, type Tool, type ToolStatus } from '@/lib/tools';
@@ -41,8 +41,29 @@ export async function getTool(slug: string) {
   return (await getCatalog()).find((t) => t.slug === slug) ?? null;
 }
 
-/** The visitor's currency, from where they are: INR in India, USD everywhere else. There is no switch. */
+/** Cookie an admin sets to see the site in another currency ('INR' or 'USD'). Ignored for everyone else. */
+export const ADMIN_CURRENCY_COOKIE = 'mdl_cur';
+
+/**
+ * The visitor's currency, from where they are: INR in India, USD everywhere else. Visitors cannot switch it.
+ * Admins can, to test prices and checkout in the other currency (see /api/admin/currency).
+ */
 export async function getCurrency(): Promise<Currency> {
+  const forced = (await cookies()).get(ADMIN_CURRENCY_COOKIE)?.value;
+  if (isCurrency(forced)) {
+    const { getViewer } = await import('@/lib/auth.server');
+    const me = await getViewer().catch(() => null);
+    if (me?.role === 'admin') return forced;
+  }
   const country = (await headers()).get('x-vercel-ip-country');
   return !country || country === 'IN' ? 'INR' : 'USD';
+}
+
+/** Lowest and highest price for one design across the live paid tools, in this currency (null when none has a price). */
+export function designPriceRange(tools: CatalogTool[], currency: Currency) {
+  const list = tools.filter((t) => t.status === 'live' && !t.free && t.prices[currency] != null)
+    .map((t) => ({ slug: t.slug, name: t.name, price: t.prices[currency] as number }))
+    .sort((a, b) => a.price - b.price);
+  if (!list.length) return null;
+  return { min: list[0].price, max: list[list.length - 1].price, tools: list };
 }

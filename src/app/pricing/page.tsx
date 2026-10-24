@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { getCatalog, getCurrency } from '@/lib/catalog.server';
+import { designPriceRange, getCatalog, getCurrency } from '@/lib/catalog.server';
 import { getPlans, currentSubscription } from '@/lib/plans.server';
 import { getViewer } from '@/lib/auth.server';
 import { formatMoney } from '@/lib/money';
@@ -10,7 +10,7 @@ import { Subscribe } from './subscribe';
 
 export const metadata: Metadata = pageMeta({
 	title: 'Pricing – Pay per Design or a Monthly Plan',
-	description: 'Try every tool free. Buy one shadow lamp design at a time, or subscribe: Starter gives 10 designs a day across every tool, Standard is unlimited. Commercial license included.',
+	description: 'Try every tool free. Pay per design (the price depends on the tool), or subscribe: Starter gives 10 designs a day across every tool, Standard is unlimited. Commercial license included.',
 	path: '/pricing',
 	keywords: ['shadow lamp maker price', 'STL generator subscription', '3D printing tools subscription', 'commercial license STL'],
 });
@@ -54,8 +54,8 @@ export default async function Pricing() {
 	const [plans, currency, viewer, catalog] = await Promise.all([getPlans(), getCurrency(), getViewer(), getCatalog()]);
 	const sub = viewer ? await currentSubscription(viewer.id).catch(() => null) : null;
 	const tools = catalog.map((t) => ({ slug: t.slug, name: t.name, live: t.status === 'live' }));
-	const lamp = catalog.find((t) => t.slug === 'shadow-lamp');
-	const single = lamp?.prices[currency];
+	// each tool has its own price per design, so this card shows the range across the live tools
+	const range = designPriceRange(catalog, currency);
 
 	return (
 		<>
@@ -76,8 +76,8 @@ export default async function Pricing() {
 
 				<div className="plans">
 					<article className="plan">
-						<header><h2>Pay per design</h2><p>For a lamp now and then.</p></header>
-						<div className="amount">{single != null ? formatMoney(single, currency) : '—'}<span>per design</span></div>
+						<header><h2>Pay per design</h2><p>For a design now and then.</p></header>
+						<div className="amount">{range ? (range.min === range.max ? formatMoney(range.min, currency) : <>{formatMoney(range.min, currency)}<small className="to">–</small>{formatMoney(range.max, currency)}</>) : '—'}<span>per design{range && range.min !== range.max ? ', depending on the tool' : ''}</span></div>
 						<ul>
 							<li>No subscription</li>
 							<li>Pay only for the designs you download</li>
@@ -85,7 +85,13 @@ export default async function Pricing() {
 							<li>Every file kept in your account</li>
 							<li>Unlimited free previews</li>
 						</ul>
-						<Link href="/tools/shadow-lamp/make" className="btn ghost">Start designing</Link>
+						{range && range.tools.length > 1 && (
+							<details className="tool-prices">
+								<summary>Price per tool</summary>
+								<ul>{range.tools.map((t) => <li key={t.slug}><Link href={`/tools/${t.slug}`}>{t.name}</Link><b>{formatMoney(t.price, currency)}</b></li>)}</ul>
+							</details>
+						)}
+						<Link href="/#tools" className="btn ghost">Start designing</Link>
 					</article>
 
 					{plans.map((p) => {
