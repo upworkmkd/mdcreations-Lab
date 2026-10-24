@@ -2,6 +2,13 @@ import 'server-only';
 import { supabaseAdmin, FILES_BUCKET } from '@/lib/supabase/admin';
 import { kitFor } from '@/lib/kits.server';
 import { capturePayment, fetchPayment } from '@/lib/razorpay.server';
+import { after } from 'next/server';
+import { sendOrderEmails } from '@/lib/order-mail.server';
+
+/** The receipt and the shop's note go out after the response, so the download is not kept waiting. */
+function emailLater(orderId: string) {
+  try { after(() => sendOrderEmails(orderId)); } catch { void sendOrderEmails(orderId); }
+}
 
 type OrderRow = { id: string; user_id: string; design_id: string; tool_slug: string; status: string; amount_minor: number; currency: string; provider_order_id: string | null };
 
@@ -23,7 +30,7 @@ export async function recordPayment(order: OrderRow, paymentId: string) {
 export async function fulfilOrder(orderId: string): Promise<string> {
   const db = supabaseAdmin();
   const existing = await db.from('files').select('id').eq('order_id', orderId).maybeSingle();
-  if (existing.data) return existing.data.id;
+  if (existing.data) { emailLater(orderId); return existing.data.id; }   // sends only what has not gone out yet
 
   const { data: order, error } = await db.from('orders').select('*').eq('id', orderId).single();
   if (error || !order) throw new Error('Order not found.');
@@ -48,6 +55,7 @@ export async function fulfilOrder(orderId: string): Promise<string> {
     }, { onConflict: 'order_id' }).select('id').single();
     if (ins.error || !ins.data) throw new Error('Could not save the file record.');
     await db.from('orders').update({ status: 'fulfilled', fulfilled_at: new Date().toISOString(), error: null }).eq('id', order.id);
+    emailLater(order.id);
     return ins.data.id;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
