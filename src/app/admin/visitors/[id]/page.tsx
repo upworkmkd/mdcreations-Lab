@@ -7,6 +7,7 @@ import { NOISE, Timeline, type Ev, type Sess } from '../../timeline';
 import { BulkForm, DeleteOne } from '../../bulk';
 import { PictureGrid, type SharedPicture } from '../../pictures/grid';
 import { ScoreBadge } from '../score';
+import { FACE, WORD, toolName } from '../../feedback/drawer';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Visitor' };
@@ -37,6 +38,7 @@ export default async function Visitor({ params, searchParams }: { params: Promis
   ]);
   const o = ov.data as { score: number; referral: string | null; pictures_chosen: number; pictures_kept: number } | null;
   const shared = (pics.data ?? []) as SharedPicture[];
+  const notes = ((await db.from('feedback').select('id, rating, message, tool_slug, status, created_at').eq('visitor_id', id).order('created_at', { ascending: false }).limit(20)).data ?? []) as { id: string; rating: number; message: string | null; tool_slug: string | null; status: string; created_at: string }[];
   const chosen = (await db.from('visitor_events').select('name, props, created_at, path').eq('visitor_id', id).eq('type', 'file').order('created_at', { ascending: false }).limit(30)).data ?? [];
   const u = v.user_id ? (await emails([v.user_id])).get(v.user_id) : null;
   const sess = (sessions.data ?? []) as Sess[];
@@ -98,6 +100,22 @@ export default async function Visitor({ params, searchParams }: { params: Promis
           )}
         </Card>
       </div>
+
+      {notes.length > 0 && (
+        <Card title={`Feedback (${notes.length})`} action={<Link href={`/admin/feedback?visitor=${id}`} className="linkish">Open in Feedback →</Link>}>
+          <ul className="adm-fblist">
+            {notes.map((n) => (
+              <li key={n.id}>
+                <Link href={`/admin/feedback?visitor=${id}&open=${n.id}`} scroll={false}>
+                  <span className="face" aria-hidden>{FACE[n.rating]}</span>
+                  <span><b>{WORD[n.rating]}</b> <span className="muted">· {toolName(n.tool_slug)} · {ago(n.created_at)}{n.status === 'new' ? ' · unread' : ''}</span>
+                    <span className="txt">{n.message || 'Rating only'}</span></span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card title={`Pictures${shared.length ? ` kept (${shared.length})` : ''}`}>
         {shared.length > 0
