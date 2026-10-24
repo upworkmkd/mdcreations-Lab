@@ -43,6 +43,9 @@ export async function getTool(slug: string) {
 
 /** Cookie an admin sets to see the site in another currency ('INR' or 'USD'). Ignored for everyone else. */
 export const ADMIN_CURRENCY_COOKIE = 'mdl_cur';
+/** Cookie an admin sets to go through Razorpay like a customer instead of downloading free. Ignored for everyone else. */
+export const ADMIN_PAY_COOKIE = 'mdl_paytest';
+export async function adminPaysForReal() { return (await cookies()).get(ADMIN_PAY_COOKIE)?.value === '1'; }
 
 /**
  * The visitor's currency, from where they are: INR in India, USD everywhere else. Visitors cannot switch it.

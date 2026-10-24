@@ -15,7 +15,7 @@ export default async function Tools() {
   const priceOf = (slug: string, c: string) => prices.data?.find((p) => p.tool_slug === slug && p.currency === c)?.amount_minor ?? null;
   return (
     <>
-      <PageHead title="Tools and prices" sub="Prices are per design download, including tax. Leave a price empty to stop selling in that currency. As admin you download your own designs free." />
+      <PageHead title="Tools and prices" sub="Prices are per design download, including tax. Leave a price empty to stop selling in that currency. As admin you download your own designs free, unless “Admin orders” in the sidebar is set to pay with Razorpay." />
       <Card flush>
         <div className="tbl-wrap">
           <table className="tbl adm-tbl">
