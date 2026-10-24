@@ -54,6 +54,15 @@ export async function setReview(form: FormData) {
   revalidatePath('/', 'layout');
 }
 
+/* ------------------------------------------------------------------ feedback */
+/** Bound per row in the feedback table: setFeedback.bind(null, id, 'read'). */
+export async function setFeedback(id: string, to: string) {
+  await requireAdmin();
+  if (!/^[0-9a-f-]{36}$/i.test(id) || !['new', 'read', 'archived'].includes(to)) return;
+  await supabaseAdmin().from('feedback').update({ status: to }).eq('id', id);
+  revalidatePath('/admin', 'layout');
+}
+
 /* ------------------------------------------------------------------ plans */
 /** Saves a plan. A changed price gets a fresh Razorpay plan (Razorpay plans cannot change price); current subscribers keep their old price. */
 export async function savePlan(_: SaveState, form: FormData): Promise<SaveState> {
@@ -94,7 +103,7 @@ export async function savePlan(_: SaveState, form: FormData): Promise<SaveState>
 
 /* ------------------------------------------------------------------ deleting records */
 export type DeleteState = { message: string; error?: boolean } | null;
-const KINDS = ['anon', 'visitors', 'events', 'users', 'designs', 'orders', 'payments', 'downloads', 'subscriptions', 'reviews'] as const;
+const KINDS = ['anon', 'visitors', 'events', 'users', 'designs', 'orders', 'payments', 'downloads', 'subscriptions', 'reviews', 'feedback'] as const;
 type Kind = (typeof KINDS)[number];
 
 async function removeStoredFiles(db: ReturnType<typeof supabaseAdmin>, filter: { orderIds?: string[]; userIds?: string[] }) {
@@ -124,6 +133,7 @@ export async function deleteRecords(_: DeleteState, form: FormData): Promise<Del
       case 'payments': { const r = await db.from('payments').delete({ count: 'exact' }).in('id', ids); if (r.error) throw r.error; done = r.count ?? 0; break; }
       case 'downloads': { const r = await db.from('downloads').delete({ count: 'exact' }).in('id', ids.map(Number)); if (r.error) throw r.error; done = r.count ?? 0; break; }
       case 'reviews': { const r = await db.from('testimonials').delete({ count: 'exact' }).in('id', ids); if (r.error) throw r.error; done = r.count ?? 0; break; }
+      case 'feedback': { const r = await db.from('feedback').delete({ count: 'exact' }).in('id', ids); if (r.error) throw r.error; done = r.count ?? 0; break; }
       case 'orders': {
         await removeStoredFiles(db, { orderIds: ids });
         const r = await db.from('orders').delete({ count: 'exact' }).in('id', ids);   // files, payments and downloads go with them
