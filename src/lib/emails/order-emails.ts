@@ -3,23 +3,23 @@
  * Colours from the site: olive #424532, stone paper #ebebe3, lamp light #f1c47e. */
 
 export type OrderMailData = {
-  orderId: string;
-  createdAt: string;
-  customerName: string;
-  customerEmail: string;
-  userId: string;
-  toolName: string;
-  toolSlug: string;
-  designName: string;
-  amount: string;            // "₹299", "$5", or "" when nothing was paid
-  how: 'razorpay' | 'plan' | 'free' | 'admin';
-  planName?: string | null;
-  method?: string | null;    // card, upi, netbanking …
-  paymentId?: string | null;
-  siteUrl: string;
-  supportEmail: string;
-  feedbackUrl: (rating?: number) => string;
-  socials: readonly { name: string; url: string }[];
+	orderId: string;
+	createdAt: string;
+	customerName: string;
+	customerEmail: string;
+	userId: string;
+	toolName: string;
+	toolSlug: string;
+	designName: string;
+	amount: string;            // "₹299", "$5", or "" when nothing was paid
+	how: 'razorpay' | 'plan' | 'free' | 'admin';
+	planName?: string | null;
+	method?: string | null;    // card, upi, netbanking …
+	paymentId?: string | null;
+	siteUrl: string;
+	supportEmail: string;
+	feedbackUrl: (rating?: number) => string;
+	socials: readonly { name: string; url: string }[];
 };
 
 const C = { olive: '#424532', olive2: '#676e47', deep: '#2c2e21', paper: '#ebebe3', paper3: '#f7f7f2', line: '#cbcdbd', ink: '#20221a', ink2: '#555846', ink3: '#7b7e69', light: '#f1c47e' };
@@ -33,15 +33,15 @@ const dateIn = (s: string) => new Date(s).toLocaleString('en-IN', { timeZone: 'A
 const METHOD: Record<string, string> = { card: 'Card', upi: 'UPI', netbanking: 'Net banking', wallet: 'Wallet', emi: 'EMI', paylater: 'Pay later' };
 
 function paidLine(d: OrderMailData) {
-  if (d.how === 'plan') return `Included in your ${d.planName ? `${d.planName} ` : ''}plan`;
-  if (d.how === 'admin') return 'Free (admin test order)';
-  if (d.how === 'free' || !d.amount) return 'Free';
-  return `${d.amount}${d.method ? ` · ${METHOD[d.method] ?? d.method}` : ''}`;
+	if (d.how === 'plan') return `Included in your ${d.planName ? `${d.planName} ` : ''}plan`;
+	if (d.how === 'admin') return 'Free (admin test order)';
+	if (d.how === 'free' || !d.amount) return 'Free';
+	return `${d.amount}${d.method ? ` · ${METHOD[d.method] ?? d.method}` : ''}`;
 }
 
 /** The outer frame: stone paper around a light card, logo on top, small print below. */
 function frame(o: { preheader: string; body: string; foot: string; siteUrl: string }) {
-  return `<!doctype html>
+	return `<!doctype html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="x-apple-disable-message-reformatting">
@@ -91,12 +91,12 @@ const button = (href: string, label: string, dark = false) => `
 
 /* ------------------------------------------------------------------ to the customer */
 export function customerOrderEmail(d: OrderMailData) {
-  const first = d.customerName.trim().split(/\s+/)[0] || '';
-  const filesUrl = `${d.siteUrl}/account#files`;
-  const faces: [number, string, string][] = [[1, '😞', 'Not good'], [2, '🙁', 'Could be better'], [3, '😐', 'Okay'], [4, '🙂', 'Good'], [5, '😍', 'Loved it']];
-  const subject = `Your ${d.toolName} files are ready · Order ${orderNo(d.orderId)}`;
+	const first = d.customerName.trim().split(/\s+/)[0] || '';
+	const filesUrl = `${d.siteUrl}/account#files`;
+	const faces: [number, string, string][] = [[1, '😞', 'Not good'], [2, '🙁', 'Could be better'], [3, '😐', 'Okay'], [4, '🙂', 'Good'], [5, '😍', 'Loved it']];
+	const subject = `Your ${d.toolName} files are ready · Order ${orderNo(d.orderId)}`;
 
-  const body = `
+	const body = `
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
     <tr><td class="px" style="background:${C.olive}; padding:40px 40px 36px;">
       <div style="font:500 11px/1.4 ${MONO}; letter-spacing:.18em; text-transform:uppercase; color:${C.light};">&#9679;&nbsp; Order confirmed</div>
@@ -141,43 +141,43 @@ export function customerOrderEmail(d: OrderMailData) {
     </td></tr>
   </table>`;
 
-  const foot = `
+	const foot = `
     Questions about your order? Just reply to this email or write to <a href="mailto:${d.supportEmail}" style="color:${C.ink2};">${d.supportEmail}</a>.<br>
     ${d.socials.map((s) => `<a href="${s.url}" style="color:${C.ink2}; text-decoration:none; font-weight:600;">${s.name}</a>`).join(' &nbsp;·&nbsp; ')}<br><br>
     <span style="color:${C.ink3};">MD Creations Labs · Design tools for 3D printing · <a href="${d.siteUrl}" style="color:${C.ink3};">${d.siteUrl.replace(/^https?:\/\//, '')}</a><br>
     You are getting this email because you placed order #${orderNo(d.orderId)}.</span>`;
 
-  const text = [
-    `Thank you${first ? `, ${first}` : ''}.`,
-    ``,
-    `Your ${d.toolName} design "${d.designName}" is built and waiting in your account.`,
-    `Download your files: ${filesUrl}`,
-    ``,
-    `Order:  #${orderNo(d.orderId)}`,
-    `Date:   ${dateIn(d.createdAt)}`,
-    `Tool:   ${d.toolName}`,
-    `Design: ${d.designName}`,
-    `Paid:   ${paidLine(d)}`,
-    ``,
-    `Before you print, open the README inside the zip for the print settings we recommend.`,
-    ``,
-    `How was your order? Tell us here: ${d.feedbackUrl()}`,
-    ``,
-    `Questions? Reply to this email or write to ${d.supportEmail}.`,
-    `MD Creations Labs · ${d.siteUrl}`,
-  ].join('\n');
+	const text = [
+		`Thank you${first ? `, ${first}` : ''}.`,
+		``,
+		`Your ${d.toolName} design "${d.designName}" is built and waiting in your account.`,
+		`Download your files: ${filesUrl}`,
+		``,
+		`Order:  #${orderNo(d.orderId)}`,
+		`Date:   ${dateIn(d.createdAt)}`,
+		`Tool:   ${d.toolName}`,
+		`Design: ${d.designName}`,
+		`Paid:   ${paidLine(d)}`,
+		``,
+		`Before you print, open the README inside the zip for the print settings we recommend.`,
+		``,
+		`How was your order? Tell us here: ${d.feedbackUrl()}`,
+		``,
+		`Questions? Reply to this email or write to ${d.supportEmail}.`,
+		`MD Creations Labs · ${d.siteUrl}`,
+	].join('\n');
 
-  return { subject, html: frame({ preheader: `Your ${d.toolName} design “${d.designName}” is ready to download.`, body, foot, siteUrl: d.siteUrl }), text };
+	return { subject, html: frame({ preheader: `Your ${d.toolName} design “${d.designName}” is ready to download.`, body, foot, siteUrl: d.siteUrl }), text };
 }
 
 /* ------------------------------------------------------------------ to the shop */
 export function adminOrderEmail(d: OrderMailData) {
-  const test = d.how === 'admin';
-  const headline = d.how === 'razorpay' && d.amount ? d.amount : d.how === 'plan' ? 'Plan download' : test ? 'Test order' : 'Free order';
-  const subject = `${test ? '[Test] ' : ''}New order ${d.amount && d.how === 'razorpay' ? `${d.amount} ` : ''}· ${d.toolName} · ${d.customerName || d.customerEmail}`;
-  const how = { razorpay: 'Razorpay', plan: `Plan${d.planName ? ` (${d.planName})` : ''}`, free: 'Free tool', admin: 'Admin test (not charged)' }[d.how];
+	const test = d.how === 'admin';
+	const headline = d.how === 'razorpay' && d.amount ? d.amount : d.how === 'plan' ? 'Plan download' : test ? 'Test order' : 'Free order';
+	const subject = `${test ? '' : ''}New order ${d.amount && d.how === 'razorpay' ? `${d.amount} ` : ''}· ${d.toolName} · ${d.customerName || d.customerEmail}`;
+	const how = { razorpay: 'Razorpay', plan: `Plan${d.planName ? ` (${d.planName})` : ''}`, free: 'Free tool', admin: 'Admin test (not charged)' }[d.how];
 
-  const body = `
+	const body = `
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
     <tr><td class="px" style="background:${C.deep}; padding:30px 40px;">
       <div style="font:500 11px/1.4 ${MONO}; letter-spacing:.18em; text-transform:uppercase; color:${C.light};">&#9679;&nbsp; ${test ? 'Admin test order' : 'New order'}</div>
@@ -201,19 +201,19 @@ export function adminOrderEmail(d: OrderMailData) {
       </tr></table>
     </td></tr>
   </table>`;
-  const foot = `Sent to the order alert addresses in <a href="${d.siteUrl}/admin/settings" style="color:${C.ink2};">Admin &rarr; Settings</a>.`;
-  const text = [
-    `${test ? 'ADMIN TEST ORDER' : 'NEW ORDER'}: ${headline}`,
-    `${d.toolName} · "${d.designName}"`,
-    ``,
-    `Customer: ${d.customerName || '—'} <${d.customerEmail}>`,
-    `Order:    #${orderNo(d.orderId)}`,
-    `When:     ${dateIn(d.createdAt)}`,
-    `Paid by:  ${how}${d.method ? ` · ${d.method}` : ''}`,
-    d.paymentId ? `Payment:  ${d.paymentId}` : '',
-    ``,
-    `Customer: ${d.siteUrl}/admin/users/${d.userId}`,
-    `Orders:   ${d.siteUrl}/admin/orders`,
-  ].filter((l) => l !== null).join('\n');
-  return { subject, html: frame({ preheader: `${headline} from ${d.customerName || d.customerEmail} for ${d.toolName}.`, body, foot, siteUrl: d.siteUrl }), text };
+	const foot = `Sent to the order alert addresses in <a href="${d.siteUrl}/admin/settings" style="color:${C.ink2};">Admin &rarr; Settings</a>.`;
+	const text = [
+		`${test ? 'ADMIN TEST ORDER' : 'NEW ORDER'}: ${headline}`,
+		`${d.toolName} · "${d.designName}"`,
+		``,
+		`Customer: ${d.customerName || '—'} <${d.customerEmail}>`,
+		`Order:    #${orderNo(d.orderId)}`,
+		`When:     ${dateIn(d.createdAt)}`,
+		`Paid by:  ${how}${d.method ? ` · ${d.method}` : ''}`,
+		d.paymentId ? `Payment:  ${d.paymentId}` : '',
+		``,
+		`Customer: ${d.siteUrl}/admin/users/${d.userId}`,
+		`Orders:   ${d.siteUrl}/admin/orders`,
+	].filter((l) => l !== null).join('\n');
+	return { subject, html: frame({ preheader: `${headline} from ${d.customerName || d.customerEmail} for ${d.toolName}.`, body, foot, siteUrl: d.siteUrl }), text };
 }
