@@ -4,13 +4,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 export type Slide = {
-  slug: string; index: string; name: string; live: boolean; price: string | null;
+  slug: string; index: string; name: string; live: boolean; price: string | null; badge?: string;
   title: string; lede: string; image: string; primary: { href: string; label: string }; secondary: { href: string; label: string };
 };
 
 const DELAY = 7000;
 
-/** Full-bleed slider: one slide per tool. Crossfades, pauses on hover or focus, no autoplay for reduced motion. */
+/** Full-bleed slider for the featured tools: one slide per tool. Crossfades, pauses on hover or focus, no autoplay for reduced motion. */
 export function HeroSlider({ slides }: { slides: Slide[] }) {
   const [at, setAt] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -29,7 +29,7 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
   }, [at, paused, reduce, go, slides.length]);
 
   return (
-    <section className="slider" aria-roledescription="carousel" aria-label="Labs tools"
+    <section className="slider" aria-roledescription="carousel" aria-label="Featured tools"
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)} onBlurCapture={() => setPaused(false)}
       onKeyDown={(e) => { if (e.key === 'ArrowRight') go(at + 1); if (e.key === 'ArrowLeft') go(at - 1); }}>
@@ -37,7 +37,7 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
         <div key={s.slug} className={`slide${i === at ? ' on' : ''}`} role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${slides.length}: ${s.name}`} aria-hidden={i !== at} inert={i !== at}>
           <div className="bg"><Image src={s.image} alt="" fill priority={i === 0} sizes="100vw" /></div>
           <div className="wrap">
-            <p className="eyebrow"><span className="idx">{s.index}</span> {s.name} <span className={`tag ${s.live ? 'live' : ''}`}>{s.live ? (s.price ? `Live · ${s.price}` : 'Live') : 'Coming soon'}</span></p>
+            <p className="eyebrow">{s.badge && <span className="badge">{s.badge}</span>}<span className="idx">{s.index}</span> {s.name} <span className={`tag ${s.live ? 'live' : ''}`}>{s.live ? (s.price ? `Live · ${s.price}` : 'Live') : 'Coming soon'}</span></p>
             <h1>{s.title}</h1>
             <p className="lede">{s.lede}</p>
             <div className="actions">
@@ -48,7 +48,7 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
         </div>
       ))}
       <div className="slider-nav wrap">
-        <div className="tabs" role="tablist" aria-label="Choose a tool">
+        <div className="tabs" role="tablist" aria-label="Choose a tool" style={{ gridTemplateColumns: `repeat(${slides.length}, minmax(0, 1fr))` }}>
           {slides.map((s, i) => (
             <button key={s.slug} role="tab" aria-selected={i === at} className={i === at ? 'on' : ''} onClick={() => go(i)}>
               <span className="n">{s.index}</span>

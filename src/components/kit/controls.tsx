@@ -1,5 +1,7 @@
 'use client';
 import { useId } from 'react';
+import { KeepPicture } from '@/components/keep-picture';
+import { offerPicture } from '@/lib/keep-picture';
 
 /** Small form controls shared by the tool workbenches. */
 export function Range({ label, value, onChange, min, max, step = 1, fmt = (v: number) => String(v), hint }: { label: string; value: number; onChange(v: number): void; min: number; max: number; step?: number; fmt?: (v: number) => string; hint?: string }) {
@@ -74,20 +76,24 @@ export function Group({ title, children }: { title: string; children: React.Reac
 }
 
 /** Picture picker: click, drop or paste. Calls back with a decoded image. */
-export function PicturePick({ onImage, preview, label = 'Upload a picture' }: { onImage(img: HTMLImageElement, name: string): void; preview?: string | null; label?: string }) {
+export function PicturePick({ onImage, preview, label = 'Upload a picture', tool }: { onImage(img: HTMLImageElement, name: string): void; preview?: string | null; label?: string; tool: string }) {
   const id = useId();
   const load = (f?: File | null) => {
     if (!f || !f.type.startsWith('image/')) return;
+    offerPicture(f, tool, f.name);
     const url = URL.createObjectURL(f), im = new Image();
     im.onload = () => onImage(im, f.name.replace(/\.[^.]+$/, ''));
     im.src = url;
   };
   return (
+    <>
     <label htmlFor={id} className="kit-drop" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); load(e.dataTransfer.files[0]); }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {preview ? <img src={preview} alt="" /> : null}
       <span>{label} <br /><small>PNG, JPG or WebP · or drop it here</small></span>
       <input id={id} type="file" accept="image/*" hidden onChange={(e) => { load(e.target.files?.[0]); e.target.value = ''; }} />
     </label>
+    <KeepPicture />
+    </>
   );
 }

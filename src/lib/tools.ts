@@ -37,14 +37,14 @@ export const TOOLS: Tool[] = [
     slide: { title: 'Any picture, cast in light.', lede: 'Owls, temples, elephants, skylines, names. Upload a picture, place the shadow, and download the walls, base and cover plate of a lamp that throws it across your wall.' },
     youGet: [
       'Four shaped walls (STL) that cast your picture on the wall',
-      'A cover plate with the picture sunk in, plus the press-in picture pieces',
-      'The lamp base and battery cover (the same for every design)',
+      'A cover plate with your picture: a press-in picture, or one flat plate in two colours as a 3MF for AMS printers',
+      'The lamp base, battery cover and an LED post sized so the light sits exactly where your design needs it',
       'A shadow preview and short print and assembly notes',
       'A commercial license: sell the lamps and the files, changed or not',
     ],
     steps: [
       { title: 'Upload a picture', text: 'PNG, JPG or WebP. Dark shapes on a light background work best; transparent PNGs are read automatically.' },
-      { title: 'Place the shadow', text: 'Drag and resize on the wall preview. The preview shows the real shadow the printed walls will cast, including support bars and corner pieces.' },
+      { title: 'Place the shadow', text: 'Drag and resize on the wall preview. The preview shows the real shadow the printed walls will cast, and you can turn the assembled lamp in 3D or see it lit on a wall.' },
       { title: 'Pay once, download', text: 'Sign in, pay for that design, and the files are built for you. They stay in your account to download again whenever you need them.' },
     ],
     specsTitle: 'The lamp',
@@ -96,7 +96,7 @@ export const TOOLS: Tool[] = [
       'A commercial license: sell the prints and the files, changed or not',
     ],
     steps: [
-      { title: 'Upload a picture', text: 'Artwork, a logo, a photo or an illustration. PNGs with a transparent background can become a silhouette. Your picture stays in your browser.' },
+      { title: 'Upload a picture', text: 'Artwork, a logo, a photo or an illustration. PNGs with a transparent background can become a silhouette. We keep a copy of your picture for 10 days to improve the tool, unless you untick the box under the upload.' },
       { title: 'Shape the layers', text: 'Choose how many colours, the order they stack in, the frame shape and size, and clean up specks and loose pieces, with a live 3D preview of the stack.' },
       { title: 'Download and print', text: 'Get one STL per colour. Print each flat in its colour, then stack and glue them back to front.' },
     ],
