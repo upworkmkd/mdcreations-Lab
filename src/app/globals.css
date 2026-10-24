@@ -890,3 +890,32 @@ code { font: 400 .88em/1.4 var(--mono); }
 .adm-cur .input { min-height: 34px; padding: 4px 8px; font-size: 13px; }
 .adm-cur-badge { position: fixed; left: 50%; transform: translateX(-50%); bottom: 12px; z-index: 70; display: flex; gap: 10px; align-items: center; background: var(--olive-ink); color: var(--paper); font-size: 13px; padding: 8px 12px; border-radius: 999px; box-shadow: 0 10px 30px -12px rgba(0, 0, 0, .5); }
 .adm-cur-badge button { border: 1px solid color-mix(in srgb, var(--paper) 35%, transparent); background: none; color: var(--paper); border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+
+/* ------------------------------------------------------------------ order feedback page (from the order email) */
+.ofb { min-height: calc(100vh - 160px); display: grid; place-items: center; padding: 48px var(--gutter); }
+.ofb-card { width: min(560px, 100%); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: clamp(24px, 5vw, 40px); }
+.ofb-card h1 { margin-top: 10px; font: 500 clamp(30px, 5vw, 40px)/1.08 var(--serif); }
+.ofb-card > p.muted, .ofb-card form > p.muted { margin-top: 10px; }
+.ofb-sum { margin-top: 10px; font-size: 12.5px; color: var(--ink-3); }
+.ofb-card form .fb-note { margin-top: 8px; }
+.ofb-faces { margin-top: 22px; gap: 8px; }
+.ofb-faces .face { padding: 12px 2px 10px; }
+.ofb-faces .face span { font-size: 30px; }
+.ofb-faces .face small { font-size: 11.5px; }
+.ofb-field { margin: 18px 0 16px; font-size: 14px; }
+.ofb-done { display: grid; justify-items: center; text-align: center; gap: 10px; }
+.ofb-done > span { font-size: 44px; }
+.ofb-done h1 { margin-top: 0; }
+.ofb-links { display: flex; gap: 16px; align-items: center; margin-top: 8px; }
+
+/* ------------------------------------------------------------------ admin settings */
+.adm-set { display: grid; gap: 16px; }
+.adm-set .lbl textarea { font: 400 14px/1.5 var(--mono); resize: vertical; }
+.adm-tick { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+.adm-tick input { margin-top: 4px; width: 17px; height: 17px; accent-color: var(--olive); flex: none; }
+.adm-tick span { display: grid; gap: 2px; font-size: 14.5px; }
+.adm-tick small { color: var(--ink-3); font-size: 13px; }
+.adm-help { margin-top: 12px; font-size: 13.5px; line-height: 1.7; }
+.adm-tests { margin-top: 16px; display: grid; gap: 10px; }
+.adm-test { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.adm-mail { display: block; width: 100%; height: 720px; border: 1px solid var(--line); border-radius: 6px; background: #ebebe3; }
