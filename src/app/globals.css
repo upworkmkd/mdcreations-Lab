@@ -921,9 +921,9 @@ code { font: 400 .88em/1.4 var(--mono); }
 .adm-mail { display: block; width: 100%; height: 720px; border: 1px solid var(--line); border-radius: 6px; background: #ebebe3; }
 
 /* ------------------------------------------------------------------ tools mega menu (header) */
-.tm-btn { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; padding: 0; font: inherit; color: var(--ink-2); cursor: pointer; }
-.tm-btn:hover, .tm.open .tm-btn { color: var(--ink); }
-.tm-caret { font-size: 10px; transition: transform .18s; }
+.tm-btn { display: inline-flex; align-items: center; gap: 4px; margin: 0 -10px; padding: 7px 8px 7px 12px; border: 1px solid transparent; border-radius: 999px; background: none; font: inherit; color: var(--ink-2); cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+.tm-btn:hover, .tm.open .tm-btn { color: var(--ink); background: var(--paper-3); border-color: var(--line); }
+.tm-caret { display: block; width: 16px; height: 16px; color: var(--olive-2); transition: transform .18s; }
 .tm.open .tm-caret { transform: rotate(180deg); }
 .tm-panel { position: absolute; left: 0; right: 0; top: 100%; background: var(--paper-3); border-bottom: 1px solid var(--line); box-shadow: 0 24px 40px -28px rgba(31, 33, 24, .45); white-space: normal; animation: tm-in .16s ease-out; }
 @keyframes tm-in { from { opacity: 0; transform: translateY(-6px); } }
