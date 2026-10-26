@@ -5,9 +5,9 @@ import { KitPage, previewNote } from '@/components/kit/kit-page';
 import { CookieMaker } from '@/components/cookie/cookie-maker';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Rangoli Stencil Maker for Diwali – 3D Printed Rangoli Stencils, Cookie Cutters & Stamps (STL)',
+  title: 'Make a Rangoli Stencil or Cookie Cutter Online – STL',
   absoluteTitle: true,
-  description: 'Turn any rangoli, mandala or kolam design into a 3D printable rangoli stencil for Diwali, with loose parts joined automatically. Also cookie cutters with matching stamps and fondant stamps.',
+  description: 'Turn any rangoli, mandala or kolam design into a 3D printable stencil for Diwali, with loose parts joined automatically. Also cookie cutters and stamps.',
   path: '/tools/cookie-cutter/make',
   keywords: ['rangoli stencil maker', '3d printed rangoli', 'diwali rangoli stencil', 'rangoli stencil stl', 'mandala stencil', 'kolam stencil', 'cookie cutter stl generator', 'cookie stamp stl'],
 });

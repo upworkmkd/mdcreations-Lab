@@ -38,7 +38,7 @@ export const tool: Tool | null = {
 };
 
 export const seo: ToolSeo | null = {
-  title: 'Name Keychain & Name Sign STL Maker – Hindi, Punjabi, Tamil, Bengali & English',
+  title: 'Name Keychain & Name Sign STL Maker – Hindi, Tamil & More',
   description: 'Make 3D printable name keychains, name signs and cake toppers in English and 10 Indian scripts. Two-colour STL files with raised letters.',
   keywords: ['name keychain stl', 'name keychain generator', 'hindi name keychain', 'punjabi name 3d print', 'name sign stl', 'cake topper stl generator', '3d printed name plate', 'custom keychain stl'],
 };

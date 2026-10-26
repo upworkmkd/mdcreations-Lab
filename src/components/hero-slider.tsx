@@ -38,7 +38,7 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
           <div className="bg"><Image src={s.image} alt="" fill priority={i === 0} sizes="100vw" /></div>
           <div className="wrap">
             <p className="eyebrow">{s.badge && <span className="badge">{s.badge}</span>}<span className="idx">{s.index}</span> {s.name} <span className={`tag ${s.live ? 'live' : ''}`}>{s.live ? (s.price ? `Live · ${s.price}` : 'Live') : 'Coming soon'}</span></p>
-            <h1>{s.title}</h1>
+            {i === 0 ? <h1>{s.title}</h1> : <h2 className="h1">{s.title}</h2>}
             <p className="lede">{s.lede}</p>
             <div className="actions">
               <Link href={s.primary.href} className="btn light">{s.primary.label} <span className="arrow">→</span></Link>

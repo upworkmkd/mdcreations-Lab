@@ -11,7 +11,7 @@ import { formatMoney } from '@/lib/money';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Layered Sculpture Maker – Turn a Picture into Colour Layer STL Files',
+  title: 'Make a Layered Sculpture Online – Colour Layer STL',
   absoluteTitle: true,
   description: 'Upload a picture and turn it into a layered 3D printed sculpture: one STL per colour, a frame, alignment pins and a 3D preview of the finished stack.',
   path: '/tools/layered-sculpture/make',

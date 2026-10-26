@@ -12,7 +12,7 @@ import { pageMeta } from '@/lib/seo';
 export const metadata = pageMeta({
   title: 'MD Creations Labs – Shadow Lamp Maker & 3D Printing Tools',
   absoluteTitle: true,
-  description: 'Design 3D prints in your browser: custom shadow lamps from any picture, rangoli stencils for Diwali, photo lithophanes, name signs and keychains and more. Download print-ready STL and 3MF files, or have us print and ship it.',
+  description: 'Design 3D prints in your browser: custom shadow lamps, Diwali rangoli stencils, photo lithophanes, name keychains and more. Download print-ready STL files.',
   path: '/',
   keywords: ['3D printing tools', 'shadow lamp maker', '3D printed rangoli stencil', 'lithophane maker', 'name keychain STL', 'custom shadow lamp STL', 'photo to STL', 'MD Creations'],
 });
