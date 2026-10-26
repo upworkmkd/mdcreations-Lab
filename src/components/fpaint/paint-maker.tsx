@@ -97,7 +97,7 @@ export function PaintMaker(buy: KitBuy) {
       youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>One STL, a colour-swap guide with the exact layer for every filament change, slicer settings, a preview and a commercial license.</p></>}
       side={<>
         <Group title="Picture">
-          <PicturePick onImage={onImage} preview={thumb} label={thumb ? 'Change the picture' : 'Upload a picture'} />
+          <PicturePick tool="filament-painting" onImage={onImage} preview={thumb} label={thumb ? 'Change the picture' : 'Upload a picture'} />
           <Range label="Zoom" value={fr.zoom} onChange={(z) => setFr((o) => ({ ...o, zoom: z }))} min={1} max={3} step={0.05} fmt={(z) => `${z.toFixed(2)}×`} />
           <Range label="Move left / right" value={fr.x} onChange={(x) => setFr((o) => ({ ...o, x }))} min={-1} max={1} step={0.02} fmt={(x) => x.toFixed(2)} />
           <Range label="Move up / down" value={fr.y} onChange={(y) => setFr((o) => ({ ...o, y }))} min={-1} max={1} step={0.02} fmt={(y) => y.toFixed(2)} />
