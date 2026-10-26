@@ -9,8 +9,8 @@ const DEFAULT_IMAGE = '/images/hero-shadow-lamp.jpg';
 export const TOOL_SEO: Record<string, { title: string; description: string; keywords: string[] }> = {
   ...EXTRA_SEO,
   'shadow-lamp': {
-    title: 'Shadow Lamp Maker – Picture to 3D Printable Lamp STL',
-    description: 'Make a custom shadow lamp from your own picture. Preview the exact shadow on the wall, then download print-ready STL files: walls, base and cover plate.',
+    title: 'Shadow Lamp Maker – Turn Any Picture into a 3D Printable Shadow Lamp (STL)',
+    description: 'Make a custom shadow lamp from your own picture. Upload a silhouette or photo, preview the exact shadow on the wall, and download print-ready STL files: walls, base and an inlaid cover plate.',
     keywords: ['shadow lamp maker', 'shadow lamp STL', 'custom shadow lamp', '3D printed shadow lamp', 'photo to shadow lamp', 'shadow lamp generator', 'wall shadow lamp', 'silhouette lamp STL', 'shadow projection lamp', '3D print lamp file'],
   },
   statue: {
