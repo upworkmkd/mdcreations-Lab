@@ -148,7 +148,7 @@ function onSubmit(e: Event) {
   const f = e.target as HTMLFormElement | null;
   if (!f || f.closest('[data-notrack]')) return;
   const btn = f.querySelector('button[type="submit"], button:not([type])');
-  track('submit', clean(f.getAttribute('aria-label') ?? f.id ?? '') || clean((btn as HTMLElement | null)?.innerText) || 'form', { fields: f.elements.length });
+  track('submit', clean(f.getAttribute('aria-label') ?? f.getAttribute('id') ?? '') || clean((btn as HTMLElement | null)?.innerText) || 'form', { fields: f.elements.length });
 }
 
 /* ------------------------------------------------------------------ the stored answer, as an external store */

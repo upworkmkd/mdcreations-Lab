@@ -9,7 +9,7 @@ export type ViewPart = { tris: Float32Array; color: string; opacity?: number; of
  * A small 3D viewer for the tools: drag to turn, scroll or pinch to zoom. z is up.
  * `fitKey` changes when the model should be re-framed (a new size), not on every small edit.
  */
-export function MeshView({ parts, fitKey, light = 'studio', backlight = false, className, height = 460, snapRef, bg }: { parts: ViewPart[]; fitKey?: string; light?: 'studio' | 'soft'; backlight?: boolean; className?: string; height?: number; snapRef?: React.RefObject<MeshSnap | null>; bg?: string }) {
+export function MeshView({ parts, fitKey, light = 'studio', backlight = false, className, height = 460, snapRef, bg, steady = false }: { parts: ViewPart[]; fitKey?: string; light?: 'studio' | 'soft'; backlight?: boolean; className?: string; height?: number; snapRef?: React.RefObject<MeshSnap | null>; bg?: string; steady?: boolean }) {
   const box = useRef<HTMLDivElement>(null), bgRef = useRef(bg ?? '#dcddd2');
   useEffect(() => { bgRef.current = bg ?? '#dcddd2'; }, [bg]);
   const st = useRef<{ r?: THREE.WebGLRenderer; scene?: THREE.Scene; cam?: THREE.PerspectiveCamera; group?: THREE.Group; az: number; el: number; zoom: number; dist: number; target: THREE.Vector3; dirty: boolean; fit?: string; back?: THREE.PointLight; alive: boolean }>({ az: -0.6, el: 0.55, zoom: 1, dist: 300, target: new THREE.Vector3(), dirty: true, alive: true });
@@ -75,13 +75,18 @@ export function MeshView({ parts, fitKey, light = 'studio', backlight = false, c
       const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(p.color).convertSRGBToLinear(), roughness: 0.78, metalness: 0, flatShading: true, transparent: p.opacity != null && p.opacity < 1, opacity: p.opacity ?? 1, side: THREE.DoubleSide });
       const m = new THREE.Mesh(geo, mat); if (p.offset) m.position.set(...p.offset); g.add(m); geo.computeBoundingBox(); const b = geo.boundingBox!.clone(); if (p.offset) b.translate(new THREE.Vector3(...p.offset)); bb.union(b);
     }
-    if (!bb.isEmpty() && (fitKey === undefined || fitKey !== s.fit)) {
-      s.fit = fitKey; const c = new THREE.Vector3(), sz = new THREE.Vector3(); bb.getCenter(c); bb.getSize(sz);
-      s.target.copy(c); s.dist = Math.max(sz.x, sz.y, sz.z) * 2.3 + 10;
+    if (!bb.isEmpty()) {
+      const c = new THREE.Vector3(), sz = new THREE.Vector3(); bb.getCenter(c); bb.getSize(sz);
+      const big = Math.max(sz.x, sz.y, sz.z), st2 = s as typeof s & { fitSize?: number };
+      // steady: keep the zoom while sizes change, so a bigger piece looks bigger; re-frame only on a new fitKey
+      // or when it would no longer fit (or would be tiny)
+      const refit = fitKey === undefined || fitKey !== s.fit || (steady && st2.fitSize !== undefined && (big > st2.fitSize * 1.9 || big < st2.fitSize * 0.35));
+      if (refit) { s.fit = fitKey; st2.fitSize = big; s.target.copy(c); s.dist = big * (steady ? 3.2 : 2.3) + 10; }   // steady views leave room to grow
+      else if (steady) s.target.copy(c);
     }
     if (s.back) { s.back.intensity = backlight ? 1.6 : 0; const c = new THREE.Vector3(); if (!bb.isEmpty()) bb.getCenter(c); s.back.position.copy(c); }
     s.dirty = true;
-  }, [parts, fitKey, backlight]);
+  }, [parts, fitKey, backlight, steady]);
 
   return <div ref={box} className={`meshview ${className ?? ''}`} style={{ height, background: bg }} data-light={light} />;
 }
