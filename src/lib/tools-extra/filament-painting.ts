@@ -39,7 +39,7 @@ export const tool: Tool | null = {
 };
 
 export const seo: ToolSeo | null = {
-  title: 'Filament Painting Maker – Online HueForge-Style Prints with Colour Swap Guide',
-  description: 'Make a filament painting from any picture in your browser: one STL plus the layer for every filament change, with a painted preview. Works on any single-nozzle printer.',
+  title: 'Filament Painting Maker – HueForge-Style Prints Online',
+  description: 'Make a filament painting from any picture in your browser: one STL plus the layer for every filament change, with a painted preview. For any single-nozzle printer.',
   keywords: ['filament painting', 'hueforge online', 'hueforge alternative', 'filament swap art', 'color change 3d print', 'lithophane color', '3d printed painting'],
 };

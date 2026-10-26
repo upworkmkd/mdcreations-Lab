@@ -39,7 +39,7 @@ export const tool: Tool | null = {
 };
 
 export const seo: ToolSeo | null = {
-  title: 'Vase & Lamp Shade Generator – Vase Mode STL, Planters and Lamp Shades',
+  title: 'Vase & Lamp Shade Generator – Vase Mode STL Online',
   description: 'Design twisted, rippled and faceted vases, planters and lamp shades in your browser. Vase-mode STL or real walls, with E27 and E14 lamp holder rings.',
   keywords: ['vase generator', 'vase mode stl', 'parametric vase', 'lamp shade stl', 'planter generator stl', 'twisted vase stl', 'e27 lamp shade 3d print'],
 };

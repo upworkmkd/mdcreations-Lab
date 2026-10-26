@@ -5,7 +5,7 @@ import { KitPage, previewNote } from '@/components/kit/kit-page';
 import { PaintMaker } from '@/components/fpaint/paint-maker';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Filament Painting Maker – HueForge-Style Colour Prints with a Swap Guide (STL)',
+  title: 'Make a Filament Painting Online – Colour Swap STL',
   absoluteTitle: true,
   description: 'Turn a picture into a filament painting: one relief STL plus the exact layers to change filament, with a painted preview. Works with any single-nozzle printer.',
   path: '/tools/filament-painting/make',
