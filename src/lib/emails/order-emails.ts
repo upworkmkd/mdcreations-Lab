@@ -22,17 +22,17 @@ export type OrderMailData = {
 	socials: readonly { name: string; url: string }[];
 };
 
-const C = { olive: '#424532', olive2: '#676e47', deep: '#2c2e21', paper: '#ebebe3', paper3: '#f7f7f2', line: '#cbcdbd', ink: '#20221a', ink2: '#555846', ink3: '#7b7e69', light: '#f1c47e' };
-const SERIF = "Georgia, 'Cormorant Garamond', 'Times New Roman', serif";
-const SANS = "'Hanken Grotesk', -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
-const MONO = "'IBM Plex Mono', Menlo, Consolas, monospace";
+export const C = { olive: '#424532', olive2: '#676e47', deep: '#2c2e21', paper: '#ebebe3', paper3: '#f7f7f2', line: '#cbcdbd', ink: '#20221a', ink2: '#555846', ink3: '#7b7e69', light: '#f1c47e' };
+export const SERIF = "Georgia, 'Cormorant Garamond', 'Times New Roman', serif";
+export const SANS = "'Hanken Grotesk', -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
+export const MONO = "'IBM Plex Mono', Menlo, Consolas, monospace";
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+export const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 export const orderNo = (id: string) => id.slice(0, 8).toUpperCase();
-const dateIn = (s: string) => new Date(s).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-const METHOD: Record<string, string> = { card: 'Card', upi: 'UPI', netbanking: 'Net banking', wallet: 'Wallet', emi: 'EMI', paylater: 'Pay later' };
+export const dateIn = (s: string) => new Date(s).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+export const METHOD: Record<string, string> = { card: 'Card', upi: 'UPI', netbanking: 'Net banking', wallet: 'Wallet', emi: 'EMI', paylater: 'Pay later' };
 
-function paidLine(d: OrderMailData) {
+export function paidLine(d: OrderMailData) {
 	if (d.how === 'plan') return `Included in your ${d.planName ? `${d.planName} ` : ''}plan`;
 	if (d.how === 'admin') return 'Free (admin test order)';
 	if (d.how === 'free' || !d.amount) return 'Free';
@@ -40,7 +40,7 @@ function paidLine(d: OrderMailData) {
 }
 
 /** The outer frame: stone paper around a light card, logo on top, small print below. */
-function frame(o: { preheader: string; body: string; foot: string; siteUrl: string }) {
+export function frame(o: { preheader: string; body: string; foot: string; siteUrl: string }) {
 	return `<!doctype html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -76,13 +76,13 @@ function frame(o: { preheader: string; body: string; foot: string; siteUrl: stri
 </html>`;
 }
 
-const row = (k: string, v: string, last = false) => `
+export const row = (k: string, v: string, last = false) => `
   <tr>
     <td style="padding:11px 0; ${last ? '' : `border-bottom:1px solid ${C.line};`} font:500 11px/1.4 ${MONO}; letter-spacing:.12em; text-transform:uppercase; color:${C.ink3}; width:38%; vertical-align:top;">${k}</td>
     <td style="padding:11px 0; ${last ? '' : `border-bottom:1px solid ${C.line};`} font:400 15px/1.5 ${SANS}; color:${C.ink}; text-align:right; vertical-align:top;">${v}</td>
   </tr>`;
 
-const button = (href: string, label: string, dark = false) => `
+export const button = (href: string, label: string, dark = false) => `
   <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
     <td style="border-radius:3px; background:${dark ? C.olive : C.light};">
       <a href="${href}" style="display:inline-block; padding:14px 26px; font:600 15px/1 ${SANS}; color:${dark ? '#ffffff' : C.deep}; text-decoration:none; border-radius:3px;">${label}</a>

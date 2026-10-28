@@ -10,6 +10,7 @@ import { updateName } from '../login/actions';
 import { toolBySlug } from '@/lib/tools';
 import { ReviewForm } from '@/components/review-form';
 import { entitlement } from '@/lib/plans.server';
+import { PRINT_STATUS, shipLines, type ShipTo } from '@/lib/ship';
 
 export const metadata: Metadata = { title: 'Your account', robots: { index: false, follow: false } };
 
@@ -23,7 +24,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   const supabase = await createClient();
   const [files, orders, payments, downloads] = await Promise.all([
     supabase.from('files').select('id, name, size_bytes, created_at, tool_slug, design_id, designs(name, preview)').order('created_at', { ascending: false }),
-    supabase.from('orders').select('id, tool_slug, currency, amount_minor, status, created_at, provider_order_id, designs(name)').order('created_at', { ascending: false }).limit(100),
+    supabase.from('orders').select('id, tool_slug, currency, amount_minor, status, created_at, provider_order_id, kind, print_status, ship_to, courier, tracking_no, shipped_at, designs(name, preview)').order('created_at', { ascending: false }).limit(100),
     supabase.from('payments').select('provider_payment_id, amount_minor, currency, status, method, created_at').order('created_at', { ascending: false }).limit(100),
     supabase.from('downloads').select('file_id'),
   ]);
@@ -33,6 +34,8 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   const dl = new Map<string, number>();
   for (const d of downloads.data ?? []) dl.set(d.file_id, (dl.get(d.file_id) ?? 0) + 1);
   const one = <T,>(v: T | T[] | null | undefined) => (Array.isArray(v) ? v[0] : v) ?? null;
+  const printed = (orders.data ?? []).filter((o) => o.kind === 'print' && (o.status === 'paid' || o.status === 'fulfilled'));
+  const STEPS = ['to_print', 'printing', 'shipped', 'delivered'];
 
   return (
     <div className="wrap">
@@ -45,6 +48,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
         <nav aria-label="Account sections">
           <a href="#files" className="on">Files</a>
           <a href="#plan">Plan</a>
+          {printed.length > 0 && <a href="#printed">Printed orders</a>}
           <a href="#orders">Orders</a>
           <a href="#payments">Payments</a>
           <a href="#review">Review</a>
@@ -109,6 +113,35 @@ export default async function Account({ searchParams }: { searchParams: Promise<
             )}
           </section>
 
+          {printed.length > 0 && (
+            <section id="printed">
+              <h2>Printed orders</h2>
+              <div className="acc-po-list">
+                {printed.map((o) => {
+                  const d = one(o.designs as { name: string; preview: string | null } | { name: string; preview: string | null }[] | null);
+                  const st = o.print_status ?? 'to_print', at = STEPS.indexOf(st);
+                  return (
+                    <article key={o.id} className="acc-po">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {d?.preview ? <img src={d.preview} alt="" /> : <span className="ph" />}
+                      <div className="acc-po-main">
+                        <p className="acc-po-t"><b>{d?.name ?? 'Your design'}</b> <span className="muted">· {toolBySlug(o.tool_slug)?.name ?? o.tool_slug}, printed</span></p>
+                        <p className="id">Order #{o.id.slice(0, 8).toUpperCase()} · {when(o.created_at)} · {money(o.amount_minor, o.currency)}</p>
+                        {st === 'cancelled' ? <p className="msg">This order was cancelled. Write to us if you have any questions.</p> : (
+                          <ol className="acc-po-steps" aria-label={`Status: ${PRINT_STATUS[st]?.label}`}>
+                            {['Paid', 'Printing', 'Shipped', 'Delivered'].map((n, i) => <li key={n} className={i <= at ? 'on' : ''}>{n}</li>)}
+                          </ol>
+                        )}
+                        <p className="acc-po-note">{PRINT_STATUS[st]?.note}{st === 'shipped' || st === 'delivered' ? <> Sent by {o.courier || 'India Post'}{o.tracking_no ? <>, tracking number <b className="mono">{o.tracking_no}</b></> : null}.</> : null}</p>
+                      </div>
+                      <address className="acc-po-addr">{shipLines(o.ship_to as ShipTo).slice(0, 5).map((l) => <span key={l}>{l}</span>)}</address>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
           <section id="orders">
             <h2>Orders</h2>
             <div className="tbl-wrap">
@@ -119,8 +152,10 @@ export default async function Account({ searchParams }: { searchParams: Promise<
                     <tr key={o.id}>
                       <td>{when(o.created_at)}</td>
                       <td>{one(o.designs as { name: string } | { name: string }[] | null)?.name ?? '—'}</td>
-                      <td>{toolBySlug(o.tool_slug)?.name ?? o.tool_slug}</td>
-                      <td><span className={`pill ${o.status}`}>{o.status === 'created' ? 'not paid' : o.status}</span>{o.amount_minor === 0 && o.status === 'fulfilled' ? <span className="id"> · plan</span> : null}{o.status === 'paid' && <> <RetryBuild orderId={o.id} /></>}</td>
+                      <td>{toolBySlug(o.tool_slug)?.name ?? o.tool_slug}{o.kind === 'print' && <span className="id"> · printed</span>}</td>
+                      <td>{o.kind === 'print' && o.status !== 'created' && o.status !== 'failed'
+                        ? <a href="#printed" className={`pill po-${o.print_status ?? 'to_print'}`}>{PRINT_STATUS[o.print_status ?? 'to_print']?.label}</a>
+                        : <><span className={`pill ${o.status}`}>{o.status === 'created' ? 'not paid' : o.status}</span>{o.amount_minor === 0 && o.status === 'fulfilled' ? <span className="id"> · plan</span> : null}{o.status === 'paid' && <> <RetryBuild orderId={o.id} /></>}</>}</td>
                       <td className="num">{money(o.amount_minor, o.currency)}</td>
                       <td className="id">{o.provider_order_id ?? o.id.slice(0, 8)}</td>
                     </tr>

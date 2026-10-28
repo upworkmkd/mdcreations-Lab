@@ -16,6 +16,8 @@ export async function makerContext(slug: string) {
   const live = tool?.status === 'live', admin = viewer?.role === 'admin';
   if (!live && !admin) redirect(`/tools/${slug}`);
   const amount = tool?.prices[currency] ?? null;
+  // printed and posted: India only for now, so only for visitors paying in rupees
+  const printMinor = currency === 'INR' ? tool?.printPrices.INR ?? null : null;
   const ent = viewer ? await entitlement(viewer.id, slug).catch(() => null) : null;
   const reviewed = viewer ? ((await supabaseAdmin().from('testimonials').select('id', { count: 'exact', head: true }).eq('user_id', viewer.id).eq('source', 'site')).count ?? 0) > 0 : false;
   const plans = (await getPlans()).map((p) => ({
@@ -29,6 +31,7 @@ export async function makerContext(slug: string) {
       payConfigured: supabaseConfigured() && Boolean(process.env.RAZORPAY_KEY_ID) && live,
       plan: ent?.covers ? { name: ent.plan.name, remaining: ent.remaining, limit: ent.plan.daily_limit } : null,
       plans, otherPlan: Boolean(ent && !ent.covers), viewerName: viewer?.name ?? '', reviewed, preview: !live && admin,
+      print: printMinor != null && tool && supabaseConfigured() && (admin || (live && Boolean(process.env.RAZORPAY_KEY_ID))) ? { priceMinor: printMinor, toolName: tool.name } : null,
     },
   };
 }

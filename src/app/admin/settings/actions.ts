@@ -31,3 +31,13 @@ export async function sendTest(_: FormState, form: FormData): Promise<FormState>
   revalidatePath('/admin/settings');
   return r.ok ? { ok: `Sent to ${to.join(', ')}. Check the inbox (and the spam folder the first time).` } : { error: r.error };
 }
+
+/** The return address printed on parcel labels for printed orders. */
+export async function saveShopSettings(_: FormState, form: FormData): Promise<FormState> {
+  await requireAdmin();
+  const returnAddress = String(form.get('returnAddress') ?? '').replace(/\r/g, '').split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 8).join('\n').slice(0, 500);
+  const { error } = await supabaseAdmin().from('site_settings').upsert({ key: 'shop', value: { returnAddress }, updated_at: new Date().toISOString() });
+  if (error) return { error: error.message };
+  revalidatePath('/admin/settings');
+  return { ok: 'Saved.' };
+}

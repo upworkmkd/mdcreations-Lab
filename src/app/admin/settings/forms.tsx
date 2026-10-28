@@ -1,6 +1,6 @@
 'use client';
 import { useActionState } from 'react';
-import { saveEmailSettings, sendTest, type FormState } from './actions';
+import { saveEmailSettings, saveShopSettings, sendTest, type FormState } from './actions';
 
 export function EmailSettingsForm({ customer, admin, notify }: { customer: boolean; admin: boolean; notify: string[] }) {
   const [state, run, pending] = useActionState<FormState, FormData>(saveEmailSettings, null);
@@ -31,6 +31,23 @@ export function TestButton({ kind, label, disabled }: { kind: 'customer' | 'admi
       <button className="btn small ghost" disabled={pending || disabled}>{pending ? 'Sending…' : label}</button>
       {state?.ok && <span className="msg ok">{state.ok}</span>}
       {state?.error && <span className="msg err">{state.error}</span>}
+    </form>
+  );
+}
+
+export function ShopForm({ returnAddress }: { returnAddress: string }) {
+  const [state, run, pending] = useActionState<FormState, FormData>(saveShopSettings, null);
+  return (
+    <form action={run} className="adm-set">
+      <label className="lbl">Return address on parcel labels
+        <textarea name="returnAddress" className="input" rows={5} defaultValue={returnAddress} placeholder={'MD Creations\nHouse, street\nTown, State – PIN\nPhone: +91 …'} />
+        <small className="muted">Printed as the “From” address on labels for printed orders. One line each, up to 8.</small>
+      </label>
+      <div className="adm-inline" style={{ alignItems: 'center' }}>
+        <button className="btn small" disabled={pending}>{pending ? 'Saving…' : 'Save'}</button>
+        {state?.ok && <span className="msg ok">{state.ok}</span>}
+        {state?.error && <span className="msg err">{state.error}</span>}
+      </div>
     </form>
   );
 }

@@ -1,20 +1,21 @@
 import { requireAdmin } from '@/lib/auth.server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { mailFrom, mailProvider, replyAddress } from '@/lib/mail.server';
-import { getEmailSettings, sampleMailData } from '@/lib/order-mail.server';
+import { getEmailSettings, getShopSettings, sampleMailData } from '@/lib/order-mail.server';
 import { adminOrderEmail, customerOrderEmail } from '@/lib/emails/order-emails';
 import { Card, Empty, PageHead, ago, when } from '../ui';
-import { EmailSettingsForm, TestButton } from './forms';
+import { EmailSettingsForm, ShopForm, TestButton } from './forms';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Settings' };
 
-const KIND: Record<string, string> = { order_customer: 'Receipt', order_admin: 'Order alert', test: 'Test' };
+const KIND: Record<string, string> = { order_customer: 'Receipt', order_admin: 'Order alert', test: 'Test', print_customer: 'Printed order receipt', print_admin: 'Print order alert', print_shipped: 'Shipped', print_delivered: 'Delivered' };
 
 export default async function Settings() {
   const me = await requireAdmin();
-  const [s, log] = await Promise.all([
+  const [s, shop, log] = await Promise.all([
     getEmailSettings(),
+    getShopSettings(),
     supabaseAdmin().from('email_log').select('id, kind, to_email, subject, status, error, created_at').order('created_at', { ascending: false }).limit(25),
   ]);
   const provider = mailProvider();
@@ -53,6 +54,10 @@ export default async function Settings() {
           <iframe className="adm-mail" title="Order alert preview" srcDoc={adm.html} sandbox="" />
         </Card>
       </div>
+
+      <Card title="Printed orders">
+        <ShopForm returnAddress={shop.returnAddress} />
+      </Card>
 
       <Card title="Recent emails" flush>
         {log.error ? <Empty>Could not read the email log: {log.error.message}. Did you run the order emails SQL migration?</Empty>
