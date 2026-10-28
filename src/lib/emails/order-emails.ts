@@ -53,7 +53,7 @@ function frame(o: { preheader: string; body: string; foot: string; siteUrl: stri
 </style>
 </head>
 <body style="margin:0; padding:0; background:${C.paper}; -webkit-font-smoothing:antialiased;">
-<div style="display:none; max-height:0; overflow:hidden; opacity:0; color:${C.paper};">${esc(o.preheader)}&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
+<div style="display:none; max-height:0; overflow:hidden; opacity:0; color:${C.paper};">${esc(o.preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.paper};">
   <tr><td align="center" style="padding:28px 12px 40px;">
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px;">
@@ -195,9 +195,10 @@ export function adminOrderEmail(d: OrderMailData) {
       </table>
     </td></tr>
     <tr><td class="px" style="padding:20px 40px 34px;">
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="padding-right:10px;">${button(`${d.siteUrl}/admin/users/${d.userId}`, 'Open customer', true)}</td>
-        <td>${button(`${d.siteUrl}/admin/orders`, 'All orders')}</td>
+      <table role="presentation" class="stack" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="padding:0 10px 10px 0;">${button(`${d.siteUrl}/admin/users/${d.userId}`, 'Open customer', true)}</td>
+        <td style="padding:0 10px 10px 0;">${button(`mailto:${esc(d.customerEmail)}?subject=${encodeURIComponent(`Your MD Creations Labs order #${orderNo(d.orderId)}`)}`, 'Reply to customer')}</td>
+        <td style="padding:0 0 10px;">${button(`${d.siteUrl}/admin/orders`, 'All orders')}</td>
       </tr></table>
     </td></tr>
   </table>`;
@@ -213,6 +214,7 @@ export function adminOrderEmail(d: OrderMailData) {
 		d.paymentId ? `Payment:  ${d.paymentId}` : '',
 		``,
 		`Customer: ${d.siteUrl}/admin/users/${d.userId}`,
+		`Reply:    mailto:${d.customerEmail}`,
 		`Orders:   ${d.siteUrl}/admin/orders`,
 	].filter((l) => l !== null).join('\n');
 	return { subject, html: frame({ preheader: `${headline} from ${d.customerName || d.customerEmail} for ${d.toolName}.`, body, foot, siteUrl: d.siteUrl }), text };

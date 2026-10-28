@@ -9,7 +9,7 @@ export function EmailSettingsForm({ customer, admin, notify }: { customer: boole
       <label className="adm-tick"><input type="checkbox" name="customer" defaultChecked={customer} />
         <span><b>Email the customer a receipt</b><small>Order details, a button to their files and a one-tap “How was your order?” for feedback.</small></span></label>
       <label className="adm-tick"><input type="checkbox" name="admin" defaultChecked={admin} />
-        <span><b>Email us about every new order</b><small>Sent to the alert addresses below. Replying to it writes to the customer.</small></span></label>
+        <span><b>Email us about every new order</b><small>Sent to the alert addresses below. It has a button to reply to the customer.</small></span></label>
       <label className="lbl">Order alert addresses
         <textarea name="notify" className="input" rows={3} defaultValue={notify.join('\n')} placeholder={'you@themdcreations.com\npartner@example.com'} />
         <small className="muted">One per line, up to 10.</small>

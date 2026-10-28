@@ -1,10 +1,10 @@
 import 'server-only';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { SITE_URL, SOCIALS, SUPPORT_EMAIL } from '@/lib/env';
+import { SITE_URL, SOCIALS } from '@/lib/env';
 import { TOOLS } from '@/lib/tools';
 import { formatMoney, isCurrency } from '@/lib/money';
-import { sendMail, type MailResult } from '@/lib/mail.server';
+import { replyAddress, sendMail, type MailResult } from '@/lib/mail.server';
 import { adminOrderEmail, customerOrderEmail, type OrderMailData } from '@/lib/emails/order-emails';
 
 /* ------------------------------------------------------------------ settings (Admin → Settings) */
@@ -55,7 +55,7 @@ export async function orderMailData(orderId: string): Promise<OrderMailData | nu
 		designName: design?.name || 'Your design',
 		amount: o.amount_minor > 0 && isCurrency(o.currency) ? formatMoney(o.amount_minor, o.currency) : '',
 		how, planName, method: pay?.method ?? null, paymentId: pay?.provider_payment_id ?? null,
-		siteUrl: SITE_URL, supportEmail: SUPPORT_EMAIL, socials: SOCIALS,
+		siteUrl: SITE_URL, supportEmail: replyAddress(), socials: SOCIALS,
 		feedbackUrl: (r?: number) => orderFeedbackUrl(o.id, r),
 	};
 }
@@ -68,7 +68,7 @@ export function sampleMailData(email: string, name: string): OrderMailData {
 		customerName: name || 'Asha Verma', customerEmail: email || 'asha@example.com',
 		toolSlug: 'lithophane', toolName: TOOLS.find((t) => t.slug === 'lithophane')?.name ?? 'Lithophane', designName: 'Grandma’s 80th',
 		amount: formatMoney(29900, 'INR'), how: 'razorpay', method: 'upi', paymentId: 'pay_TEST1234567890',
-		siteUrl: SITE_URL, supportEmail: SUPPORT_EMAIL, socials: SOCIALS,
+		siteUrl: SITE_URL, supportEmail: replyAddress(), socials: SOCIALS,
 		feedbackUrl: (r?: number) => `${SITE_URL}/feedback/order/sample${r ? `?r=${r}` : ''}`,
 	};
 }
@@ -105,7 +105,8 @@ export async function sendOrderEmails(orderId: string) {
 		}
 		if (settings.admin && settings.notify.length && (await claim(orderId, 'admin_notified_at'))) {
 			const m = adminOrderEmail(d);
-			const r = await sendMail({ to: settings.notify, ...m, replyTo: d.customerEmail });
+			// no reply-to the customer: a stranger's address as reply-to sends the alert to spam; the email has a 'Reply to customer' button instead
+			const r = await sendMail({ to: settings.notify, ...m });
 			await log('order_admin', settings.notify, m.subject, orderId, r);
 			if (!r.ok && !r.skipped) await release(orderId, 'admin_notified_at');
 		}

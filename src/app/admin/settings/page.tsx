@@ -1,6 +1,6 @@
 import { requireAdmin } from '@/lib/auth.server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { mailFrom, mailProvider } from '@/lib/mail.server';
+import { mailFrom, mailProvider, replyAddress } from '@/lib/mail.server';
 import { getEmailSettings, sampleMailData } from '@/lib/order-mail.server';
 import { adminOrderEmail, customerOrderEmail } from '@/lib/emails/order-emails';
 import { Card, Empty, PageHead, ago, when } from '../ui';
@@ -31,6 +31,7 @@ export default async function Settings() {
           <dl className="adm-facts">
             <div><dt>Service</dt><dd>{provider === 'resend' ? 'Resend' : provider === 'smtp' ? `SMTP · ${process.env.SMTP_HOST}` : <span className="msg err">Not set up, so no email is sent</span>}</dd></div>
             <div><dt>From</dt><dd><code>{mailFrom()}</code></dd></div>
+            <div><dt>Replies go to</dt><dd><code>{replyAddress()}</code></dd></div>
           </dl>
           {!provider && (
             <p className="muted adm-help">Add these in Vercel → Project → Settings → Environment Variables, then redeploy:<br />
