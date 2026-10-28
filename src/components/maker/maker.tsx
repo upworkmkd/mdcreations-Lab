@@ -1,4 +1,5 @@
 'use client';
+import { PrintOrder } from '@/components/print-order';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { mountStudio } from './studio.js';
@@ -40,7 +41,7 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 
 export type MakerPlan = { name: string; remaining: number | null; limit: number | null };
 
-export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false }: { currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean; viewerName?: string; reviewed?: boolean }) {
+export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false, printMinor = null }: { currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean; viewerName?: string; reviewed?: boolean; printMinor?: number | null }) {
   const [thanks, setThanks] = useState<string | null>(null);   // file id while the thank-you window is open
   const [askedReview, setAskedReview] = useState(reviewed);
   const [plan, setPlan] = useState<MakerPlan | null>(plan0 ?? null);
@@ -303,6 +304,10 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                   : amountMinor == null ? <p className="note">This tool is not sold in {currency} yet. Please contact us to buy it.</p> : null}
                 {phase.kind === 'error' && (
                   <p className="note">{phase.text}{phase.orderId ? <> If you were charged, your files will appear in <Link href="/account">your account</Link> within a few minutes.</> : null}</p>
+                )}
+                {printMinor != null && (
+                  <PrintOrder tool="shadow-lamp" toolName="Shadow Lamp" next="/tools/shadow-lamp/make" ready={ready && !working} priceMinor={printMinor} signedIn={signedIn}
+                    getDesign={() => { const s = studio.current; const design = s?.designPayload(); return s && design ? { design, preview: s.previewJpeg() } : null; }} />
                 )}
                 <p className="hint">Free to try. {signedIn ? 'You are signed in.' : 'You will sign in or create an account before paying.'} {onPlan ? 'Your files stay in your account.' : <>One payment per design, or <Link href="/pricing">a monthly plan</Link>; your files stay in your account.</>} Every download includes a <Link href="/license">commercial license</Link>.</p>
               </>

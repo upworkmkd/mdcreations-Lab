@@ -960,3 +960,128 @@ code { font: 400 .88em/1.4 var(--mono); }
   .tm-name { font-size: 18px; }
   .site-head .wrap.tm-grid { padding-top: 18px; padding-bottom: 40px; }
 }
+
+/* ------------------------------------------------------------------ admin: tools and prices (download + printed) */
+.adm-tool-form { display: grid; grid-template-columns: minmax(130px, 1.2fr) repeat(4, minmax(96px, 1fr)) auto; gap: 10px; align-items: center; }
+.adm-money { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-3); }
+.adm-money .input { min-width: 0; }
+.adm-noprint { grid-column: span 2; }
+.adm-tool-head .g { grid-column: span 2; }
+@media (max-width: 1100px) { .adm-tool-head { display: none; } }
+@media (max-width: 1100px) { .adm-tool-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ------------------------------------------------------------------ "Order it printed" (maker pages) */
+.po { margin-top: 14px; display: grid; gap: 12px; }
+.po-or { display: flex; align-items: center; gap: 12px; color: var(--ink-3); font: 500 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.po-or::before, .po-or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.po-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 14px 16px; font: inherit; color: var(--ink); background: #fff; border: 1px solid var(--line-2); border-radius: 6px; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.po-card:hover:not(:disabled) { border-color: var(--olive); box-shadow: 0 10px 24px -18px rgba(31, 33, 24, .6); transform: translateY(-1px); }
+.po-card:disabled { opacity: .55; cursor: not-allowed; }
+.po-ic { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: color-mix(in srgb, var(--light) 30%, #fff); color: var(--olive-deep); }
+.po-t { display: grid; gap: 2px; }
+.po-t b { font: 500 21px/1.1 var(--serif); }
+.po-t span { font-size: 13px; color: var(--ink-2); line-height: 1.4; }
+.po-p { display: grid; justify-items: end; font-size: 17px; font-weight: 500; color: var(--olive-deep); }
+.po-p small { font: 400 10.5px/1.2 var(--sans); color: var(--ink-3); }
+
+.po-dlg { width: min(860px, calc(100vw - 24px)); }
+.po-body { display: grid; grid-template-columns: minmax(0, 280px) minmax(0, 1fr); gap: 26px; align-items: start; }
+.po-sum { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: grid; gap: 12px; }
+.po-sum img, .po-ph { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: var(--paper-2); border-radius: 4px; }
+.po-tool { display: grid; font: 500 20px/1.15 var(--serif); }
+.po-tool small { font: 400 12.5px/1.4 var(--sans); color: var(--ink-3); }
+.po-sum dl { margin: 0; display: grid; font-size: 13.5px; }
+.po-sum dl div { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--paper-2); }
+.po-sum dt { color: var(--ink-2); }
+.po-sum dd { margin: 0; }
+.po-sum .tot { font-weight: 600; font-size: 15px; border-top: 1px solid var(--line); }
+.po-note { font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+.po-form { display: grid; gap: 14px; }
+.po-h { font: 500 11.5px/1.3 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--olive-2); }
+.po-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+.po-f { display: grid; gap: 5px; font-size: 13px; color: var(--ink-2); align-content: start; }
+.po-f.wide { grid-column: 1 / -1; }
+.po-f .input { font-size: 15px; }
+.po-f .input[aria-invalid="true"] { border-color: var(--bad); }
+.po-err { color: var(--bad); font-size: 12px; }
+.po-tel { display: flex; align-items: stretch; }
+.po-tel span { display: grid; place-items: center; padding: 0 10px; border: 1px solid var(--line-2); border-right: 0; border-radius: var(--radius) 0 0 var(--radius); background: var(--paper-2); font: 500 14px/1 var(--mono); color: var(--ink-2); }
+.po-tel .input { border-radius: 0 var(--radius) var(--radius) 0; flex: 1; min-width: 0; }
+.po-pay { justify-self: start; min-width: 200px; }
+.po-fine { font-size: 12px; line-height: 1.5; color: var(--ink-3); }
+.po-done { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 24px; align-items: start; font-size: 15px; line-height: 1.6; }
+.po-done img { width: 100%; border-radius: 6px; background: var(--paper-2); }
+.po-done > div { display: grid; gap: 12px; }
+.po-addr { padding: 12px 14px; background: #fff; border: 1px solid var(--line); border-radius: 6px; }
+.po-acts { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+@media (max-width: 720px) {
+  .po-body, .po-done { grid-template-columns: minmax(0, 1fr); }
+  .po-sum { grid-template-columns: 96px minmax(0, 1fr); align-items: center; }
+  .po-sum img, .po-ph { grid-row: span 2; }
+  .po-sum dl, .po-note { grid-column: 1 / -1; }
+  .po-grid { grid-template-columns: minmax(0, 1fr); }
+  .po-pay { justify-self: stretch; }
+}
+
+/* ------------------------------------------------------------------ printed orders: status colours, account, admin */
+.pill.po-to_print { background: #efe3c8; color: var(--warn); }
+.pill.po-printing { background: #e6e3f0; color: #4b4380; }
+.pill.po-shipped { background: #d9e6ee; color: #2c5a72; }
+.pill.po-delivered { background: #dfe6d3; color: var(--ok); }
+.pill.po-cancelled { background: #f0d9d2; color: var(--bad); }
+a.pill { text-decoration: none; }
+
+.acc-po-list { display: grid; gap: 14px; }
+.acc-po { display: grid; grid-template-columns: 96px minmax(0, 1fr) minmax(0, 220px); gap: 18px; align-items: start; padding: 16px; background: #fff; border: 1px solid var(--line); border-radius: 6px; }
+.acc-po > img, .acc-po > .ph { width: 96px; aspect-ratio: 1; object-fit: cover; border-radius: 4px; background: var(--paper-2); }
+.acc-po-main { display: grid; gap: 6px; min-width: 0; }
+.acc-po-t b { font: 500 21px/1.15 var(--serif); }
+.acc-po-steps { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.acc-po-steps li { padding-top: 8px; border-top: 4px solid var(--line); font: 500 10.5px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.acc-po-steps li.on { border-top-color: var(--olive); color: var(--ink); }
+.acc-po-note { font-size: 13.5px; color: var(--ink-2); }
+.acc-po-addr { display: grid; font-style: normal; font-size: 13px; line-height: 1.5; color: var(--ink-2); padding-left: 16px; border-left: 1px solid var(--line); }
+@media (max-width: 720px) { .acc-po { grid-template-columns: 72px minmax(0, 1fr); } .acc-po > img, .acc-po > .ph { width: 72px; } .acc-po-addr { grid-column: 1 / -1; padding-left: 0; border-left: 0; } }
+
+.adm-col { display: grid; gap: 20px; align-content: start; min-width: 0; }
+.adm-po-design { display: flex; gap: 12px; align-items: center; text-decoration: none; color: inherit; }
+.adm-po-design img, .adm-po-design .ph { width: 52px; height: 52px; flex: none; object-fit: cover; border-radius: 4px; background: var(--paper-2); }
+.adm-po-design b { display: block; }
+.adm-po-what { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.adm-po-what img, .adm-po-what .ph { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 6px; background: var(--paper-2); border: 1px solid var(--line); }
+.adm-po-steps { display: grid; gap: 16px; }
+.adm-po-steps form { display: grid; gap: 10px; justify-items: start; }
+.adm-po-ship { padding: 16px; background: var(--paper-3); border: 1px solid var(--line); border-radius: 6px; width: 100%; }
+.adm-po-h { font: 500 11px/1.3 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--olive-2); }
+.adm-po-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; align-items: end; }
+.adm-po-row > .adm-inline { grid-column: 1 / -1; }
+.adm-po-more summary { cursor: pointer; font-size: 13px; color: var(--ink-3); }
+.adm-po-more .adm-inline { margin-top: 10px; gap: 16px; }
+.adm-po-addr { display: grid; gap: 12px; }
+.adm-po-addr address { display: grid; font-style: normal; font-size: 16px; line-height: 1.55; padding: 14px 16px; background: var(--paper-3); border: 1px solid var(--line); border-radius: 6px; }
+.adm-po-addr address span:first-child { font-weight: 600; }
+.adm-po-addr-edit { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.adm-po-addr-edit > .adm-inline { grid-column: 1 / -1; }
+.adm-po-tl { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.adm-po-tl li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0 9px 18px; position: relative; font-size: 14px; color: var(--ink-3); border-left: 2px solid var(--line); }
+.adm-po-tl li::before { content: ''; position: absolute; left: -6px; top: 13px; width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.adm-po-tl li.on { color: var(--ink); border-left-color: var(--olive); }
+.adm-po-tl li.on::before { background: var(--olive); }
+@media (max-width: 720px) { .adm-po-what, .adm-po-row, .adm-po-addr-edit { grid-template-columns: minmax(0, 1fr); } }
+
+/* parcel label: an A6-ish card, and nothing else on paper */
+.label-page { display: grid; gap: 16px; justify-items: start; }
+.label { width: 148mm; min-height: 100mm; padding: 9mm 10mm; background: #fff; color: #000; border: 1.5px dashed #888; display: grid; gap: 6mm; align-content: start; font-family: var(--sans); }
+.label-k { font: 600 10pt/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: #444; }
+.label-to { display: grid; font-style: normal; font-size: 17pt; line-height: 1.35; }
+.label-to span:first-child { font-weight: 700; }
+.label-from { display: grid; gap: 2mm; padding-top: 4mm; border-top: 1px solid #bbb; }
+.label-from address { display: grid; font-style: normal; font-size: 10pt; line-height: 1.4; }
+.label-no { font: 500 9pt/1 var(--mono); color: #555; }
+@media print {
+  .adm-side, .label-actions, .site-head, .site-foot { display: none !important; }
+  .adm, .adm-main { display: block !important; padding: 0 !important; background: #fff !important; }
+  .label { border: 1.5px solid #000; }
+}
+.adm-po-cancel { display: grid; gap: 10px; justify-items: start; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
+.adm-po-cancel .lbl { width: 100%; }

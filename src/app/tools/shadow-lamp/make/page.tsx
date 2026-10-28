@@ -30,6 +30,8 @@ export default async function MakePage({ searchParams }: PageProps<'/tools/shado
     price: p.prices[currency] != null ? formatMoney(p.prices[currency]!, currency) : null,
   }));
   const payConfigured = supabaseConfigured() && Boolean(process.env.RAZORPAY_KEY_ID) && tool?.status === 'live';
+  // printed and posted: India only for now, so only for visitors paying in rupees
+  const printMinor = currency === 'INR' && (payConfigured || viewer?.role === 'admin') ? tool?.printPrices.INR ?? null : null;
   return (
     <div className="wrap">
       <div style={{ padding: '36px 0 26px', display: 'flex', flexWrap: 'wrap', alignItems: 'end', justifyContent: 'space-between', gap: 16 }}>
@@ -39,7 +41,7 @@ export default async function MakePage({ searchParams }: PageProps<'/tools/shado
         </div>
         <p className="muted" style={{ maxWidth: '46ch', fontSize: 15 }}>Everything on this page runs in your browser and is free to try. The printable files are built when you buy.</p>
       </div>
-      <Maker currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} example={example} plan={plan} plans={plans} otherPlan={Boolean(ent && !ent.covers)} viewerName={viewer?.name ?? ''} reviewed={reviewed} />
+      <Maker currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} example={example} plan={plan} plans={plans} otherPlan={Boolean(ent && !ent.covers)} viewerName={viewer?.name ?? ''} reviewed={reviewed} printMinor={printMinor} />
     </div>
   );
 }

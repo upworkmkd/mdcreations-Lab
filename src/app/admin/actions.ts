@@ -24,6 +24,16 @@ export async function saveTool(_: SaveState, form: FormData): Promise<SaveState>
     const p = await db.from('tool_prices').upsert({ tool_slug: slug, currency: c, amount_minor: Math.round(major * 100), updated_at: new Date().toISOString() });
     if (p.error) return { error: p.error.message };
   }
+  // the printed price (shipping included); only sent for tools that can be printed
+  for (const c of CURRENCIES) {
+    if (!form.has(`print_${c}`)) continue;
+    const raw = String(form.get(`print_${c}`) ?? '').trim();
+    if (raw === '') { await db.from('tool_print_prices').delete().eq('tool_slug', slug).eq('currency', c); continue; }
+    const major = Number(raw);
+    if (!Number.isFinite(major) || major < 1 || major > 1_000_000) return { error: `Printed price in ${c} must be at least 1 (Razorpay's minimum).` };
+    const p = await db.from('tool_print_prices').upsert({ tool_slug: slug, currency: c, amount_minor: Math.round(major * 100), updated_at: new Date().toISOString() });
+    if (p.error) return { error: `${p.error.message}. Did you run the printed orders SQL migration?` };
+  }
   clearCatalogCache();
   revalidatePath('/', 'layout');
   return { ok: true };

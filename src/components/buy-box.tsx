@@ -10,6 +10,7 @@ import { loadCheckout, startPlan } from '@/lib/subscribe.client';
 import { PlanChooser, type ChooserPlan, type Choice } from '@/components/maker/plan-chooser';
 import { ThankYou } from '@/components/maker/thank-you';
 import type { MakerPlan } from '@/components/maker/maker';
+import { PrintOrder } from '@/components/print-order';
 
 type Phase = { kind: 'idle' } | { kind: 'working'; text: string } | { kind: 'done'; fileId: string } | { kind: 'error'; text: string; orderId?: string };
 type RzpResponse = { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string };
@@ -26,10 +27,11 @@ export type BuyBoxProps = {
   currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean;
   plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean; viewerName?: string; reviewed?: boolean;
   doneBlurb?: string; preview?: boolean;   // preview = the tool is not public yet (admins only)
+  print?: { priceMinor: number; toolName: string } | null;   // "Order it printed", when the tool has a printed price (India)
 };
 
 /** "Get the files": download options, sign-in, Razorpay (one design or a plan), and the thank-you window. */
-export function BuyBox({ tool, next, ready, getDesign, currency, amountMinor, signedIn: signedIn0, payConfigured, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false, doneBlurb, preview }: BuyBoxProps) {
+export function BuyBox({ tool, next, ready, getDesign, currency, amountMinor, signedIn: signedIn0, payConfigured, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false, doneBlurb, preview, print }: BuyBoxProps) {
   const [thanks, setThanks] = useState<string | null>(null);
   const [askedReview, setAskedReview] = useState(reviewed);
   const [plan, setPlan] = useState<MakerPlan | null>(plan0 ?? null);
@@ -135,6 +137,7 @@ export function BuyBox({ tool, next, ready, getDesign, currency, amountMinor, si
             : !payConfigured ? <p className="note">Payments are being set up. Please check back soon.</p>
             : amountMinor == null ? <p className="note">This tool is not sold in {currency} yet. Please contact us to buy it.</p> : null}
           {phase.kind === 'error' && <p className="note">{phase.text}{phase.orderId ? <> If you were charged, your files will appear in <Link href="/account">your account</Link> within a few minutes.</> : null}</p>}
+          {print && <PrintOrder tool={tool} toolName={print.toolName} next={next} ready={ready && !working} priceMinor={print.priceMinor} signedIn={signedIn} getDesign={getDesign} />}
           <p className="hint">Free to try. {onPlan ? 'Your files stay in your account.' : <>One payment per design, or <Link href="/pricing">a monthly plan</Link>.</>} Every download includes a <Link href="/license">commercial license</Link>.</p>
         </>
       )}

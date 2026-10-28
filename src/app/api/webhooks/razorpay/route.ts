@@ -48,8 +48,14 @@ export async function POST(req: Request) {
   if (!order) return NextResponse.json({ ok: true });   // e.g. a plan renewal: handled by subscription.charged
   try {
     if (order.status === 'created') await recordPayment(order, pay.id);
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });   // Razorpay retries later
+  }
+  try {
     if (order.status !== 'fulfilled') await fulfilOrder(order.id);
   } catch (e) {
+    // a printed order whose files failed to build is still paid; the shop rebuilds it from the admin
+    if (order.kind === 'print') return NextResponse.json({ ok: true });
     // Answer 500 so Razorpay retries later.
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
