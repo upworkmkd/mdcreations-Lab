@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Logo } from '@/components/brand';
 import { SUPPORT_EMAIL, SOCIALS } from '@/lib/env';
 import { CookieSettings } from '@/components/tracker';
+import { FeedbackLink } from '@/components/feedback-popup';
 import { getCatalog } from '@/lib/catalog.server';
 
 export async function SiteFooter() {
@@ -43,6 +44,7 @@ export async function SiteFooter() {
             <li><Link href="/privacy">Privacy</Link></li>
             <li><Link href="/shipping">Delivery</Link></li>
             <li><CookieSettings /></li>
+            <li><FeedbackLink /></li>
           </ul>
         </div>
         <div className="base">

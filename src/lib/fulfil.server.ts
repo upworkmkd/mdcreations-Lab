@@ -2,6 +2,13 @@ import 'server-only';
 import { supabaseAdmin, FILES_BUCKET } from '@/lib/supabase/admin';
 import { kitFor } from '@/lib/kits.server';
 import { capturePayment, fetchPayment } from '@/lib/razorpay.server';
+import { after } from 'next/server';
+import { sendOrderEmails } from '@/lib/order-mail.server';
+
+/** The receipt and the shop's note go out after the response, so the download is not kept waiting. */
+function emailLater(orderId: string) {
+  try { after(() => sendOrderEmails(orderId)); } catch { void sendOrderEmails(orderId); }
+}
 
 type OrderRow = { id: string; user_id: string; design_id: string; tool_slug: string; status: string; amount_minor: number; currency: string; provider_order_id: string | null };
 
@@ -19,11 +26,46 @@ export async function recordPayment(order: OrderRow, paymentId: string) {
   await db.from('orders').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', order.id).eq('status', 'created');
 }
 
+/**
+ * A printed order: builds the same files, but for the shop only. They are kept privately under print/<order>/
+ * (not in the customer's account) and the order moves to "To print". Idempotent. Returns ''.
+ */
+async function fulfilPrintOrder(order: { id: string; user_id: string; design_id: string; tool_slug: string; status: string; print_file: string | null; print_status: string | null }): Promise<string> {
+  const db = supabaseAdmin();
+  if (order.print_file) { emailLater(order.id); return ''; }   // built already; sends only what has not gone out yet
+  const { data: design } = await db.from('designs').select('id, name, params, preview').eq('id', order.design_id).single();
+  if (!design) throw new Error('The design for this order is missing.');
+  try {
+    const preview = typeof design.preview === 'string' && design.preview.startsWith('data:image/jpeg;base64,')
+      ? new Uint8Array(Buffer.from(design.preview.slice(23), 'base64')) : null;
+    const kit = kitFor(order.tool_slug);
+    if (!kit) throw new Error('This tool cannot build files yet.');
+    const built = await kit.build(kit.parse(design.params) as never, preview, { owner: 'MD Creations (printed order)', orderId: order.id });
+    const path = `print/${order.id}/${built.fileName}`;
+    const up = await db.storage.from(FILES_BUCKET).upload(path, built.zip, { contentType: 'application/zip', upsert: true });
+    if (up.error) throw new Error('Could not store the files: ' + up.error.message);
+    await db.from('orders').update({ status: 'fulfilled', fulfilled_at: new Date().toISOString(), print_file: path, print_status: order.print_status ?? 'to_print', error: null }).eq('id', order.id);
+    emailLater(order.id);
+    return '';
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // still paid and still to print: the shop sees the problem and can rebuild from the admin
+    await db.from('orders').update({ error: msg.slice(0, 500), print_status: order.print_status ?? 'to_print' }).eq('id', order.id);
+    emailLater(order.id);
+    throw e;
+  }
+}
+
 /** Builds the files for a paid order, stores them privately and returns the file id. Idempotent. */
 export async function fulfilOrder(orderId: string): Promise<string> {
   const db = supabaseAdmin();
+  const { data: head } = await db.from('orders').select('id, user_id, design_id, tool_slug, status, kind, print_file, print_status').eq('id', orderId).maybeSingle();
+  if (head?.kind === 'print') {
+    if (head.status !== 'paid' && head.status !== 'fulfilled') throw new Error('This order has not been paid.');
+    return fulfilPrintOrder(head);
+  }
   const existing = await db.from('files').select('id').eq('order_id', orderId).maybeSingle();
-  if (existing.data) return existing.data.id;
+  if (existing.data) { emailLater(orderId); return existing.data.id; }   // sends only what has not gone out yet
 
   const { data: order, error } = await db.from('orders').select('*').eq('id', orderId).single();
   if (error || !order) throw new Error('Order not found.');
@@ -48,6 +90,7 @@ export async function fulfilOrder(orderId: string): Promise<string> {
     }, { onConflict: 'order_id' }).select('id').single();
     if (ins.error || !ins.data) throw new Error('Could not save the file record.');
     await db.from('orders').update({ status: 'fulfilled', fulfilled_at: new Date().toISOString(), error: null }).eq('id', order.id);
+    emailLater(order.id);
     return ins.data.id;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

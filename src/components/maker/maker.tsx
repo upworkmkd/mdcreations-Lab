@@ -1,4 +1,5 @@
 'use client';
+import { PrintOrder } from '@/components/print-order';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { mountStudio } from './studio.js';
@@ -10,7 +11,9 @@ import { track } from '@/components/tracker';
 import { startPlan } from '@/lib/subscribe.client';
 import { PlanChooser, type ChooserPlan, type Choice } from './plan-chooser';
 import { ThankYou } from './thank-you';
+import { LampView, type LampData } from './lamp-view';
 import './maker.css';
+import { KeepPicture } from '@/components/keep-picture';
 
 type Studio = { designPayload(): unknown; previewJpeg(): string; destroy(): void; loadExample(src: string, name: string): void };
 type Phase = { kind: 'idle' } | { kind: 'working'; text: string } | { kind: 'done'; fileId: string } | { kind: 'error'; text: string; orderId?: string };
@@ -38,10 +41,12 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 
 export type MakerPlan = { name: string; remaining: number | null; limit: number | null };
 
-export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false }: { currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean; viewerName?: string; reviewed?: boolean }) {
+export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false, printMinor = null }: { currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean; viewerName?: string; reviewed?: boolean; printMinor?: number | null }) {
   const [thanks, setThanks] = useState<string | null>(null);   // file id while the thank-you window is open
   const [askedReview, setAskedReview] = useState(reviewed);
   const [plan, setPlan] = useState<MakerPlan | null>(plan0 ?? null);
+  const [view, setView] = useState<'shadow' | '3d' | 'wall'>('shadow');
+  const [lamp, setLamp] = useState<LampData | null>(null);
   const [chooser, setChooser] = useState(false);
   const choice = useRef<Choice>('single');
   const first = EXAMPLES.find((e) => e.id === example) ?? EXAMPLES.find((e) => e.id === 'elephant')!;
@@ -57,7 +62,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
 
   useEffect(() => {
     if (!root.current) return;
-    const s = mountStudio(root.current, { onReady: setReady, sample: `/examples/${first.id}.png`, sampleName: first.name }) as Studio;
+    const s = mountStudio(root.current, { onReady: setReady, onResult: setLamp, sample: `/examples/${first.id}.png`, sampleName: first.name }) as Studio;
     studio.current = s;
     (window as unknown as { __lamp?: Studio }).__lamp = s;   // handy for support and tests
     return () => { s.destroy(); studio.current = null; };
@@ -146,7 +151,16 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
     <div className="maker" ref={root}>
       <div className="app">
         <section className="stage" aria-label="Shadow preview">
-          <div className="wallbox" id="wallbox">
+          <div className="viewtabs" role="group" aria-label="View">
+            <button type="button" aria-pressed={view === 'shadow'} onClick={() => setView('shadow')}>Shadow</button>
+            <button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')}>3D lamp</button>
+            <button type="button" aria-pressed={view === 'wall'} onClick={() => setView('wall')}>On the wall, lit</button>
+          </div>
+          {view !== 'shadow' && <div className="lampbox">
+            <LampView data={lamp} mode={view} />
+            <span className="lamphint">{view === '3d' ? 'The assembled lamp: walls, base, cover plate and LED post. Drag to turn, scroll to zoom.' : 'At night with the LED on: the shadow is cast by the actual walls. Drag to look around, scroll to zoom.'}</span>
+          </div>}
+          <div className="wallbox" id="wallbox" hidden={view !== 'shadow'}>
             <canvas id="wall" width={704} height={704} aria-label="Shadow on the wall" />
             <div className="chip" id="chip">Loading</div>
             <div className="readout" id="readout" />
@@ -171,6 +185,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                 </div>
               </div>
             </div>
+            <KeepPicture />
             <div className="field">
               <span className="hint">Or start from an example</span>
               <div className="examples">
@@ -181,13 +196,13 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                 ))}
               </div>
             </div>
-            <p className="hint">Best: a black silhouette, or a cut-out PNG with a clear background. A photo works when the background is one plain colour. Small grey dots missing? Move the cut-off slider to the right. You can also drop or paste a picture.</p>
+            <p className="hint">Any picture works: dark parts become shadow and light parts let the light through, so a photo keeps its face, beard or spokes. Bold, high-contrast pictures read best. Too much or too little shadow? Move the darkness cut-off. You can also drop or paste a picture.</p>
             <div className="row">
               <div className="field">
                 <label htmlFor="mode">How to read it</label>
                 <select id="mode" className="input" defaultValue="art">
                   <option value="art">Dark parts become shadow</option>
-                  <option value="photo">Remove the plain background</option>
+                  <option value="photo">Solid cut-out (remove a plain background)</option>
                   <option value="alpha">Use the transparent background</option>
                 </select>
               </div>
@@ -199,7 +214,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
             <div className="row">
               <div className="field">
                 <label htmlFor="smooth">Smooth the outline<output id="smoothOut" /></label>
-                <input type="range" id="smooth" min={0} max={40} defaultValue={12} />
+                <input type="range" id="smooth" min={0} max={40} defaultValue={4} />
               </div>
               <label className="check"><input type="checkbox" id="invert" /> Swap light and shadow</label>
             </div>
@@ -239,11 +254,18 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                   <button type="button" className="btn small ghost" id="plateSame" hidden>Use the shadow picture</button>
                   <input type="file" id="plateFile" accept="image/*" hidden />
                 </div>
+                <KeepPicture />
                 <div className="platectl" id="plateRead" hidden>
                   <div className="field"><label htmlFor="pMode">How to read it</label>
                     <select id="pMode" className="input" defaultValue="art"><option value="art">Dark parts become the picture</option><option value="photo">Remove the plain background</option><option value="alpha">Use the transparent background</option></select></div>
                   <div className="field"><label htmlFor="pLevel">Cut-off<output id="pLevelOut" /></label><input type="range" id="pLevel" min={1} max={254} defaultValue={128} /></div>
                   <label className="check"><input type="checkbox" id="pInvert" /> Swap picture and background</label>
+                </div>
+                <div className="field"><label htmlFor="plateKind">How to print it</label>
+                  <select id="plateKind" className="input" defaultValue="separate"><option value="separate">Two prints: plate + press-in picture</option><option value="combined">One plate in two colours, flat (AMS, 3MF)</option></select></div>
+                <div className="row" id="plateColours" hidden>
+                  <label className="colour"><input type="color" id="plateCol" defaultValue="#3a3d2c" /> Plate</label>
+                  <label className="colour"><input type="color" id="artCol" defaultValue="#e9c78f" /> Picture</label>
                 </div>
                 <div className="field"><label htmlFor="plateStyle">Picture style</label>
                   <select id="plateStyle" className="input" defaultValue="solid"><option value="solid">Solid shape</option><option value="outline">Outline only</option></select></div>
@@ -282,6 +304,10 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                   : amountMinor == null ? <p className="note">This tool is not sold in {currency} yet. Please contact us to buy it.</p> : null}
                 {phase.kind === 'error' && (
                   <p className="note">{phase.text}{phase.orderId ? <> If you were charged, your files will appear in <Link href="/account">your account</Link> within a few minutes.</> : null}</p>
+                )}
+                {printMinor != null && (
+                  <PrintOrder tool="shadow-lamp" toolName="Shadow Lamp" next="/tools/shadow-lamp/make" ready={ready && !working} priceMinor={printMinor} signedIn={signedIn}
+                    getDesign={() => { const s = studio.current; const design = s?.designPayload(); return s && design ? { design, preview: s.previewJpeg() } : null; }} />
                 )}
                 <p className="hint">Free to try. {signedIn ? 'You are signed in.' : 'You will sign in or create an account before paying.'} {onPlan ? 'Your files stay in your account.' : <>One payment per design, or <Link href="/pricing">a monthly plan</Link>; your files stay in your account.</>} Every download includes a <Link href="/license">commercial license</Link>.</p>
               </>

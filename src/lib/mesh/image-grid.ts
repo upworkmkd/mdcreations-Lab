@@ -1,10 +1,10 @@
 /* Turns a picture into a grid of brightness values (0 = black, 1 = white), in the browser. */
 
-export type Framing = { zoom: number; x: number; y: number };   // zoom ≥ 1, x / y from -1 to 1 (pan)
+export type Framing = { zoom: number; x: number; y: number; fit?: 'cover' | 'contain' };   // zoom ≥ 1, x / y from -1 to 1 (pan); contain shows the whole picture
 
-/** Draws the image to fill a w × h box (cover), zoomed and panned. */
+/** Draws the image to fill a w × h box (cover, the default) or to fit inside it (contain), zoomed and panned. */
 export function drawCover(g: CanvasRenderingContext2D, img: CanvasImageSource & { width: number; height: number }, w: number, h: number, f: Framing = { zoom: 1, x: 0, y: 0 }) {
-  const s = Math.max(w / img.width, h / img.height) * f.zoom, dw = img.width * s, dh = img.height * s;
+  const s = (f.fit === 'contain' ? Math.min(w / img.width, h / img.height) : Math.max(w / img.width, h / img.height)) * f.zoom, dw = img.width * s, dh = img.height * s;
   g.drawImage(img, (w - dw) / 2 - (f.x * (dw - w)) / 2, (h - dh) / 2 - (f.y * (dh - h)) / 2, dw, dh);
 }
 

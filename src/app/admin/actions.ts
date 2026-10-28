@@ -24,6 +24,16 @@ export async function saveTool(_: SaveState, form: FormData): Promise<SaveState>
     const p = await db.from('tool_prices').upsert({ tool_slug: slug, currency: c, amount_minor: Math.round(major * 100), updated_at: new Date().toISOString() });
     if (p.error) return { error: p.error.message };
   }
+  // the printed price (shipping included); only sent for tools that can be printed
+  for (const c of CURRENCIES) {
+    if (!form.has(`print_${c}`)) continue;
+    const raw = String(form.get(`print_${c}`) ?? '').trim();
+    if (raw === '') { await db.from('tool_print_prices').delete().eq('tool_slug', slug).eq('currency', c); continue; }
+    const major = Number(raw);
+    if (!Number.isFinite(major) || major < 1 || major > 1_000_000) return { error: `Printed price in ${c} must be at least 1 (Razorpay's minimum).` };
+    const p = await db.from('tool_print_prices').upsert({ tool_slug: slug, currency: c, amount_minor: Math.round(major * 100), updated_at: new Date().toISOString() });
+    if (p.error) return { error: `${p.error.message}. Did you run the printed orders SQL migration?` };
+  }
   clearCatalogCache();
   revalidatePath('/', 'layout');
   return { ok: true };
@@ -52,6 +62,15 @@ export async function setReview(form: FormData) {
   if (to === 'delete') await db.from('testimonials').delete().eq('id', id);
   else if (['published', 'hidden', 'pending'].includes(to)) await db.from('testimonials').update({ status: to }).eq('id', id);
   revalidatePath('/', 'layout');
+}
+
+/* ------------------------------------------------------------------ feedback */
+/** Bound per row in the feedback table: setFeedback.bind(null, id, 'read'). */
+export async function setFeedback(id: string, to: string) {
+  await requireAdmin();
+  if (!/^[0-9a-f-]{36}$/i.test(id) || !['new', 'read', 'archived'].includes(to)) return;
+  await supabaseAdmin().from('feedback').update({ status: to }).eq('id', id);
+  revalidatePath('/admin', 'layout');
 }
 
 /* ------------------------------------------------------------------ plans */
@@ -94,7 +113,7 @@ export async function savePlan(_: SaveState, form: FormData): Promise<SaveState>
 
 /* ------------------------------------------------------------------ deleting records */
 export type DeleteState = { message: string; error?: boolean } | null;
-const KINDS = ['anon', 'visitors', 'events', 'users', 'designs', 'orders', 'payments', 'downloads', 'subscriptions', 'reviews'] as const;
+const KINDS = ['anon', 'visitors', 'events', 'users', 'designs', 'orders', 'payments', 'downloads', 'subscriptions', 'reviews', 'feedback'] as const;
 type Kind = (typeof KINDS)[number];
 
 async function removeStoredFiles(db: ReturnType<typeof supabaseAdmin>, filter: { orderIds?: string[]; userIds?: string[] }) {
@@ -124,6 +143,7 @@ export async function deleteRecords(_: DeleteState, form: FormData): Promise<Del
       case 'payments': { const r = await db.from('payments').delete({ count: 'exact' }).in('id', ids); if (r.error) throw r.error; done = r.count ?? 0; break; }
       case 'downloads': { const r = await db.from('downloads').delete({ count: 'exact' }).in('id', ids.map(Number)); if (r.error) throw r.error; done = r.count ?? 0; break; }
       case 'reviews': { const r = await db.from('testimonials').delete({ count: 'exact' }).in('id', ids); if (r.error) throw r.error; done = r.count ?? 0; break; }
+      case 'feedback': { const r = await db.from('feedback').delete({ count: 'exact' }).in('id', ids); if (r.error) throw r.error; done = r.count ?? 0; break; }
       case 'orders': {
         await removeStoredFiles(db, { orderIds: ids });
         const r = await db.from('orders').delete({ count: 'exact' }).in('id', ids);   // files, payments and downloads go with them
