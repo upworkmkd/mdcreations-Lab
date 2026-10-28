@@ -17,12 +17,24 @@ export function mailProvider(): 'resend' | 'smtp' | null {
 }
 export const mailFrom = () => process.env.EMAIL_FROM || `MD Creations Labs <${SUPPORT_EMAIL}>`;
 
+/**
+ * Where customers' replies should go. The support address when it has been set on purpose
+ * (NEXT_PUBLIC_SUPPORT_EMAIL), otherwise the address the email is sent from. The built-in fallback
+ * (hello@themdcreations.com) cannot receive mail yet, and a reply address that differs from the sender
+ * and cannot receive mail makes Gmail and Outlook treat the email as spam.
+ */
+export function replyAddress() {
+  if (process.env.NEXT_PUBLIC_SUPPORT_EMAIL) return process.env.NEXT_PUBLIC_SUPPORT_EMAIL;
+  const from = mailFrom().match(/<([^>]+)>/)?.[1] ?? mailFrom();
+  return from.includes('@') ? from.trim() : SUPPORT_EMAIL;
+}
+
 export async function sendMail(m: Mail): Promise<MailResult> {
   const to = (Array.isArray(m.to) ? m.to : [m.to]).filter(Boolean);
   if (!to.length) return { ok: false, skipped: true, error: 'No address to send to.' };
   const provider = mailProvider();
   if (!provider) return { ok: false, skipped: true, error: 'Email is not set up (add RESEND_API_KEY or SMTP_HOST).' };
-  const replyTo = m.replyTo || SUPPORT_EMAIL;
+  const replyTo = m.replyTo || replyAddress();
   try {
     if (provider === 'resend') {
       const r = await fetch('https://api.resend.com/emails', {
