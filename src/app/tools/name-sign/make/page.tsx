@@ -5,9 +5,9 @@ import { KitPage, previewNote } from '@/components/kit/kit-page';
 import { NameMaker } from '@/components/name/name-maker';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Name Keychain, Name Sign & Cake Topper STL Maker – Hindi, Punjabi, Tamil & More',
+  title: 'Make a Name Keychain or Name Sign – Free Preview, STL',
   absoluteTitle: true,
-  description: 'Make a 3D printable name keychain, desk or wall name sign, or cake topper in English, Hindi, Marathi, Punjabi, Gujarati, Bengali, Tamil, Telugu, Kannada, Malayalam or Urdu. Two-colour STL files.',
+  description: 'Make a 3D printable name keychain, name sign or cake topper in English, Hindi, Punjabi, Tamil and 7 more Indian scripts. Two-colour STL files.',
   path: '/tools/name-sign/make',
   keywords: ['name keychain stl', 'name sign 3d print', 'hindi name keychain', 'cake topper stl', 'custom name plate stl', 'punjabi name keychain'],
 });

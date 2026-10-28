@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { createOrder } from '@/lib/razorpay.server';
 import { fulfilOrder } from '@/lib/fulfil.server';
-import { getCurrency } from '@/lib/catalog.server';
+import { adminPaysForReal, getCurrency } from '@/lib/catalog.server';
 import { serverEnv } from '@/lib/env';
 import { trackServer } from '@/lib/track.server';
 import { entitlement } from '@/lib/plans.server';
@@ -52,7 +52,8 @@ export async function POST(req: Request) {
   }
   if (!price) return NextResponse.json({ error: `Payments in ${currency} are not set up yet.` }, { status: 409 });
 
-  const isAdmin = profile?.role === 'admin';
+  // admins download free, unless they switched on "Admin orders: pay with Razorpay" to test the real checkout
+  const isAdmin = profile?.role === 'admin' && !(await adminPaysForReal());
   const amount = isAdmin ? 0 : price.amount_minor;
   const { data: order, error } = await db.from('orders').insert({
     user_id: user.id, design_id: design.id, tool_slug: design.tool_slug, currency, amount_minor: amount,

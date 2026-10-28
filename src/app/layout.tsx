@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/next';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteChrome } from '@/components/site-chrome';
+import { AdminCurrencyBadge } from '@/components/admin-currency';
 import { FeedbackPopup } from '@/components/feedback-popup';
 import { TOOLS } from '@/lib/tools';
 import { Tracker } from '@/components/tracker';
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <main id="main">{children}</main>
         <SiteChrome><SiteFooter /></SiteChrome>
         <SiteChrome><FeedbackPopup tools={TOOLS.filter((t) => t.status !== 'hidden').map((t) => [t.slug, t.name] as [string, string])} /></SiteChrome>
+        <AdminCurrencyBadge />
         <Tracker />
         <Analytics />
       </body>

@@ -26,10 +26,17 @@ export async function POST(req: Request) {
 
   try {
     if (order.status === 'created') await recordPayment(order, b.razorpay_payment_id);
-    const fileId = await fulfilOrder(order.id);
-    await trackServer('payment', { name: `Paid ${order.amount_minor / 100} ${order.currency}`, userId: auth.user.id, props: { orderId: order.id, paymentId: b.razorpay_payment_id, amount: order.amount_minor, currency: order.currency, fileId } });
-    return NextResponse.json({ fileId, orderId: order.id });
   } catch (e) {
+    return NextResponse.json({ error: (e as Error).message, orderId: order.id }, { status: 500 });
+  }
+  const paid = { name: `Paid ${order.amount_minor / 100} ${order.currency}`, userId: auth.user.id, props: { orderId: order.id, paymentId: b.razorpay_payment_id, amount: order.amount_minor, currency: order.currency, kind: order.kind } };
+  try {
+    const fileId = await fulfilOrder(order.id);
+    await trackServer('payment', { ...paid, props: { ...paid.props, fileId } });
+    return NextResponse.json({ fileId, orderId: order.id, print: order.kind === 'print' });
+  } catch (e) {
+    // a printed order is paid even if its files could not be built yet: the shop rebuilds them from the admin
+    if (order.kind === 'print') { await trackServer('payment', paid); return NextResponse.json({ fileId: '', orderId: order.id, print: true }); }
     return NextResponse.json({ error: (e as Error).message, orderId: order.id }, { status: 500 });
   }
 }
