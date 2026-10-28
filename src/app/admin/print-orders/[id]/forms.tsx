@@ -14,8 +14,8 @@ export function StatusControl({ id, status }: { id: string; status: string }) {
     <div className="adm-po-steps">
       {status === 'to_print' && (
         <form action={run}><input type="hidden" name="status" value="printing" />
-          <button className="btn" disabled={pending}>Start printing →</button>
-          <p className="id">Just for you: the customer is not emailed.</p></form>
+          <label className="adm-tick"><input type="checkbox" name="notify" defaultChecked /><span><b>Email the customer</b><small>&ldquo;It&rsquo;s on the printer&rdquo;, with the address so they can correct it before it ships.</small></span></label>
+          <button className="btn" disabled={pending}>Start printing →</button></form>
       )}
       {(status === 'to_print' || status === 'printing') && (
         <form action={run} className="adm-po-ship">
@@ -45,10 +45,13 @@ export function StatusControl({ id, status }: { id: string; status: string }) {
           <div className="adm-inline">
             {status !== 'to_print' && <form action={run}><input type="hidden" name="status" value="to_print" /><button className="linkish">Back to “To print”</button></form>}
             {status === 'shipped' && <form action={run}><input type="hidden" name="status" value="printing" /><button className="linkish">Back to “Printing”</button></form>}
-            <form action={run} onSubmit={(e) => { if (!confirm('Cancel this order? This does not refund the payment; do that in Razorpay.')) e.preventDefault(); }}>
-              <input type="hidden" name="status" value="cancelled" /><button className="linkish" style={{ color: 'var(--bad)' }}>Cancel order</button>
-            </form>
           </div>
+          <form action={run} className="adm-po-cancel" onSubmit={(e) => { if (!confirm('Cancel this order? This does not refund the payment; do that in Razorpay.')) e.preventDefault(); }}>
+            <input type="hidden" name="status" value="cancelled" />
+            <label className="lbl">Reason for the customer <small className="muted">optional</small><input name="reason" className="input" maxLength={300} placeholder="e.g. We could not print this design cleanly" /></label>
+            <label className="adm-tick"><input type="checkbox" name="notify" defaultChecked /><span><b>Email the customer</b><small>&ldquo;Your order has been cancelled&rdquo;, with the reason and a note about the refund.</small></span></label>
+            <button className="btn small ghost" style={{ color: 'var(--bad)' }}>Cancel order</button>
+          </form>
         </details>
       )}
     </div>
@@ -61,6 +64,7 @@ export function TrackingForm({ id, courier, tracking }: { id: string; courier: s
     <form action={run} className="adm-po-row">
       <label className="lbl">Sent by<input name="courier" className="input" defaultValue={courier} maxLength={80} /></label>
       <label className="lbl">Tracking number<input name="tracking" className="input" defaultValue={tracking} maxLength={80} /></label>
+      <label className="adm-tick" style={{ gridColumn: '1 / -1' }}><input type="checkbox" name="notify" defaultChecked /><span><b>Email the customer if the tracking number is new or changed</b></span></label>
       <div className="adm-inline" style={{ alignItems: 'center' }}><button className="btn small ghost" disabled={pending}>Save</button><Msg s={state} /></div>
     </form>
   );

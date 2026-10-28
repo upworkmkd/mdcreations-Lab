@@ -61,7 +61,7 @@ export default async function PrintOrder({ params }: { params: Promise<{ id: str
               <div style={{ marginTop: 16 }}>
                 <p className="adm-po-h">Shipping details</p>
                 <TrackingForm id={o.id} courier={o.courier ?? 'India Post'} tracking={o.tracking_no ?? ''} />
-                <p className="id" style={{ marginTop: 6 }}>{o.shipped_emailed_at ? `Customer emailed ${when(o.shipped_emailed_at)}.` : 'The customer was not emailed about shipping.'} Saving here does not email again.</p>
+                <p className="id" style={{ marginTop: 6 }}>{o.shipped_emailed_at ? `Customer emailed about shipping ${when(o.shipped_emailed_at)}.` : 'The customer was not emailed about shipping.'}</p>
               </div>
             )}
           </Card>

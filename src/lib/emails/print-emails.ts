@@ -182,3 +182,56 @@ export function printDeliveredEmail(d: PrintMailData) {
   const text = [`Delivered.`, ``, `Your printed ${d.toolName} "${d.designName}" has been delivered.`, ``, `How do you like it? ${d.feedbackUrl()}`, ``, `MD Creations · ${d.siteUrl}`].join('\n');
   return { subject, html: frame({ preheader: `Your printed ${d.toolName} has been delivered.`, body, foot: foot(d), siteUrl: d.siteUrl }), text };
 }
+
+/* ------------------------------------------------------------------ "we've started printing" */
+export function printPrintingEmail(d: PrintMailData) {
+  const subject = `We are printing your ${d.toolName} · #${orderNo(d.orderId)}`;
+  const body = `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    ${hero(d, { eyebrow: 'Printing', title: 'It&rsquo;s on the printer.',
+      lede: `Your ${esc(d.toolName)} &ldquo;${esc(d.designName)}&rdquo; is being printed layer by layer. Once it is done we put it together by hand, check it, pack it and post it.`,
+      cta: [accountUrl(d), 'See your order &rarr;'] })}
+    ${steps(1)}
+    ${addressBox(d)}
+    <tr><td class="px" style="padding:0 40px 32px; font:400 14px/1.65 ${SANS}; color:${C.ink2};">
+      We will email you again with the details as soon as it is posted. Need to change the address? Reply to this email before it ships.
+    </td></tr>
+  </table>`;
+  const text = [`It's on the printer.`, ``, `Your ${d.toolName} "${d.designName}" is being printed. We will put it together, pack it and post it, and email you when it ships.`, ``,
+    `Posting to:`, textAddress(d), ``, `Need to change the address? Reply before it ships.`, `Your order: ${accountUrl(d)}`, ``, `MD Creations · ${d.siteUrl}`].join('\n');
+  return { subject, html: frame({ preheader: `Your ${d.toolName} is being printed now.`, body, foot: foot(d), siteUrl: d.siteUrl }), text };
+}
+
+/* ------------------------------------------------------------------ the tracking number, added or changed after shipping */
+export function printTrackingEmail(d: PrintMailData) {
+  const via = d.courier || 'India Post';
+  const m = printShippedEmail(d);
+  const subject = `Tracking number for your ${d.toolName} · #${orderNo(d.orderId)}`;
+  const html = m.html
+    .replace('It&rsquo;s on its way.', 'Your tracking number.')
+    .replace(/has left our workshop and is with ([^<.]+)\./, `is on its way with ${esc(via)}. Here is the number to follow it.`);
+  return { subject, html, text: `Tracking number for your order #${orderNo(d.orderId)}: ${d.trackingNo ?? '—'} (${via}).\n\n` + m.text };
+}
+
+/* ------------------------------------------------------------------ cancelled */
+export function printCancelledEmail(d: PrintMailData, reason?: string | null) {
+  const subject = `Your order #${orderNo(d.orderId)} has been cancelled`;
+  const paid = d.how === 'razorpay' && d.amount;
+  const body = `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td class="px" style="background:${C.deep}; padding:40px 40px 36px;">
+      ${eyebrow('Order cancelled')}
+      <h1 class="h1" style="margin:14px 0 0; font:400 34px/1.15 ${SERIF}; color:#ffffff;">We have cancelled your order.</h1>
+      <p style="margin:14px 0 0; font:400 16px/1.6 ${SANS}; color:#e6e7dc;">Your printed ${esc(d.toolName)} &ldquo;${esc(d.designName)}&rdquo; (order #${orderNo(d.orderId)}) will not be sent.</p>
+    </td></tr>
+    <tr><td class="px" style="padding:28px 40px 30px; font:400 15px/1.65 ${SANS}; color:${C.ink2};">
+      ${reason ? `<p style="margin:0 0 14px;"><b style="color:${C.ink};">Why:</b> ${esc(reason)}</p>` : ''}
+      ${paid ? `<p style="margin:0 0 14px;">If a refund is due for the ${esc(d.amount)} you paid, it goes back the way you paid. Banks usually take 5&ndash;7 working days to show it.</p>` : ''}
+      <p style="margin:0;">Questions, or would you like to order again? Just reply to this email. Your design is still saved, so you can order it again any time.</p>
+    </td></tr>
+  </table>`;
+  const text = [`We have cancelled your order #${orderNo(d.orderId)}.`, ``, `Your printed ${d.toolName} "${d.designName}" will not be sent.`,
+    reason ? `Why: ${reason}` : '', paid ? `If a refund is due for the ${d.amount} you paid, it goes back the way you paid (usually 5–7 working days).` : '', ``,
+    `Questions? Reply to this email.`, ``, `MD Creations · ${d.siteUrl}`].join('\n');
+  return { subject, html: frame({ preheader: `Order #${orderNo(d.orderId)} has been cancelled.`, body, foot: foot(d), siteUrl: d.siteUrl }), text };
+}

@@ -1083,3 +1083,5 @@ a.pill { text-decoration: none; }
   .adm, .adm-main { display: block !important; padding: 0 !important; background: #fff !important; }
   .label { border: 1.5px solid #000; }
 }
+.adm-po-cancel { display: grid; gap: 10px; justify-items: start; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
+.adm-po-cancel .lbl { width: 100%; }

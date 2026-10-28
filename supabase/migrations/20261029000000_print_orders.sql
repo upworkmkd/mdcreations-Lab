@@ -50,4 +50,4 @@ alter table public.profiles add column if not exists ship_to jsonb;
 -- ---------------------------------------------------------------- the email log knows the new emails
 alter table public.email_log drop constraint if exists email_log_kind_check;
 alter table public.email_log add constraint email_log_kind_check
-  check (kind in ('order_customer', 'order_admin', 'test', 'print_customer', 'print_admin', 'print_shipped', 'print_delivered'));
+  check (kind in ('order_customer', 'order_admin', 'test', 'print_customer', 'print_admin', 'print_printing', 'print_shipped', 'print_tracking', 'print_delivered', 'print_cancelled'));

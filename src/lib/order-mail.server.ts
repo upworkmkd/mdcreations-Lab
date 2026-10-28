@@ -6,7 +6,7 @@ import { TOOLS } from '@/lib/tools';
 import { formatMoney, isCurrency } from '@/lib/money';
 import { replyAddress, sendMail, type MailResult } from '@/lib/mail.server';
 import { adminOrderEmail, customerOrderEmail, type OrderMailData } from '@/lib/emails/order-emails';
-import { printAlertEmail, printDeliveredEmail, printReceiptEmail, printShippedEmail, type PrintMailData } from '@/lib/emails/print-emails';
+import { printAlertEmail, printCancelledEmail, printDeliveredEmail, printPrintingEmail, printReceiptEmail, printShippedEmail, printTrackingEmail, type PrintMailData } from '@/lib/emails/print-emails';
 import type { ShipTo } from '@/lib/ship';
 
 /* ------------------------------------------------------------------ settings (Admin → Settings) */
@@ -86,7 +86,7 @@ export function sampleMailData(email: string, name: string): OrderMailData {
 }
 
 /* ------------------------------------------------------------------ sending */
-type LogKind = 'order_customer' | 'order_admin' | 'test' | 'print_customer' | 'print_admin' | 'print_shipped' | 'print_delivered';
+type LogKind = 'order_customer' | 'order_admin' | 'test' | 'print_customer' | 'print_admin' | 'print_printing' | 'print_shipped' | 'print_tracking' | 'print_delivered' | 'print_cancelled';
 async function log(kind: LogKind, to: string[], subject: string, orderId: string | null, r: MailResult) {
 	await supabaseAdmin().from('email_log').insert({
 		kind, to_email: to.join(', ').slice(0, 600), subject: subject.slice(0, 300), order_id: orderId,
@@ -129,17 +129,22 @@ export async function sendOrderEmails(orderId: string) {
 	}
 }
 
+export type PrintStep = 'printing' | 'shipped' | 'tracking' | 'delivered' | 'cancelled';
+
 /**
- * Tells the customer their printed order has shipped (once) or has been delivered. Used by the admin's status buttons.
- * Returns what happened, for the admin page. Sent even when receipts are switched off: the customer is waiting for it.
+ * Tells the customer their printed order has moved on: printing, shipped (once, with the tracking number if any),
+ * a tracking number added or changed later, delivered, or cancelled (with an optional reason).
+ * Used by the admin's status buttons. Sent even when receipts are switched off: the customer is waiting for it.
+ * Returns what happened, for the admin page (null when nothing was sent, e.g. "shipped" went out already).
  */
-export async function sendPrintStatusEmail(orderId: string, what: 'shipped' | 'delivered'): Promise<MailResult | null> {
+export async function sendPrintStatusEmail(orderId: string, what: PrintStep, reason?: string | null): Promise<MailResult | null> {
 	const d = await orderMailData(orderId);
 	if (!d || d.kind !== 'print') return null;
 	if (what === 'shipped' && !(await claim(orderId, 'shipped_emailed_at'))) return null;
-	const m = what === 'shipped' ? printShippedEmail(d) : printDeliveredEmail(d);
+	const m = what === 'printing' ? printPrintingEmail(d) : what === 'shipped' ? printShippedEmail(d) : what === 'tracking' ? printTrackingEmail(d)
+		: what === 'delivered' ? printDeliveredEmail(d) : printCancelledEmail(d, reason);
 	const r = await sendMail({ to: d.customerEmail, ...m });
-	await log(what === 'shipped' ? 'print_shipped' : 'print_delivered', [d.customerEmail], m.subject, orderId, r);
+	await log(`print_${what}`, [d.customerEmail], m.subject, orderId, r);
 	if (what === 'shipped' && !r.ok && !r.skipped) await release(orderId, 'shipped_emailed_at');
 	return r;
 }

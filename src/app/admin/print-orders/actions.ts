@@ -31,9 +31,10 @@ export async function setPrintStatus(id: string, _: ActState, form: FormData): P
   const { error } = await db.from('orders').update(patch).eq('id', id);
   if (error) return { error: error.message };
 
+  // the customer hears about every step forward (and a cancellation), unless the box was unticked
   let note = '';
-  if ((to === 'shipped' || to === 'delivered') && form.get('notify') === 'on' && o.print_status !== to) {
-    const r = await sendPrintStatusEmail(id, to);
+  if (to !== 'to_print' && form.get('notify') === 'on' && o.print_status !== to) {
+    const r = await sendPrintStatusEmail(id, to, to === 'cancelled' ? clean(form.get('reason'), 300) || null : null);
     note = r == null ? ' (the customer was already told it shipped)' : r.ok ? ' The customer has been emailed.' : ` The email was not sent: ${r.error}`;
   }
   refresh(id);
@@ -43,10 +44,19 @@ export async function setPrintStatus(id: string, _: ActState, form: FormData): P
 /** Changes the courier or tracking number after shipping, without emailing again. */
 export async function saveTracking(id: string, _: ActState, form: FormData): Promise<ActState> {
   await requireAdmin();
-  const { error } = await supabaseAdmin().from('orders').update({ courier: clean(form.get('courier'), 80) || 'India Post', tracking_no: clean(form.get('tracking'), 80) || null }).eq('id', id).eq('kind', 'print');
+  const db = supabaseAdmin();
+  const { data: before } = await db.from('orders').select('tracking_no').eq('id', id).eq('kind', 'print').maybeSingle();
+  const tracking = clean(form.get('tracking'), 80) || null;
+  const { error } = await db.from('orders').update({ courier: clean(form.get('courier'), 80) || 'India Post', tracking_no: tracking }).eq('id', id).eq('kind', 'print');
   if (error) return { error: error.message };
+  // a new or changed tracking number is worth an email; tick the box to send it
+  let note = '';
+  if (tracking && tracking !== before?.tracking_no && form.get('notify') === 'on') {
+    const r = await sendPrintStatusEmail(id, 'tracking');
+    note = r?.ok ? ' The customer has been emailed the tracking number.' : r ? ` The email was not sent: ${r.error}` : '';
+  }
   refresh(id);
-  return { ok: 'Saved.' };
+  return { ok: `Saved.${note}` };
 }
 
 /** A note only the shop sees (what was printed in which colour, a call with the customer …). */
