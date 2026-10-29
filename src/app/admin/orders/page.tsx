@@ -22,9 +22,13 @@ export default async function Orders({ searchParams }: { searchParams: Promise<R
   const { data: fu } = unpaid.length ? await db.from('email_log').select('order_id').eq('kind', 'followup_order').in('order_id', unpaid) : { data: [] };
   const fuCount = new Map<string, number>();
   for (const r of fu ?? []) if (r.order_id) fuCount.set(r.order_id, (fuCount.get(r.order_id) ?? 0) + 1);
+  // completed orders (files built, or a print that was delivered) can be asked for a review
+  const done = (data ?? []).filter((o) => o.status === 'fulfilled' && (o.kind !== 'print' || o.print_status === 'delivered')).map((o) => o.id);
+  const { data: asked } = done.length ? await db.from('email_log').select('order_id').eq('kind', 'review_request').in('order_id', done) : { data: [] };
+  const askedSet = new Set((asked ?? []).map((r) => r.order_id));
   return (
     <>
-      <PageHead title="Orders" sub="Fulfilled means the files were built and are in the customer's account. Paid but not fulfilled needs a look. For orders that were not paid, “Follow up” emails the customer to ask what stopped them." />
+      <PageHead title="Orders" sub="Fulfilled means the files were built and are in the customer's account. Paid but not fulfilled needs a look. For orders that were not paid, “Follow up” emails the customer to ask what stopped them; for completed ones, “Ask for review” emails a link to review it with photos." />
       <Filters base="/admin/orders" current={f} options={[['', 'All'], ['fulfilled', 'Fulfilled'], ['paid', 'Paid, not built'], ['created', 'Not paid'], ['failed', 'Failed'], ['refunded', 'Refunded']]} />
       <Card flush>
         <BulkForm kind="orders" noun="order" warn="Their files, payment records and downloads go too. This does not refund anything in Razorpay.">
@@ -42,7 +46,7 @@ export default async function Orders({ searchParams }: { searchParams: Promise<R
                   <td><Pill s={o.status} />{o.kind === 'print' && <> <Link href={`/admin/print-orders/${o.id}`} className={`pill po-${o.print_status ?? 'to_print'}`}>printed · {(o.print_status ?? 'to print').replace('_', ' ')}</Link></>}{o.provider !== 'razorpay' && <span className="id"> · {o.provider}</span>}{o.customer_emailed_at && <span className="id" title={`Receipt emailed ${when(o.customer_emailed_at)}`}> · ✉ emailed</span>}{o.error && <div className="id" style={{ color: 'var(--bad)' }}>{o.error}</div>}</td>
                   <td className="num">{money(o.amount_minor, o.currency)}</td>
                   <td className="id">{o.provider_order_id ?? '—'}</td>
-                  <td className="act"><span className="adm-inline" style={{ flexWrap: 'nowrap' }}>{(o.status === 'created' || o.status === 'failed') && <FollowUpButton kind="order" id={o.id} sent={fuCount.get(o.id) ?? 0} />}<RowDelete id={o.id} /></span></td>
+                  <td className="act"><span className="adm-inline" style={{ flexWrap: 'nowrap' }}>{(o.status === 'created' || o.status === 'failed') && <FollowUpButton kind="order" id={o.id} sent={fuCount.get(o.id) ?? 0} />}{done.includes(o.id) && <FollowUpButton kind="review" id={o.id} sent={askedSet.has(o.id) ? 1 : 0} />}<RowDelete id={o.id} /></span></td>
                 </tr>
               );
             })}

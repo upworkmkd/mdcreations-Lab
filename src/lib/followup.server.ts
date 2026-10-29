@@ -6,11 +6,13 @@ import { formatMoney, isCurrency } from '@/lib/money';
 import { replyAddress, sendMail, type MailResult } from '@/lib/mail.server';
 import { log } from '@/lib/order-mail.server';
 import { noteEmail } from '@/lib/emails/note-email';
+import { reviewRequestEmail } from '@/lib/emails/review-email';
+import { reviewUrl } from '@/lib/review-request.server';
 
 /* Follow-ups: a personal email to someone who started an order or a plan and did not finish paying,
  * written in the admin (a ready draft, edited as needed). Plus each customer's email history. */
 
-export type FollowKind = 'order' | 'subscription';
+export type FollowKind = 'order' | 'subscription' | 'review';   // review = ask a happy customer for a review
 export type Draft = { kind: FollowKind; id: string; to: string; name: string; userId: string; subject: string; body: string; ref: string; tool: string | null };
 export type HistoryRow = { id: string; kind: string; subject: string | null; status: string; error: string | null; created_at: string; order_id: string | null; subscription_id: string | null; body: string | null; to_email: string };
 
@@ -21,6 +23,31 @@ const firstName = (n: string) => n.trim().split(/\s+/)[0] || '';
 export async function followupDraft(kind: FollowKind, id: string, signer: string): Promise<Draft | null> {
   const db = supabaseAdmin();
   const sign = `Thanks,\n${firstName(signer) || 'The team'}\nMD Creations`;
+  if (kind === 'review') {
+    const { data: o } = await db.from('orders').select('id, user_id, tool_slug, kind, created_at, designs(name)').eq('id', id).maybeSingle();
+    if (!o) return null;
+    const { data: who } = await db.from('profiles').select('email, full_name').eq('id', o.user_id).maybeSingle();
+    if (!who?.email) return null;
+    const tool = TOOLS.find((t) => t.slug === o.tool_slug);
+    const thing = (tool?.name ?? 'design').replace(/\s+(Maker|Generator|Calculator)$/i, '').toLowerCase();
+    const d = Array.isArray(o.designs) ? o.designs[0] : (o.designs as { name: string } | null);
+    const printed = o.kind === 'print';
+    return {
+      kind, id, to: who.email, name: who.full_name ?? '', userId: o.user_id, tool: o.tool_slug, ref: `Order #${o.id.slice(0, 8).toUpperCase()}`,
+      subject: printed ? `How do you like your ${thing}?` : `How did your ${thing} print?`,
+      body: [
+        `Hi ${firstName(who.full_name ?? '') || 'there'},`,
+        printed
+          ? `Your printed ${thing}${d?.name ? ` ("${d.name}")` : ''} should be with you by now. I hope it arrived safely and looks the way you imagined.`
+          : `Thank you for making your ${thing}${d?.name ? ` ("${d.name}")` : ''} with MD Creations Labs on ${day(o.created_at)}. I hope it printed well!`,
+        printed
+          ? `How is it? Does it look and work as you expected, and is there anything we could do better?`
+          : `How did it go? Did the files print well, did it come out as the preview showed, and was the tool easy to use?`,
+        `If you have a minute, a short review with a photo would mean a lot to us, and it helps other makers decide. Just tap a star below; no sign-in needed.`,
+        sign,
+      ].join('\n\n'),
+    };
+  }
   if (kind === 'order') {
     const { data: o } = await db.from('orders').select('id, user_id, tool_slug, currency, amount_minor, kind, created_at, designs(name)').eq('id', id).maybeSingle();
     if (!o) return null;
@@ -67,10 +94,16 @@ export async function followupDraft(kind: FollowKind, id: string, signer: string
 export async function sendFollowup(kind: FollowKind, id: string, subject: string, body: string, sentBy: string): Promise<MailResult & { to?: string }> {
   const d = await followupDraft(kind, id, '');
   if (!d) return { ok: false, error: 'Customer not found.' };
-  const m = noteEmail({ subject, body, siteUrl: SITE_URL, supportEmail: replyAddress() });
+  let m;
+  if (kind === 'review') {
+    const { data: o } = await supabaseAdmin().from('orders').select('designs(name)').eq('id', id).maybeSingle();
+    const dn = o ? ((Array.isArray(o.designs) ? o.designs[0] : o.designs) as { name: string } | null)?.name : null;
+    m = reviewRequestEmail({ subject, body, siteUrl: SITE_URL, reviewUrl: (n?: number) => reviewUrl(id, n), designName: dn });
+  } else m = noteEmail({ subject, body, siteUrl: SITE_URL, supportEmail: replyAddress() });
   const r = await sendMail({ to: d.to, ...m });
-  await log(kind === 'order' ? 'followup_order' : 'followup_subscription', [d.to], subject, kind === 'order' ? id : null, r,
+  await log(kind === 'review' ? 'review_request' : kind === 'order' ? 'followup_order' : 'followup_subscription', [d.to], subject, kind === 'subscription' ? null : id, r,
     { userId: d.userId, subscriptionId: kind === 'subscription' ? id : null, body, sentBy });
+  if (kind === 'review' && r.ok) await supabaseAdmin().from('orders').update({ review_requested_at: new Date().toISOString() }).eq('id', id);
   return { ...r, to: d.to };
 }
 
@@ -85,6 +118,7 @@ export async function emailHistory(o: { userId?: string | null; email?: string |
 }
 
 export const KIND_LABEL: Record<string, string> = {
+  review_request: 'Review request',
   order_customer: 'Receipt', print_customer: 'Printed order receipt', print_printing: 'Printing started', print_shipped: 'Shipped',
   print_tracking: 'Tracking number', print_delivered: 'Delivered', print_cancelled: 'Cancelled', followup_order: 'Follow-up (order)',
   followup_subscription: 'Follow-up (plan)', sub_welcome: 'Plan welcome', order_admin: 'Order alert', print_admin: 'Print order alert', sub_admin: 'Plan alert', test: 'Test',

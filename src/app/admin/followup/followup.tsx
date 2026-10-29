@@ -10,11 +10,12 @@ import { EmailHistory } from './history';
  * edited) and everything this customer has been sent before. Lives outside any form, so it works inside bulk lists.
  */
 export function FollowUpButton({ kind, id, sent = 0 }: { kind: FollowKind; id: string; sent?: number }) {
+  const review = kind === 'review';
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="btn small ghost adm-fu-btn" onClick={() => setOpen(true)} title="Email this customer to ask what stopped them">
-        Follow up{sent ? <span className="adm-fu-n" title={`${sent} follow-up${sent === 1 ? '' : 's'} sent`}>{sent}</span> : null}
+      <button type="button" className={`btn small ghost adm-fu-btn${review ? ' rv' : ''}`} onClick={() => setOpen(true)} title={review ? 'Email this customer to ask how it turned out, with a link to review it with photos' : 'Email this customer to ask what stopped them'}>
+        {review ? (sent ? 'Review asked ✓' : 'Ask for review') : 'Follow up'}{!review && sent ? <span className="adm-fu-n" title={`${sent} follow-up${sent === 1 ? '' : 's'} sent`}>{sent}</span> : null}
       </button>
       {open && createPortal(<FollowUpDialog kind={kind} id={id} onClose={() => setOpen(false)} />, document.body)}
     </>
@@ -52,7 +53,7 @@ function FollowUpDialog({ kind, id, onClose }: { kind: FollowKind; id: string; o
       <div className="adm-dlg-in">
         <header className="adm-dlg-head">
           <div>
-            <p className="adm-po-h">Follow up · {kind === 'order' ? 'unpaid order' : 'unfinished plan'}</p>
+            <p className="adm-po-h">{kind === 'review' ? 'Ask for a review · completed order' : `Follow up · ${kind === 'order' ? 'unpaid order' : 'unfinished plan'}`}</p>
             <h2 id="fu-h">{data ? <>Email {data.draft.name || data.draft.to}</> : 'Follow up'}</h2>
             {data && <p className="adm-fu-note">{data.draft.to} · {data.draft.ref}</p>}
           </div>
@@ -63,7 +64,7 @@ function FollowUpDialog({ kind, id, onClose }: { kind: FollowKind; id: string; o
             <div className="adm-fu-form">
               <label className="lbl">Subject<input className="input" value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={200} disabled={pending} /></label>
               <label className="lbl">Message<textarea className="input" rows={14} value={body} onChange={(e) => setBody(e.target.value)} maxLength={8000} disabled={pending} /></label>
-              <p className="adm-fu-note">Sent from the site&apos;s email address; the customer&apos;s reply comes to you. Links become clickable.</p>
+              <p className="adm-fu-note">{kind === 'review' ? 'Below your text the email adds five stars and a “Write a review with photos” button that open the review page (no sign-in needed).' : 'Sent from the site\u2019s email address; the customer\u2019s reply comes to you. Links become clickable.'}</p>
               <div className="adm-inline" style={{ alignItems: 'center' }}>
                 <button type="button" className="btn small" onClick={send} disabled={pending || Boolean(result?.ok)}>{pending ? 'Sending…' : result?.ok ? 'Sent ✓' : 'Send email'}</button>
                 <button type="button" className="linkish" onClick={() => { setSubject(data.draft.subject); setBody(data.draft.body); setResult(null); }} disabled={pending}>Reset the draft</button>
