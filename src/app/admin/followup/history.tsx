@@ -19,7 +19,7 @@ export function EmailHistory({ rows, compact = false }: { rows: HistoryRow[]; co
       {rows.map((r) => (
         <li key={r.id} className={r.kind.startsWith('followup') ? 'fu' : ''}>
           <div className="adm-mails-top">
-            <b>{LABEL[r.kind] ?? r.kind}</b>
+            <b>{LABEL[r.kind] ?? r.kind}{r.auto ? <span className="adm-mails-auto" title="Sent automatically by the daily email job">auto</span> : null}</b>
             <span className={`pill ${r.status === 'sent' ? 'fulfilled' : r.status === 'failed' ? 'failed' : ''}`}>{r.status}</span>
           </div>
           <p className="adm-mails-sub">{r.subject}</p>

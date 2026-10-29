@@ -14,7 +14,7 @@ import { reviewUrl } from '@/lib/review-request.server';
 
 export type FollowKind = 'order' | 'subscription' | 'review';   // review = ask a happy customer for a review
 export type Draft = { kind: FollowKind; id: string; to: string; name: string; userId: string; subject: string; body: string; ref: string; tool: string | null };
-export type HistoryRow = { id: string; kind: string; subject: string | null; status: string; error: string | null; created_at: string; order_id: string | null; subscription_id: string | null; body: string | null; to_email: string };
+export type HistoryRow = { id: string; kind: string; subject: string | null; status: string; error: string | null; created_at: string; order_id: string | null; subscription_id: string | null; body: string | null; to_email: string; auto?: boolean };
 
 const day = (s: string) => new Date(s).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'long' });
 const firstName = (n: string) => n.trim().split(/\s+/)[0] || '';
@@ -91,7 +91,7 @@ export async function followupDraft(kind: FollowKind, id: string, signer: string
 }
 
 /** Sends the (edited) follow-up and logs it with its text, so the customer's history shows what was said. */
-export async function sendFollowup(kind: FollowKind, id: string, subject: string, body: string, sentBy: string): Promise<MailResult & { to?: string }> {
+export async function sendFollowup(kind: FollowKind, id: string, subject: string, body: string, sentBy: string | null, o: { auto?: boolean } = {}): Promise<MailResult & { to?: string }> {
   const d = await followupDraft(kind, id, '');
   if (!d) return { ok: false, error: 'Customer not found.' };
   let m;
@@ -102,7 +102,7 @@ export async function sendFollowup(kind: FollowKind, id: string, subject: string
   } else m = noteEmail({ subject, body, siteUrl: SITE_URL, supportEmail: replyAddress() });
   const r = await sendMail({ to: d.to, ...m });
   await log(kind === 'review' ? 'review_request' : kind === 'order' ? 'followup_order' : 'followup_subscription', [d.to], subject, kind === 'subscription' ? null : id, r,
-    { userId: d.userId, subscriptionId: kind === 'subscription' ? id : null, body, sentBy });
+    { userId: d.userId, subscriptionId: kind === 'subscription' ? id : null, body, sentBy, auto: o.auto });
   if (kind === 'review' && r.ok) await supabaseAdmin().from('orders').update({ review_requested_at: new Date().toISOString() }).eq('id', id);
   return { ...r, to: d.to };
 }
@@ -112,7 +112,7 @@ export async function emailHistory(o: { userId?: string | null; email?: string |
   const db = supabaseAdmin();
   const or = [o.userId && `user_id.eq.${o.userId}`, o.email && `to_email.ilike.${o.email.replace(/[%,()*]/g, '')}`, o.orderId && `order_id.eq.${o.orderId}`].filter(Boolean).join(',');
   if (!or) return [];
-  const { data } = await db.from('email_log').select('id, kind, subject, status, error, created_at, order_id, subscription_id, body, to_email')
+  const { data } = await db.from('email_log').select('*')
     .or(or).not('kind', 'in', '(order_admin,print_admin,sub_admin,test)').order('created_at', { ascending: false }).limit(o.limit ?? 50);
   return (data ?? []) as HistoryRow[];
 }
