@@ -9,6 +9,7 @@ import { RetryBuild } from '@/components/retry-build';
 import { updateName } from '../login/actions';
 import { toolBySlug } from '@/lib/tools';
 import { ReviewForm } from '@/components/review-form';
+import { ReviewPhotosManager } from '@/components/review-photos';
 import { entitlement } from '@/lib/plans.server';
 import { PRINT_STATUS, shipLines, type ShipTo } from '@/lib/ship';
 
@@ -29,8 +30,9 @@ export default async function Account({ searchParams }: { searchParams: Promise<
     supabase.from('downloads').select('file_id'),
   ]);
   const ent = await entitlement(viewer.id, 'shadow-lamp').catch(() => null);
-  const { data: myReview } = await supabaseAdmin().from('testimonials').select('rating, body, status').eq('user_id', viewer.id).eq('source', 'site').maybeSingle();
+  const { data: myReview } = await supabaseAdmin().from('testimonials').select('id, rating, body, status').eq('user_id', viewer.id).eq('source', 'site').maybeSingle();
   const sub = ent?.sub ?? null;
+  const { data: myPhotos } = myReview ? await supabaseAdmin().from('review_photos').select('id, status').eq('testimonial_id', myReview.id).order('sort') : { data: [] };
   const dl = new Map<string, number>();
   for (const d of downloads.data ?? []) dl.set(d.file_id, (dl.get(d.file_id) ?? 0) + 1);
   const one = <T,>(v: T | T[] | null | undefined) => (Array.isArray(v) ? v[0] : v) ?? null;
@@ -195,6 +197,8 @@ export default async function Account({ searchParams }: { searchParams: Promise<
                 <span className="stars" aria-label={`${myReview.rating} of 5`}>{'★'.repeat(myReview.rating)}<span>{'★'.repeat(5 - myReview.rating)}</span></span>
                 <blockquote>{myReview.body}</blockquote>
                 <p className="muted">{myReview.status === 'published' ? 'Published on the site. Thank you!' : 'Thank you! We will publish it once we have read it.'}</p>
+                <p className="rp-h">Photos of your print</p>
+                <ReviewPhotosManager photos={myPhotos ?? []} />
               </div>
             ) : files.data?.length ? (
               <>

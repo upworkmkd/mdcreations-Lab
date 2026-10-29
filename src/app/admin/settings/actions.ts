@@ -41,3 +41,31 @@ export async function saveShopSettings(_: FormState, form: FormData): Promise<Fo
   revalidatePath('/admin/settings');
   return { ok: 'Saved.' };
 }
+
+/** Automatic emails: what is switched on, after how many days, and who signs them. */
+export async function saveAutomation(_: FormState, form: FormData): Promise<FormState> {
+  await requireAdmin();
+  const { parseAutomation } = await import('@/lib/automation.server');
+  const { error } = await supabaseAdmin().from('site_settings').upsert({ key: 'automation', value: parseAutomation(form), updated_at: new Date().toISOString() });
+  if (error) return { error: error.message };
+  revalidatePath('/admin/settings');
+  return { ok: 'Saved. The daily job uses this from its next run.' };
+}
+
+export type RunState = { ok?: string; error?: string; due?: { label: string; to: string; ref: string }[] } | null;
+
+/** "Who is due?" lists the emails today's run would send; "Send now" sends them straight away. */
+export async function runAutomationNow(_: RunState, form: FormData): Promise<RunState> {
+  await requireAdmin();
+  const { runAutomation } = await import('@/lib/automation.server');
+  const dry = form.get('mode') !== 'send';
+  try {
+    const r = await runAutomation({ dry, trigger: 'admin' });
+    if (dry) return { ok: r.due?.length ? `${r.due.length} email${r.due.length === 1 ? '' : 's'} due.` : 'Nobody is due an email today.', due: r.due ?? [] };
+    revalidatePath('/admin/settings');
+    if (!r.sent && !r.failed) return { ok: 'Nothing to send today.' };
+    return r.failed ? { error: `Sent ${r.sent}, ${r.failed} failed. ${r.errors.slice(0, 3).join(' · ')}` } : { ok: `Sent ${r.sent}.` };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Could not run.' };
+  }
+}
