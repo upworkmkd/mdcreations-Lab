@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
     '/api/**': ['./private/**/*'],
   },
   poweredByHeader: false,
+  experimental: {
+    agentUpgrade: 'security',
+  },
 };
 
 export default nextConfig;
