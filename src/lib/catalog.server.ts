@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { cookies, headers } from 'next/headers';
 import { supabasePublic } from '@/lib/supabase/admin';
 import { supabaseConfigured } from '@/lib/env';
@@ -12,16 +13,11 @@ const FALLBACK_PRICES: Record<string, Partial<Record<Currency, number>>> = { 'sh
 /** free: set in Admin → Tools and prices (or always, for the browser-only utilities). noAccount: works without signing in. */
 export type CatalogTool = Tool & { prices: Partial<Record<Currency, number>>; printPrices: Partial<Record<Currency, number>>; free: boolean; noAccount: boolean };
 
-// Small in-memory cache so every page view does not hit the database; the admin page clears it on save.
-let memo: { at: number; data: CatalogTool[] } | null = null;
-export function clearCatalogCache() { memo = null; }
+// Read once per page view (the header, page and footer share it), so a change saved in the admin shows on the next
+// page load. An in-memory copy kept between requests went stale on the site's other servers for up to a minute.
+export function clearCatalogCache() { /* nothing kept between requests any more */ }
 
-export async function getCatalog(): Promise<CatalogTool[]> {
-  if (memo && Date.now() - memo.at < 60_000) return memo.data;
-  const data = await loadCatalog();
-  memo = { at: Date.now(), data };
-  return data;
-}
+export const getCatalog = cache(async (): Promise<CatalogTool[]> => loadCatalog());
 
 async function loadCatalog(): Promise<CatalogTool[]> {
   let status: Record<string, ToolStatus> = {}, free: Record<string, boolean> = {}, prices: Record<string, Partial<Record<Currency, number>>> = FALLBACK_PRICES;

@@ -16,7 +16,7 @@ export async function saveTool(_: SaveState, form: FormData): Promise<SaveState>
   const db = supabaseAdmin();
   const free = form.get('free') === 'on';
   const t = await db.from('tools').update({ status, free, updated_at: new Date().toISOString() }).eq('slug', slug);
-  if (t.error) return { error: /free/.test(t.error.message) ? `${t.error.message}. Did you run the free tools SQL migration?` : t.error.message };
+  if (t.error) return { error: /free/.test(t.error.message) ? 'Not saved: run the free tools SQL migration (20261102000000_free_tools.sql) in Supabase first.' : t.error.message };
   // a free tool keeps its download prices on file (greyed out), so unticking Free brings them back
   for (const c of free ? [] : CURRENCIES) {
     const raw = String(form.get(`price_${c}`) ?? '').trim();

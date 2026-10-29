@@ -17,11 +17,18 @@ export default async function Tools() {
   const priceOf = (slug: string, c: string) => prices.data?.find((p) => p.tool_slug === slug && p.currency === c)?.amount_minor ?? null;
   const printOf = (slug: string, c: string) => print.data?.find((p) => p.tool_slug === slug && p.currency === c)?.amount_minor ?? null;
   // a printed option needs files the shop can print: every paid tool that builds files on the server
+  // the Free column comes with the free tools SQL migration; until it is run, ticking Free cannot be saved
+  const noFreeColumn = Boolean(tools.data?.length) && !('free' in (tools.data?.[0] ?? {}));
   const alwaysFree = (slug: string) => Boolean(TOOLS.find((x) => x.slug === slug)?.free);   // browser-only utilities: nothing to sell
   const printable = (slug: string) => Boolean(kitFor(slug)) && !alwaysFree(slug);
   return (
     <>
       <PageHead title="Tools and prices" sub={<>Download: the price per design, including tax. Printed: the price to print, assemble and post the design to the customer, shipping and tax included (India only for now, so only the ₹ price is used; $ is kept for later). Leave a download price empty to stop selling downloads; tick Free to give the downloads away and list the tool with the free tools (signing in is still needed to download). As admin you download your own designs free, unless “Admin orders” in the sidebar is set to pay with Razorpay.</>} />
+      {noFreeColumn && (
+        <p className="msg err" role="alert" style={{ marginBottom: 16 }}>
+          The Free tick box cannot be saved yet: run <code>supabase/migrations/20261102000000_free_tools.sql</code> in the Supabase SQL editor, then reload this page.
+        </p>
+      )}
       <Card flush>
         <div className="tbl-wrap">
           <table className="tbl adm-tbl">
