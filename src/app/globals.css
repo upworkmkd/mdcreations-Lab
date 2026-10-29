@@ -1116,3 +1116,28 @@ a.pill { text-decoration: none; }
 }
 .adm-po-cancel { display: grid; gap: 10px; justify-items: start; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
 .adm-po-cancel .lbl { width: 100%; }
+
+/* ------------------------------------------------------------------ admin: follow-up window and email history */
+.adm-fu-btn { white-space: nowrap; gap: 6px; }
+.adm-fu-n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--olive); color: var(--paper); font: 600 10.5px/1 var(--mono); }
+.adm-dlg { border: 0; padding: 0; width: min(1000px, calc(100vw - 24px)); max-height: calc(100vh - 24px); border-radius: 10px; background: var(--paper-3); color: var(--ink); box-shadow: 0 30px 80px rgba(20, 22, 14, .35); }
+.adm-dlg::backdrop { background: rgba(31, 33, 24, .5); backdrop-filter: blur(2px); }
+.adm-dlg-in { padding: 22px 24px 24px; display: grid; gap: 18px; }
+.adm-dlg-head { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+.adm-dlg-head h2 { margin-top: 4px; font: 500 28px/1.1 var(--serif); }
+.adm-fu-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.adm-fu-form { display: grid; gap: 12px; }
+.adm-fu-form textarea { font: 400 14.5px/1.55 var(--sans); resize: vertical; }
+.adm-fu-hist { max-height: 520px; overflow: auto; padding-left: 18px; border-left: 1px solid var(--line); display: grid; gap: 10px; align-content: start; }
+.adm-mails { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.adm-mails li { padding: 10px 0; border-bottom: 1px solid var(--paper-2); display: grid; gap: 3px; }
+.adm-mails li.fu { background: color-mix(in srgb, var(--light) 10%, transparent); margin: 0 -8px; padding: 10px 8px; border-radius: 4px; }
+.adm-mails-top { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 14px; }
+.adm-mails-sub { font-size: 13.5px; color: var(--ink-2); }
+.adm-mails-ref { font-family: var(--mono); }
+.adm-mails-body { white-space: pre-wrap; font: 400 13px/1.55 var(--sans); background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; margin: 6px 0 4px; }
+.adm-mails.compact .adm-mails-sub { font-size: 13px; }
+@media (max-width: 860px) { .adm-fu-grid { grid-template-columns: minmax(0, 1fr); } .adm-fu-hist { border-left: 0; padding-left: 0; max-height: none; } }
+.adm-fu-note { font-size: 13px; color: var(--ink-3); }
+.adm-mails-meta { font: 400 12px/1.4 var(--mono); color: var(--ink-3); }
+.adm-mails li > .linkish { justify-self: start; font-size: 13px; }

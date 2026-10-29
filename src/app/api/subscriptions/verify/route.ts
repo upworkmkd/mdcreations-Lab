@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { fetchPayment, fetchSubscription, verifySubscriptionSignature } from '@/lib/razorpay.server';
 import { syncSubscription } from '@/lib/plans.server';
 import { trackServer } from '@/lib/track.server';
+import { subscriptionEmailsLater } from '@/lib/subscription-mail.server';
 
 // Called by the browser right after the subscription checkout succeeds.
 export async function POST(req: Request) {
@@ -32,5 +33,6 @@ export async function POST(req: Request) {
     order_id: null, subscription_id: row.id, user_id: row.user_id, provider_payment_id: pay.id, amount_minor: pay.amount, currency: pay.currency, status: pay.status, method: pay.method ?? null,
   }, { onConflict: 'provider_payment_id' });
   await trackServer('subscribed', { name: `${row.plan_id} plan`, userId: auth.user.id, props: { plan: row.plan_id, amount: pay.amount, currency: pay.currency, paymentId: pay.id } });
+  subscriptionEmailsLater(row.id);   // the welcome email, once
   return NextResponse.json({ ok: true, status: synced?.status });
 }

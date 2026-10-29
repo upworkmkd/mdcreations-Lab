@@ -4,8 +4,8 @@ import Link from 'next/link';
 
 const FACES: [number, string, string][] = [[1, '😞', 'Not good'], [2, '🙁', 'Could be better'], [3, '😐', 'Okay'], [4, '🙂', 'Good'], [5, '😍', 'Loved it']];
 
-export function OrderFeedbackForm({ orderId, token, summary, initial, again, sample }: {
-  orderId: string; token: string; summary: string; initial: { rating: number; message: string }; again?: boolean; sample?: boolean;
+export function OrderFeedbackForm({ orderId, token, summary, initial, again, sample, kind = 'order' }: {
+  orderId: string; token: string; summary: string; initial: { rating: number; message: string }; again?: boolean; sample?: boolean; kind?: 'order' | 'plan';
 }) {
   const [rating, setRating] = useState(initial.rating);
   const [message, setMessage] = useState(initial.message);
@@ -20,7 +20,7 @@ export function OrderFeedbackForm({ orderId, token, summary, initial, again, sam
     if (sample) { setState('sent'); return; }
     setState('sending'); setError('');
     try {
-      const r = await fetch('/api/feedback/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, t: token, rating, message, website }) });
+      const r = await fetch(kind === 'plan' ? '/api/feedback/plan' : '/api/feedback/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(kind === 'plan' ? { subscriptionId: orderId, t: token, rating, message, website } : { orderId, t: token, rating, message, website }) });
       const j = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!r.ok || !j.ok) { setState('error'); setError(j.error || 'Could not send it just now. Please try again.'); return; }
       setState('sent');
@@ -40,7 +40,7 @@ export function OrderFeedbackForm({ orderId, token, summary, initial, again, sam
   return (
     <form onSubmit={send} noValidate>
       <p className="eyebrow">Order feedback</p>
-      <h1>How was your order?</h1>
+      <h1>{kind === 'plan' ? 'How is your plan working for you?' : 'How was your order?'}</h1>
       <p className="ofb-sum mono">{summary}</p>
       {again && <p className="fb-note">You told us about this order before; sending again updates it.</p>}
       <div className="fb-faces ofb-faces" role="radiogroup" aria-label="How did it go">
@@ -52,7 +52,7 @@ export function OrderFeedbackForm({ orderId, token, summary, initial, again, sam
       </div>
       <label className="fb-field ofb-field"><span>{hint}</span>
         <textarea className="input" rows={5} maxLength={2000} value={message} onChange={(e) => setMessage(e.target.value)}
-          placeholder="The tool, the files, the print, checkout… anything" />
+          placeholder={kind === 'plan' ? 'The tools you use, what is missing, the daily limit… anything' : 'The tool, the files, the print, checkout… anything'} />
       </label>
       <label className="fb-hp" aria-hidden="true">Website<input tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} /></label>
       {error && <p className="fb-err" role="alert">{error}</p>}
