@@ -6,6 +6,7 @@ import { supabaseConfigured } from '@/lib/env';
 import { sniffImage } from '@/lib/pictures.server';
 import { MAX_REVIEW_PHOTOS } from '@/lib/review-photos';
 import { trackServer } from '@/lib/track.server';
+import { reviewTokenOk } from '@/lib/review-request.server';
 
 const noStore = { 'Cache-Control': 'no-store' };
 const REVIEW_BUCKET = 'review-photos';
@@ -14,10 +15,17 @@ const MAX_BYTES = 3 * 1024 * 1024;
 /** A photo for the signed-in customer's own review. It waits for the shop to approve it. */
 export async function POST(req: Request) {
   if (!supabaseConfigured()) return NextResponse.json({ error: 'Not set up yet.' }, { status: 503, headers: noStore });
-  const v = await getViewer();
-  if (!v) return NextResponse.json({ error: 'Please sign in again.' }, { status: 401, headers: noStore });
   let form: FormData;
   try { form = await req.formData(); } catch { return NextResponse.json({ error: 'Bad request' }, { status: 400, headers: noStore }); }
+  // the customer: signed in, or the owner of the order behind a review link (no sign-in needed)
+  let v: { id: string } | null = null;
+  const order = String(form.get('order') ?? '');
+  if (order) {
+    if (!reviewTokenOk(order, form.get('t'))) return NextResponse.json({ error: 'This link does not work. Open it from the email again.' }, { status: 403, headers: noStore });
+    const { data: o } = await supabaseAdmin().from('orders').select('user_id').eq('id', order).maybeSingle();
+    if (o) v = { id: o.user_id };
+  } else v = await getViewer();
+  if (!v) return NextResponse.json({ error: 'Please sign in again.' }, { status: 401, headers: noStore });
   const file = form.get('file');
   if (!(file instanceof Blob) || file.size < 100) return NextResponse.json({ error: 'Choose a photo.' }, { status: 400, headers: noStore });
   if (file.size > MAX_BYTES) return NextResponse.json({ error: 'That photo is too big (3 MB at most).' }, { status: 413, headers: noStore });

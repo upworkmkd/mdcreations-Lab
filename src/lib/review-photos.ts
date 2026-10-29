@@ -15,8 +15,10 @@ export async function shrinkPhoto(file: Blob): Promise<{ blob: Blob; w: number; 
   } catch { return null; } finally { URL.revokeObjectURL(src); }
 }
 
-export async function uploadReviewPhoto(p: { blob: Blob; w: number; h: number }): Promise<{ ok: boolean; error?: string }> {
+/** Uploads one photo for the signed-in customer's review, or (with `link`) for the review behind a review link. */
+export async function uploadReviewPhoto(p: { blob: Blob; w: number; h: number }, link?: { order: string; t: string }): Promise<{ ok: boolean; error?: string }> {
   const f = new FormData();
+  if (link) { f.append('order', link.order); f.append('t', link.t); }
   f.append('file', p.blob, 'photo.jpg'); f.append('w', String(p.w)); f.append('h', String(p.h));
   const r = await fetch('/api/reviews/photos', { method: 'POST', body: f });
   const j = (await r.json().catch(() => ({}))) as { error?: string };

@@ -33,6 +33,7 @@ export default async function Order({ params }: { params: Promise<{ id: string }
       <PageHead title={`Order #${o.id.slice(0, 8).toUpperCase()}`} sub={<><Link href="/admin/orders">← Orders</Link> · {TOOLS.find((t) => t.slug === o.tool_slug)?.name ?? o.tool_slug} · {when(o.created_at)}</>}>
         <Pill s={o.status} />
         {unpaid && <FollowUpButton kind="order" id={o.id} sent={history.filter((h) => h.kind === 'followup_order').length} />}
+        {o.status === 'fulfilled' && <FollowUpButton kind="review" id={o.id} sent={history.some((h) => h.kind === 'review_request') ? 1 : 0} />}
       </PageHead>
       <div className="adm-grid2 wide">
         <div className="adm-col">

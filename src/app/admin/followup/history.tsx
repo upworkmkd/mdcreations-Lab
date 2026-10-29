@@ -6,7 +6,7 @@ import type { HistoryRow } from '@/lib/followup.server';
 const LABEL: Record<string, string> = {
   order_customer: 'Receipt', print_customer: 'Printed order receipt', print_printing: 'Printing started', print_shipped: 'Shipped',
   print_tracking: 'Tracking number', print_delivered: 'Delivered', print_cancelled: 'Cancelled', followup_order: 'Follow-up (order)',
-  followup_subscription: 'Follow-up (plan)', sub_welcome: 'Plan welcome',
+  followup_subscription: 'Follow-up (plan)', sub_welcome: 'Plan welcome', review_request: 'Review request',
 };
 const when = (s: string) => new Date(s).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 

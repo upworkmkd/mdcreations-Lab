@@ -86,7 +86,7 @@ export function sampleMailData(email: string, name: string): OrderMailData {
 }
 
 /* ------------------------------------------------------------------ sending */
-export type LogKind = 'order_customer' | 'order_admin' | 'test' | 'print_customer' | 'print_admin' | 'print_printing' | 'print_shipped' | 'print_tracking' | 'print_delivered' | 'print_cancelled' | 'followup_order' | 'followup_subscription' | 'sub_welcome' | 'sub_admin';
+export type LogKind = 'order_customer' | 'order_admin' | 'test' | 'print_customer' | 'print_admin' | 'print_printing' | 'print_shipped' | 'print_tracking' | 'print_delivered' | 'print_cancelled' | 'followup_order' | 'followup_subscription' | 'sub_welcome' | 'sub_admin' | 'review_request';
 export type LogExtra = { userId?: string | null; subscriptionId?: string | null; body?: string | null; sentBy?: string | null };
 /** Every email the site sends is logged: Settings shows the latest, and the admin shows each customer's history. */
 export async function log(kind: LogKind, to: string[], subject: string, orderId: string | null, r: MailResult, x: LogExtra = {}) {

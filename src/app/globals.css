@@ -1141,3 +1141,30 @@ a.pill { text-decoration: none; }
 .adm-fu-note { font-size: 13px; color: var(--ink-3); }
 .adm-mails-meta { font: 400 12px/1.4 var(--mono); color: var(--ink-3); }
 .adm-mails li > .linkish { justify-self: start; font-size: 13px; }
+
+/* ------------------------------------------------------------------ review page (from a review-request email) */
+.rv-page { min-height: calc(100vh - 160px); display: grid; place-items: center; padding: 40px var(--gutter) 60px; }
+.rv-card { width: min(620px, 100%); background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: clamp(22px, 5vw, 38px); display: grid; gap: 18px; }
+.rv-head { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 18px; align-items: center; }
+.rv-head img, .rv-head .ph { width: 96px; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: var(--paper-2); border: 1px solid var(--line); }
+.rv-head h1 { margin-top: 6px; font: 500 clamp(28px, 5vw, 38px)/1.05 var(--serif); }
+.rv-head .muted { margin-top: 4px; font-size: 14px; }
+.rv-stars { border: 0; margin: 0; padding: 0; }
+.rv-stars legend { font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
+.rv-stars div { display: flex; align-items: center; gap: 2px; }
+.rv-stars button { border: 0; background: none; padding: 0 2px; font-size: 38px; line-height: 1; color: var(--line-2); cursor: pointer; transition: transform .12s, color .12s; }
+.rv-stars button.on { color: #c08a1e; }
+.rv-stars button:hover { transform: scale(1.12); }
+.rv-stars .word { margin-left: 10px; font-size: 14px; color: var(--ink-2); }
+.rv-f { display: grid; gap: 6px; font-size: 13.5px; color: var(--ink-2); }
+.rv-f i { font-style: normal; color: var(--ink-3); font-size: 12px; }
+.rv-f textarea { font-size: 15px; resize: vertical; }
+.rv-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.rv-locked { display: grid; gap: 10px; font-size: 15px; }
+.rv-locked blockquote { margin: 0; padding: 12px 14px; background: var(--paper-3); border-left: 3px solid var(--olive); font: 400 18px/1.45 var(--serif); }
+.rv-had { margin-bottom: -6px; }
+.rv-card > .btn { justify-self: start; min-width: 200px; }
+.rv-done { justify-items: center; text-align: center; }
+.rv-done > span { font-size: 40px; color: #b84a3a; }
+@media (max-width: 560px) { .rv-row { grid-template-columns: minmax(0, 1fr); } .rv-head { grid-template-columns: 72px minmax(0, 1fr); } .rv-head img, .rv-head .ph { width: 72px; } .rv-card > .btn { justify-self: stretch; } }
+.adm-fu-btn.rv { border-color: color-mix(in srgb, #c08a1e 45%, var(--line-2)); }

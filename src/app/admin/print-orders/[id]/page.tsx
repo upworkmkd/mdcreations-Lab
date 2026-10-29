@@ -39,6 +39,7 @@ export default async function PrintOrder({ params }: { params: Promise<{ id: str
     <>
       <PageHead title={`Print order #${o.id.slice(0, 8).toUpperCase()}`} sub={<><Link href="/admin/print-orders">← Print orders</Link> · {tool} · {when(o.paid_at ?? o.created_at)}</>}>
         <span className={`pill po-${status}`} style={{ fontSize: 12, padding: '7px 12px' }}>{PRINT_STATUS[status]?.label ?? status}</span>
+        {status === 'delivered' && <FollowUpButton kind="review" id={o.id} sent={mails.some((m) => m.kind === 'review_request') ? 1 : 0} />}
       </PageHead>
       {unpaid && <p className="msg err adm-inline" style={{ alignItems: 'center', justifyContent: 'space-between' }}>This order has not been paid ({o.status}). Do not print it. <FollowUpButton kind="order" id={o.id} sent={mails.filter((m) => m.kind === 'followup_order').length} /></p>}
 
