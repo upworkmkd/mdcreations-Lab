@@ -5,7 +5,7 @@ import { KitPage, previewNote } from '@/components/kit/kit-page';
 import { VaseMaker } from '@/components/vase/vase-maker';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Vase & Lamp Shade Generator – Custom Vase Mode STL, Planters and Shades',
+  title: 'Make a Custom Vase or Lamp Shade Online – Vase Mode STL',
   absoluteTitle: true,
   description: 'Design a vase, planter or lamp shade with sliders: shape, twist, sides, ripples and rings. Vase-mode STL or real walls, and an E27/E14 fitting ring for shades.',
   path: '/tools/vase/make',

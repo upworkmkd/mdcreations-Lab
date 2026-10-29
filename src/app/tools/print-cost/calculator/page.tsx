@@ -7,9 +7,9 @@ import { KitPage } from '@/components/kit/kit-page';
 import { PrintCost } from '@/components/print-cost/calculator';
 
 export const metadata: Metadata = pageMeta({
-  title: '3D Print Cost Calculator – Filament, Electricity, Printer Depreciation & Selling Price',
+  title: '3D Printing Price Calculator – What to Charge per Print',
   absoluteTitle: true,
-  description: 'Free 3D printing cost calculator: filament, electricity, printer depreciation, maintenance, failed prints, labour, packaging, profit margin, marketplace fees and GST. Reads G-code and 3MF files.',
+  description: 'Work out the real cost of a 3D print and the price to charge: filament, electricity, printer wear, failed prints, labour, margin, fees and GST. Free.',
   path: '/tools/print-cost/calculator',
   keywords: ['3d print cost calculator', '3d printing price calculator', 'filament cost calculator', '3d print pricing', 'printer depreciation calculator', '3d printing cost india', 'how much to charge for 3d printing'],
 });

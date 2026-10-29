@@ -10,7 +10,7 @@ import { Subscribe } from './subscribe';
 
 export const metadata: Metadata = pageMeta({
 	title: 'Pricing – Pay per Design or a Monthly Plan',
-	description: 'Try every tool free. Pay per design (the price depends on the tool), or subscribe: Starter gives 10 designs a day across every tool, Standard is unlimited. Commercial license included.',
+	description: 'Try every tool free. Pay per design, or subscribe: Starter gives 10 designs a day across every tool, Standard is unlimited. Commercial license included.',
 	path: '/pricing',
 	keywords: ['shadow lamp maker price', 'STL generator subscription', '3D printing tools subscription', 'commercial license STL'],
 });

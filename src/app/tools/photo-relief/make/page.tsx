@@ -5,7 +5,7 @@ import { KitPage, previewNote } from '@/components/kit/kit-page';
 import { ReliefMaker } from '@/components/relief/relief-maker';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Photo Relief Maker – Photo to Embossed Plaque STL (Bas-Relief)',
+  title: 'Make a Photo Relief Plaque Online – Embossed STL',
   absoluteTitle: true,
   description: 'Turn a photo into a 3D printable embossed plaque: bas-relief on a rectangle, circle, oval, heart or arch, with a raised frame and a hanging hole.',
   path: '/tools/photo-relief/make',

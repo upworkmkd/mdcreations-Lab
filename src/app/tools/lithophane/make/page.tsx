@@ -5,7 +5,7 @@ import { KitPage, previewNote } from '@/components/kit/kit-page';
 import { LithoMaker } from '@/components/litho/litho-maker';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Lithophane Maker – Photo to Lithophane STL (Flat, Curved, Cylinder Lamp, Heart, Moon)',
+  title: 'Make a Lithophane Online – Photo to STL, Free Preview',
   absoluteTitle: true,
   description: 'Turn a photo into a 3D printable lithophane: flat or curved panel, cylinder lamp with base, heart or moon lamp with stand. Live 3D and backlit preview.',
   path: '/tools/lithophane/make',

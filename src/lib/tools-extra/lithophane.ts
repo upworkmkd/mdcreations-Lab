@@ -38,7 +38,7 @@ export const tool: Tool | null = {
 };
 
 export const seo: ToolSeo | null = {
-  title: 'Lithophane Maker – Photo to Lithophane STL: Flat, Curved, Cylinder Lamp, Heart & Moon',
-  description: 'Make a 3D printable lithophane from any photo: flat or curved panel, cylinder lamp with base, heart or moon lamp with stand. Backlit preview and print-ready STL.',
+  title: 'Lithophane Maker – Photo to Lithophane STL Online',
+  description: 'Make a 3D printable lithophane from any photo: flat or curved panel, cylinder lamp, heart or moon. Backlit preview and print-ready STL files.',
   keywords: ['lithophane maker', 'lithophane generator', 'photo to lithophane', 'lithophane stl', 'cylinder lithophane', 'moon lamp stl', 'heart lithophane', 'lithophane lamp'],
 };

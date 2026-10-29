@@ -24,6 +24,16 @@ export async function saveTool(_: SaveState, form: FormData): Promise<SaveState>
     const p = await db.from('tool_prices').upsert({ tool_slug: slug, currency: c, amount_minor: Math.round(major * 100), updated_at: new Date().toISOString() });
     if (p.error) return { error: p.error.message };
   }
+  // the printed price (shipping included); only sent for tools that can be printed
+  for (const c of CURRENCIES) {
+    if (!form.has(`print_${c}`)) continue;
+    const raw = String(form.get(`print_${c}`) ?? '').trim();
+    if (raw === '') { await db.from('tool_print_prices').delete().eq('tool_slug', slug).eq('currency', c); continue; }
+    const major = Number(raw);
+    if (!Number.isFinite(major) || major < 1 || major > 1_000_000) return { error: `Printed price in ${c} must be at least 1 (Razorpay's minimum).` };
+    const p = await db.from('tool_print_prices').upsert({ tool_slug: slug, currency: c, amount_minor: Math.round(major * 100), updated_at: new Date().toISOString() });
+    if (p.error) return { error: `${p.error.message}. Did you run the printed orders SQL migration?` };
+  }
   clearCatalogCache();
   revalidatePath('/', 'layout');
   return { ok: true };
@@ -49,8 +59,30 @@ export async function setReview(form: FormData) {
   await requireAdmin();
   const id = String(form.get('id') || ''), to = String(form.get('to') || '');
   const db = supabaseAdmin();
-  if (to === 'delete') await db.from('testimonials').delete().eq('id', id);
-  else if (['published', 'hidden', 'pending'].includes(to)) await db.from('testimonials').update({ status: to }).eq('id', id);
+  if (to === 'delete') {
+    // the photos' files go too (their rows go with the review)
+    const { data: ph } = await db.from('review_photos').select('storage_path').eq('testimonial_id', id);
+    if (ph?.length) await db.storage.from('review-photos').remove(ph.map((p) => p.storage_path));
+    await db.from('testimonials').delete().eq('id', id);
+  } else if (['published', 'hidden', 'pending'].includes(to)) {
+    await db.from('testimonials').update({ status: to }).eq('id', id);
+    // publishing a review also approves the photos that came with it (hide any one of them separately)
+    if (to === 'published') await db.from('review_photos').update({ status: 'published' }).eq('testimonial_id', id).eq('status', 'pending');
+  }
+  revalidatePath('/', 'layout');
+}
+
+/** One photo on a review: show it, hide it, or delete it. */
+export async function setReviewPhoto(form: FormData) {
+  await requireAdmin();
+  const id = String(form.get('id') || ''), to = String(form.get('to') || '');
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return;
+  const db = supabaseAdmin();
+  if (to === 'delete') {
+    const { data: p } = await db.from('review_photos').select('storage_path').eq('id', id).maybeSingle();
+    if (p) await db.storage.from('review-photos').remove([p.storage_path]);
+    await db.from('review_photos').delete().eq('id', id);
+  } else if (['published', 'hidden', 'pending'].includes(to)) await db.from('review_photos').update({ status: to }).eq('id', id);
   revalidatePath('/', 'layout');
 }
 
