@@ -9,13 +9,13 @@ import { DrawerHelpers } from './drawer-client';
 
 export const FACE = ['', '😞', '🙁', '😐', '🙂', '😍'], WORD = ['', 'Not good', 'Could be better', 'Okay', 'Good', 'Love it'];
 export const toolName = (s: string | null) => (s ? TOOLS.find((t) => t.slug === s)?.name ?? s : 'Whole site');
-type Fb = { id: string; rating: number; tool_slug: string | null; message: string | null; name: string | null; email: string | null; page: string | null; visitor_id: string | null; user_id: string | null; status: string; user_agent: string | null; order_id: string | null; created_at: string };
+type Fb = { id: string; rating: number; tool_slug: string | null; message: string | null; name: string | null; email: string | null; page: string | null; visitor_id: string | null; user_id: string | null; status: string; user_agent: string | null; order_id: string | null; subscription_id?: string | null; created_at: string };
 
 /** One feedback note in a side drawer, over the feedback list. `self` builds a link to the list with another note open. */
 export async function FeedbackDrawer({ id, close, self }: { id: string; close: string; self: (id: string) => string }) {
   if (!UUID_RE.test(id)) return null;
   const db = supabaseAdmin();
-  const { data } = await db.from('feedback').select('id, rating, tool_slug, message, name, email, page, visitor_id, user_id, status, user_agent, order_id, created_at').eq('id', id).maybeSingle();
+  const { data } = await db.from('feedback').select('id, rating, tool_slug, message, name, email, page, visitor_id, user_id, status, user_agent, order_id, subscription_id, created_at').eq('id', id).maybeSingle();
   const r = data as Fb | null;
   if (!r) return null;
   // everything else this person sent: same browser, same account or same email
@@ -47,6 +47,7 @@ export async function FeedbackDrawer({ id, close, self }: { id: string; close: s
             <div><dt>Email</dt><dd>{r.email ? <a href={`mailto:${r.email}?subject=${encodeURIComponent('Your feedback on MD Creations Labs')}`}>{r.email}</a> : <span className="muted">Not given</span>}</dd></div>
             {acct && <div><dt>Account</dt><dd><Link href={`/admin/users/${r.user_id}`}>{acct.name ? `${acct.name} · ${acct.email}` : acct.email}</Link></dd></div>}
             <div><dt>Visitor</dt><dd>{r.visitor_id ? <Link href={`/admin/visitors/${r.visitor_id}`}>{names.get(r.visitor_id) ?? `Visitor ${shortId(r.visitor_id)}`} →</Link> : <span className="muted">Did not accept analytics cookies</span>}</dd></div>
+            {r.subscription_id && <div><dt>Plan</dt><dd><span className="pill">From the plan welcome email</span></dd></div>}
             {r.order_id && <div><dt>Order</dt><dd><span className="pill">From the order email</span> <span className="id">#{r.order_id.slice(0, 8).toUpperCase()}</span></dd></div>}
             <div><dt>Tool</dt><dd>{toolName(r.tool_slug)}</dd></div>
             {r.page && <div><dt>Page</dt><dd><a href={r.page} target="_blank" rel="noreferrer"><code>{r.page}</code> ↗</a></dd></div>}

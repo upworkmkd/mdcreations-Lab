@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { verifyWebhookSignature, type RzpSubscription } from '@/lib/razorpay.server';
 import { fulfilOrder, recordPayment } from '@/lib/fulfil.server';
 import { syncSubscription } from '@/lib/plans.server';
+import { subscriptionEmailsLater } from '@/lib/subscription-mail.server';
 
 export const maxDuration = 60;
 
@@ -31,6 +32,7 @@ export async function POST(req: Request) {
     const s = evt.payload?.subscription?.entity;
     if (!s) return NextResponse.json({ ok: true });
     const row = await syncSubscription(s);
+    if (row && (row.status === 'active' || row.status === 'authenticated')) subscriptionEmailsLater(row.id);   // the welcome email, once
     const pay = evt.payload?.payment?.entity;
     if (row && pay && evt.event === 'subscription.charged') {
       await db.from('payments').upsert({

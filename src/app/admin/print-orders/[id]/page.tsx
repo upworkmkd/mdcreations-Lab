@@ -6,6 +6,9 @@ import { TOOLS } from '@/lib/tools';
 import { PRINT_STATUS, type ShipTo } from '@/lib/ship';
 import { Card, PageHead, emails, money, one, when } from '../../ui';
 import { AddressCard, NoteForm, RebuildButton, StatusControl, TrackingForm } from './forms';
+import { emailHistory } from '@/lib/followup.server';
+import { EmailHistory } from '../../followup/history';
+import { FollowUpButton } from '../../followup/followup';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Print order' };
@@ -20,9 +23,10 @@ export default async function PrintOrder({ params }: { params: Promise<{ id: str
     .select('id, user_id, tool_slug, currency, amount_minor, status, provider, provider_order_id, ship_to, print_status, print_file, courier, tracking_no, shop_note, error, created_at, paid_at, printing_at, shipped_at, delivered_at, shipped_emailed_at, designs(name, preview, params)')
     .eq('id', id).eq('kind', 'print').maybeSingle();
   if (!o) notFound();
-  const [who, { data: pay }] = await Promise.all([
+  const [who, { data: pay }, mails] = await Promise.all([
     emails([o.user_id]),
     db.from('payments').select('provider_payment_id, method, status').eq('order_id', o.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    emailHistory({ orderId: id }),
   ]);
   const d = one(o.designs as { name: string; preview: string | null; params: unknown } | { name: string; preview: string | null; params: unknown }[] | null);
   const c = who.get(o.user_id);
@@ -36,7 +40,7 @@ export default async function PrintOrder({ params }: { params: Promise<{ id: str
       <PageHead title={`Print order #${o.id.slice(0, 8).toUpperCase()}`} sub={<><Link href="/admin/print-orders">← Print orders</Link> · {tool} · {when(o.paid_at ?? o.created_at)}</>}>
         <span className={`pill po-${status}`} style={{ fontSize: 12, padding: '7px 12px' }}>{PRINT_STATUS[status]?.label ?? status}</span>
       </PageHead>
-      {unpaid && <p className="msg err">This order has not been paid ({o.status}). Do not print it.</p>}
+      {unpaid && <p className="msg err adm-inline" style={{ alignItems: 'center', justifyContent: 'space-between' }}>This order has not been paid ({o.status}). Do not print it. <FollowUpButton kind="order" id={o.id} sent={mails.filter((m) => m.kind === 'followup_order').length} /></p>}
 
       <div className="adm-grid2 wide">
         <div className="adm-col">
@@ -66,6 +70,7 @@ export default async function PrintOrder({ params }: { params: Promise<{ id: str
             )}
           </Card>
           <Card title="Shop note"><NoteForm id={o.id} note={o.shop_note ?? ''} /></Card>
+          <Card title="Emails about this order"><EmailHistory rows={mails} /></Card>
         </div>
 
         <div className="adm-col">
