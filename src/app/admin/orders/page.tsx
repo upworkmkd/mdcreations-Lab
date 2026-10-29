@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { FollowUpButton } from '../followup/followup';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { BulkForm, RowDelete, Sel } from '../bulk';
 import { toolBySlug } from '@/lib/tools';
@@ -16,9 +17,14 @@ export default async function Orders({ searchParams }: { searchParams: Promise<R
   if (['created', 'paid', 'fulfilled', 'failed', 'refunded'].includes(f)) q = q.eq('status', f);
   const { data, count } = await q.order('created_at', { ascending: false }).range((page - 1) * SIZE, page * SIZE - 1);
   const who = await emails((data ?? []).map((o) => o.user_id));
+  // how many follow-ups each unpaid order has had
+  const unpaid = (data ?? []).filter((o) => o.status === 'created' || o.status === 'failed').map((o) => o.id);
+  const { data: fu } = unpaid.length ? await db.from('email_log').select('order_id').eq('kind', 'followup_order').in('order_id', unpaid) : { data: [] };
+  const fuCount = new Map<string, number>();
+  for (const r of fu ?? []) if (r.order_id) fuCount.set(r.order_id, (fuCount.get(r.order_id) ?? 0) + 1);
   return (
     <>
-      <PageHead title="Orders" sub="Fulfilled means the files were built and are in the customer's account. Paid but not fulfilled needs a look." />
+      <PageHead title="Orders" sub="Fulfilled means the files were built and are in the customer's account. Paid but not fulfilled needs a look. For orders that were not paid, “Follow up” emails the customer to ask what stopped them." />
       <Filters base="/admin/orders" current={f} options={[['', 'All'], ['fulfilled', 'Fulfilled'], ['paid', 'Paid, not built'], ['created', 'Not paid'], ['failed', 'Failed'], ['refunded', 'Refunded']]} />
       <Card flush>
         <BulkForm kind="orders" noun="order" warn="Their files, payment records and downloads go too. This does not refund anything in Razorpay.">
@@ -32,11 +38,11 @@ export default async function Orders({ searchParams }: { searchParams: Promise<R
                   <td className="sel"><Sel id={o.id} /></td>
                   <td>{when(o.created_at)}{o.paid_at && <div className="id">paid {when(o.paid_at)}</div>}</td>
                   <td><Link href={`/admin/users/${o.user_id}`}>{who.get(o.user_id)?.email ?? o.user_id.slice(0, 8)}</Link></td>
-                  <td><span className="adm-mini">{d?.preview ? <img src={d.preview} alt="" /> : null}<span>{d?.name ?? '—'}<span className="id">{toolBySlug(o.tool_slug)?.name ?? o.tool_slug}</span></span></span></td>
+                  <td><Link href={`/admin/orders/${o.id}`} className="adm-mini">{d?.preview ? <img src={d.preview} alt="" /> : null}<span>{d?.name ?? '—'}<span className="id">{toolBySlug(o.tool_slug)?.name ?? o.tool_slug}</span></span></Link></td>
                   <td><Pill s={o.status} />{o.kind === 'print' && <> <Link href={`/admin/print-orders/${o.id}`} className={`pill po-${o.print_status ?? 'to_print'}`}>printed · {(o.print_status ?? 'to print').replace('_', ' ')}</Link></>}{o.provider !== 'razorpay' && <span className="id"> · {o.provider}</span>}{o.customer_emailed_at && <span className="id" title={`Receipt emailed ${when(o.customer_emailed_at)}`}> · ✉ emailed</span>}{o.error && <div className="id" style={{ color: 'var(--bad)' }}>{o.error}</div>}</td>
                   <td className="num">{money(o.amount_minor, o.currency)}</td>
                   <td className="id">{o.provider_order_id ?? '—'}</td>
-                  <td className="act"><RowDelete id={o.id} /></td>
+                  <td className="act"><span className="adm-inline" style={{ flexWrap: 'nowrap' }}>{(o.status === 'created' || o.status === 'failed') && <FollowUpButton kind="order" id={o.id} sent={fuCount.get(o.id) ?? 0} />}<RowDelete id={o.id} /></span></td>
                 </tr>
               );
             })}

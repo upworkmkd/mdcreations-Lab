@@ -8,6 +8,8 @@ import { NOISE, Timeline, type Ev, type Sess } from '../../timeline';
 import { BulkForm, DeleteOne } from '../../bulk';
 import { setTracking } from '../../actions';
 import { hasAccess } from '@/lib/plans.server';
+import { emailHistory } from '@/lib/followup.server';
+import { EmailHistory } from '../../followup/history';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'User' };
@@ -35,6 +37,7 @@ export default async function User({ params, searchParams }: { params: Promise<{
     db.from('subscriptions').select('*').eq('user_id', id).order('created_at', { ascending: false }),
   ]);
   const au = auth.data?.user;
+  const mails = await emailHistory({ userId: id, email: u.email, limit: 100 });
   const sids = [...new Set((ev.data ?? []).map((e) => e.session_id).filter(Boolean))] as string[];
   const { data: sess } = sids.length ? await db.from('visitor_sessions').select('*').in('id', sids) : { data: [] };
   const spent: Record<string, number> = {};
@@ -134,6 +137,11 @@ export default async function User({ params, searchParams }: { params: Promise<{
           </table></div>
         </Card>
       </div>
+
+      <Card title={`Emails to this customer (${mails.length})`}>
+        <p className="id" style={{ marginBottom: 10 }}>Receipts, order updates and follow-ups, newest first, each with the order it was about.</p>
+        <EmailHistory rows={mails} />
+      </Card>
 
       <Card title="Activity timeline" action={<Filters base={`/admin/users/${id}`} current={f} options={[['', 'Everything'], ['key', 'Pages and key actions']]} />}>
         {u.track === false && <p className="adm-alert" style={{ marginBottom: 14 }}>Tracking is off for this account: nothing it does is recorded.</p>}

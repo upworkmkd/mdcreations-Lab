@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { BulkForm, RowDelete, Sel } from '../bulk';
 import { toolBySlug } from '@/lib/tools';
 import { hasAccess } from '@/lib/plans.server';
+import { FollowUpButton } from '../followup/followup';
 import { Card, Filters, PageHead, Pager, Stat, emails, money, num, pageNum, str, when } from '../ui';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,10 @@ export default async function Subscriptions({ searchParams }: { searchParams: Pr
   for (const s of live) if (!s.cancel_at_period_end && s.status !== 'cancelled') mrr[s.currency] = (mrr[s.currency] ?? 0) + s.amount_minor;
   const ids = (data ?? []).map((s) => s.id);
   const { data: builds } = ids.length ? await db.from('orders').select('subscription_id').in('subscription_id', ids) : { data: [] };
+  const startedOnly = (data ?? []).filter((s) => s.status === 'created').map((s) => s.id);
+  const { data: fu } = startedOnly.length ? await db.from('email_log').select('subscription_id').eq('kind', 'followup_subscription').in('subscription_id', startedOnly) : { data: [] };
+  const fuCount = new Map<string, number>();
+  for (const r of fu ?? []) if (r.subscription_id) fuCount.set(r.subscription_id, (fuCount.get(r.subscription_id) ?? 0) + 1);
   const used = new Map<string, number>();
   for (const b of builds ?? []) used.set(b.subscription_id!, (used.get(b.subscription_id!) ?? 0) + 1);
 
@@ -58,7 +63,7 @@ export default async function Subscriptions({ searchParams }: { searchParams: Pr
                 <td className="num">{s.paid_count}</td>
                 <td className="num">{used.get(s.id) ?? 0}</td>
                 <td className="num">{money(s.amount_minor, s.currency)}</td>
-                <td className="act"><RowDelete id={s.id} /></td>
+                <td className="act"><span className="adm-inline" style={{ flexWrap: 'nowrap' }}>{s.status === 'created' && <FollowUpButton kind="subscription" id={s.id} sent={fuCount.get(s.id) ?? 0} />}<RowDelete id={s.id} /></span></td>
               </tr>
             ))}
             {!data?.length && <tr><td colSpan={10} className="muted">No subscriptions yet.</td></tr>}
