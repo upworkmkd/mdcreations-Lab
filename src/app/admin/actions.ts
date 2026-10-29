@@ -14,9 +14,11 @@ export async function saveTool(_: SaveState, form: FormData): Promise<SaveState>
   const slug = String(form.get('slug') || ''), status = String(form.get('status') || '');
   if (!slug || !['live', 'coming_soon', 'hidden'].includes(status)) return { error: 'Bad input.' };
   const db = supabaseAdmin();
-  const t = await db.from('tools').update({ status, updated_at: new Date().toISOString() }).eq('slug', slug);
-  if (t.error) return { error: t.error.message };
-  for (const c of CURRENCIES) {
+  const free = form.get('free') === 'on';
+  const t = await db.from('tools').update({ status, free, updated_at: new Date().toISOString() }).eq('slug', slug);
+  if (t.error) return { error: /free/.test(t.error.message) ? `${t.error.message}. Did you run the free tools SQL migration?` : t.error.message };
+  // a free tool keeps its download prices on file (greyed out), so unticking Free brings them back
+  for (const c of free ? [] : CURRENCIES) {
     const raw = String(form.get(`price_${c}`) ?? '').trim();
     if (raw === '') { await db.from('tool_prices').delete().eq('tool_slug', slug).eq('currency', c); continue; }
     const major = Number(raw);

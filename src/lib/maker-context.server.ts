@@ -27,7 +27,7 @@ export async function makerContext(slug: string) {
   return {
     tool, live, admin, viewer, currency,
     buy: {
-      currency, amountMinor: amount, signedIn: Boolean(viewer),
+      currency, amountMinor: amount, signedIn: Boolean(viewer), free: Boolean(tool?.free),
       payConfigured: supabaseConfigured() && Boolean(process.env.RAZORPAY_KEY_ID) && live,
       plan: ent?.covers ? { name: ent.plan.name, remaining: ent.remaining, limit: ent.plan.daily_limit } : null,
       plans, otherPlan: Boolean(ent && !ent.covers), viewerName: viewer?.name ?? '', reviewed, preview: !live && admin,

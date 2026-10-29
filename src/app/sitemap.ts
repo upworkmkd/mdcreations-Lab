@@ -22,6 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       images: t.slug === 'shadow-lamp' ? [u(t.image), ...LAMP_GALLERY.map((g) => u(g.src))] : [u(t.image)],
     })),
     ...live.filter((t) => t.makePath).map((t) => ({ url: u(t.makePath!), changeFrequency: 'weekly' as const, priority: 0.9 })),
+    { url: u('/tools'), changeFrequency: 'weekly', priority: 0.8 },
     { url: u('/pricing'), changeFrequency: 'monthly', priority: 0.7 },
     { url: u('/license'), changeFrequency: 'yearly', priority: 0.4 },
     ...['/contact', '/terms', '/refunds', '/privacy', '/shipping'].map((p) => ({ url: u(p), changeFrequency: 'yearly' as const, priority: 0.2 })),

@@ -9,7 +9,8 @@ import { isCurrency, type Currency } from '@/lib/money';
 const FALLBACK_PRICES: Record<string, Partial<Record<Currency, number>>> = { 'shadow-lamp': { INR: 19900, USD: 300 } };
 
 /** prices: per design download. printPrices: printed and posted to the customer, shipping included (India only for now). */
-export type CatalogTool = Tool & { prices: Partial<Record<Currency, number>>; printPrices: Partial<Record<Currency, number>> };
+/** free: set in Admin → Tools and prices (or always, for the browser-only utilities). noAccount: works without signing in. */
+export type CatalogTool = Tool & { prices: Partial<Record<Currency, number>>; printPrices: Partial<Record<Currency, number>>; free: boolean; noAccount: boolean };
 
 // Small in-memory cache so every page view does not hit the database; the admin page clears it on save.
 let memo: { at: number; data: CatalogTool[] } | null = null;
@@ -23,21 +24,27 @@ export async function getCatalog(): Promise<CatalogTool[]> {
 }
 
 async function loadCatalog(): Promise<CatalogTool[]> {
-  let status: Record<string, ToolStatus> = {}, prices: Record<string, Partial<Record<Currency, number>>> = FALLBACK_PRICES;
+  let status: Record<string, ToolStatus> = {}, free: Record<string, boolean> = {}, prices: Record<string, Partial<Record<Currency, number>>> = FALLBACK_PRICES;
   const printPrices: Record<string, Partial<Record<Currency, number>>> = {};
   if (supabaseConfigured()) {
     try {
       const db = supabasePublic();
-      const [t, p, pp] = await Promise.all([db.from('tools').select('slug,status'), db.from('tool_prices').select('tool_slug,currency,amount_minor'), db.from('tool_print_prices').select('tool_slug,currency,amount_minor')]);
+      const [t, p, pp] = await Promise.all([db.from('tools').select('*'), db.from('tool_prices').select('tool_slug,currency,amount_minor'), db.from('tool_print_prices').select('tool_slug,currency,amount_minor')]);
       if (!pp.error && pp.data) for (const r of pp.data) if (isCurrency(r.currency)) (printPrices[r.tool_slug] ??= {})[r.currency] = r.amount_minor;
-      if (!t.error && t.data) status = Object.fromEntries(t.data.map((r) => [r.slug, r.status as ToolStatus]));
+      if (!t.error && t.data) {
+        status = Object.fromEntries(t.data.map((r) => [r.slug, r.status as ToolStatus]));
+        free = Object.fromEntries(t.data.map((r) => [r.slug, Boolean((r as { free?: boolean }).free)]));
+      }
       if (!p.error && p.data) {
         prices = {};
         for (const r of p.data) if (isCurrency(r.currency)) (prices[r.tool_slug] ??= {})[r.currency] = r.amount_minor;
       }
     } catch { /* fall back to the defaults below */ }
   }
-  return TOOLS.map((t) => ({ ...t, status: status[t.slug] ?? t.status, prices: prices[t.slug] ?? {}, printPrices: printPrices[t.slug] ?? {} })).filter((t) => t.status !== 'hidden');
+  return TOOLS.map((t) => ({
+    ...t, status: status[t.slug] ?? t.status, prices: prices[t.slug] ?? {}, printPrices: printPrices[t.slug] ?? {},
+    free: Boolean(t.free) || Boolean(free[t.slug]), noAccount: Boolean(t.free),
+  })).filter((t) => t.status !== 'hidden');
 }
 
 export async function getTool(slug: string) {

@@ -27,15 +27,18 @@ export async function POST(req: Request) {
 
   const db = supabaseAdmin();
   const [{ data: tool }, { data: price }, { data: profile }] = await Promise.all([
-    db.from('tools').select('status, name').eq('slug', design.tool_slug).single(),
+    db.from('tools').select('*').eq('slug', design.tool_slug).single(),
     db.from('tool_prices').select('amount_minor').eq('tool_slug', design.tool_slug).eq('currency', currency).maybeSingle(),
     db.from('profiles').select('role, full_name').eq('id', user.id).single(),
   ]);
   // a tool that is not live yet can still be tried end to end by the shop owner
   if (!tool || (tool.status !== 'live' && profile?.role !== 'admin')) return NextResponse.json({ error: 'This tool is not available right now.' }, { status: 409 });
 
+  // A tool marked free in Admin → Tools and prices: no payment, and it does not use up plan designs.
+  const isFree = Boolean((tool as { free?: boolean }).free);
+
   // On a plan with designs left today: no payment, build straight away.
-  const ent = await entitlement(user.id, design.tool_slug);
+  const ent = isFree ? null : await entitlement(user.id, design.tool_slug);
   if (ent?.covers && (ent.remaining == null || ent.remaining > 0)) {
     const { data: po, error: pe } = await db.from('orders').insert({
       user_id: user.id, design_id: design.id, tool_slug: design.tool_slug, currency: ent.sub.currency, amount_minor: 0,
@@ -50,11 +53,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: (e as Error).message, orderId: po.id }, { status: 500 });
     }
   }
-  if (!price) return NextResponse.json({ error: `Payments in ${currency} are not set up yet.` }, { status: 409 });
+  if (!price && !isFree) return NextResponse.json({ error: `Payments in ${currency} are not set up yet.` }, { status: 409 });
 
   // admins download free, unless they switched on "Admin orders: pay with Razorpay" to test the real checkout
   const isAdmin = profile?.role === 'admin' && !(await adminPaysForReal());
-  const amount = isAdmin ? 0 : price.amount_minor;
+  const amount = isAdmin || isFree || !price ? 0 : price.amount_minor;
   const { data: order, error } = await db.from('orders').insert({
     user_id: user.id, design_id: design.id, tool_slug: design.tool_slug, currency, amount_minor: amount,
     status: amount === 0 ? 'paid' : 'created', provider: amount === 0 ? (isAdmin ? 'admin' : 'free') : 'razorpay',

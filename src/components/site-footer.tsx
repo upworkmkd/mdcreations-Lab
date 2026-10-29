@@ -4,9 +4,17 @@ import { SUPPORT_EMAIL, SOCIALS } from '@/lib/env';
 import { CookieSettings } from '@/components/tracker';
 import { FeedbackLink } from '@/components/feedback-popup';
 import { getCatalog } from '@/lib/catalog.server';
+import { FEATURED } from '@/lib/featured';
+
+const MAIN = 6;   // tools listed in the footer; the rest are one click away on /tools
 
 export async function SiteFooter() {
   const tools = await getCatalog();
+  // the main tools: the featured ones first, then other live design tools, then one free tool
+  const live = tools.filter((t) => t.status === 'live');
+  const picked = [...FEATURED.map((f) => live.find((t) => t.slug === f.slug)), ...live.filter((t) => !t.free)].filter((t, i, a) => t && a.indexOf(t) === i).slice(0, MAIN - 1);
+  const firstFree = live.find((t) => t.free);
+  const main = [...picked, ...(firstFree ? [firstFree] : [])] as typeof tools;
   return (
     <footer className="site-foot">
       <div className="wrap">
@@ -17,7 +25,8 @@ export async function SiteFooter() {
         <div>
           <h4>Tools</h4>
           <ul>
-            {tools.map((t) => <li key={t.slug}><Link href={`/tools/${t.slug}`}>{t.name}</Link>{t.free ? <span className="foot-free"> · free</span> : null}</li>)}
+            {main.map((t) => <li key={t.slug}><Link href={`/tools/${t.slug}`}>{t.name}</Link>{t.free ? <span className="foot-free" style={{ whiteSpace: 'nowrap' }}> · free</span> : null}</li>)}
+            <li className="foot-more"><Link href="/tools">All {tools.length} tools →</Link></li>
           </ul>
         </div>
         <div>

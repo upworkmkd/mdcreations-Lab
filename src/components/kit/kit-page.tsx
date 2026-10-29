@@ -6,7 +6,7 @@ export function KitPage({ slug, name, title, note, children }: { slug: string; n
     <div className="wrap" style={{ maxWidth: 1480 }}>
       <div style={{ padding: '30px 0 20px', display: 'flex', flexWrap: 'wrap', alignItems: 'end', justifyContent: 'space-between', gap: 16 }}>
         <div>
-          <nav className="crumbs" aria-label="Breadcrumb"><Link href="/#tools">Tools</Link><span>/</span><Link href={`/tools/${slug}`}>{name}</Link></nav>
+          <nav className="crumbs" aria-label="Breadcrumb"><Link href="/tools">Tools</Link><span>/</span><Link href={`/tools/${slug}`}>{name}</Link></nav>
           <h1 className="serif" style={{ font: '500 clamp(34px, 4.4vw, 52px)/1.02 var(--serif)', marginTop: 12 }}>{title}</h1>
         </div>
         <p className="muted" style={{ maxWidth: '52ch', fontSize: 15 }}>{note}</p>

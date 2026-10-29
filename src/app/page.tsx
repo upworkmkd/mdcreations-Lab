@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { getCatalog, getCurrency, type CatalogTool } from '@/lib/catalog.server';
-import type { Currency } from '@/lib/money';
+import { ToolCard, splitTools } from '@/components/tool-card';
+import { FEATURED } from '@/lib/featured';
+import { getCatalog, getCurrency } from '@/lib/catalog.server';
 import { formatMoney } from '@/lib/money';
 import { HeroSlider, type Slide } from '@/components/hero-slider';
 import { LAMP_GALLERY, KIND_LABEL } from '@/lib/gallery';
@@ -17,39 +18,6 @@ export const metadata = pageMeta({
   keywords: ['3D printing tools', 'shadow lamp maker', '3D printed rangoli stencil', 'lithophane maker', 'name keychain STL', 'custom shadow lamp STL', 'photo to STL', 'MD Creations'],
 });
 
-// The tools in the slider at the top, in this order, with the little badge on each. Everything else is listed below.
-const FEATURED: { slug: string; badge: string }[] = [
-  { slug: 'shadow-lamp', badge: 'Most loved' },
-  { slug: 'cookie-cutter', badge: 'Diwali special' },
-  { slug: 'lithophane', badge: 'Perfect gift' },
-  { slug: 'name-sign', badge: 'Best seller' },
-];
-
-function chip(t: CatalogTool, currency: Currency) {
-  const p = t.prices[currency];
-  if (t.status !== 'live') return { text: 'Coming soon', cls: 'soon' };
-  if (t.free) return { text: 'Free', cls: 'free' };
-  return { text: p != null ? `from ${formatMoney(p, currency)}` : 'Live', cls: 'live' };
-}
-
-function ToolCard({ t, currency }: { t: CatalogTool; currency: Currency }) {
-  const c = chip(t, currency);
-  return (
-    <li className={`tcard ${t.status === 'live' ? 'live' : 'soon'}`}>
-      <Link href={`/tools/${t.slug}`}>
-        <span className="pic">
-          <Image src={t.image} alt="" fill sizes="(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 380px" />
-          <span className={`chip ${c.cls}`}>{c.text}</span>
-        </span>
-        <span className="body">
-          <span className="head"><span className="name">{t.name}</span><span className="go" aria-hidden>→</span></span>
-          <span className="desc">{t.short}</span>
-        </span>
-      </Link>
-    </li>
-  );
-}
-
 export default async function Home() {
   const [tools, currency] = await Promise.all([getCatalog(), getCurrency()]);
   const slides: Slide[] = FEATURED.flatMap(({ slug, badge }) => {
@@ -59,12 +27,11 @@ export default async function Home() {
       slug: t.slug, index: t.index, name: t.name, badge, live, price: live && !t.free && p != null ? formatMoney(p, currency) : null,
       title: t.slide.title, lede: t.slide.lede, image: t.image,
       primary: live && t.makePath ? { href: t.makePath, label: 'Start designing' } : { href: `/tools/${t.slug}`, label: 'See what is coming' },
-      secondary: live ? { href: `/tools/${t.slug}`, label: 'How it works' } : { href: '/#tools', label: 'All tools' },
+      secondary: live ? { href: `/tools/${t.slug}`, label: 'How it works' } : { href: '/tools', label: 'All tools' },
     }];
   });
-  // live tools first, then the ones that are coming; the free utilities get their own row
-  const order = (a: CatalogTool, b: CatalogTool) => (a.status === 'live' ? 0 : 1) - (b.status === 'live' ? 0 : 1);
-  const design = tools.filter((t) => !t.free).sort(order), free = tools.filter((t) => t.free).sort(order);
+  // live tools first, then the ones that are coming; the free tools get their own row
+  const { design, free } = splitTools(tools);
   const liveCount = tools.filter((t) => t.status === 'live').length;
 
   return (
@@ -120,9 +87,9 @@ export default async function Home() {
         <section className="section soft" id="free-tools">
           <div className="wrap">
             <div className="center-head">
-              <p className="eyebrow">No account needed</p>
+              <p className="eyebrow">Nothing to pay</p>
               <h2>Free tools</h2>
-              <p>Handy utilities for the jobs around printing. Nothing to install and nothing to pay.</p>
+              <p>Handy tools for the jobs around printing. Nothing to install and nothing to pay.</p>
             </div>
             <ul className={`toolgrid${free.length < 4 ? ' few' : ''}`}>{free.map((t) => <ToolCard key={t.slug} t={t} currency={currency} />)}</ul>
           </div>

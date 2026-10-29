@@ -32,7 +32,7 @@ export function OrderFeedbackForm({ orderId, token, summary, initial, again, sam
       <span aria-hidden>🙏</span>
       <h1>Thank you!</h1>
       <p className="muted">{rating <= 2 ? 'We are sorry it was not better. We read every note and will look into this, and we will get back to you by email.' : 'Every note is read, and it shapes what we build next.'}</p>
-      <p className="ofb-links"><Link href="/account#files" className="btn small">Your files</Link> <Link href="/#tools" className="linkish">More tools</Link></p>
+      <p className="ofb-links"><Link href="/account#files" className="btn small">Your files</Link> <Link href="/tools" className="linkish">More tools</Link></p>
       {sample && <p className="fb-note">This was a sample from a test email, so nothing was saved.</p>}
     </div>
   );
