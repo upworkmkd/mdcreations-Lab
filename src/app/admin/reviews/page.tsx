@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { TOOLS, toolBySlug } from '@/lib/tools';
 import { Card, Empty, Filters, PageHead, Pill, str, when } from '../ui';
-import { setReview } from '../actions';
+import { setReview, setReviewPhoto } from '../actions';
 import { AddReview } from './add-review';
 
 export const dynamic = 'force-dynamic';
@@ -13,9 +13,13 @@ export default async function Reviews({ searchParams }: { searchParams: Promise<
   let q = supabaseAdmin().from('testimonials').select('*');
   if (['pending', 'published', 'hidden'].includes(f)) q = q.eq('status', f);
   const { data, error } = await q.order('created_at', { ascending: false }).limit(200);
+  const ids = (data ?? []).map((r) => r.id);
+  const { data: photos } = ids.length ? await supabaseAdmin().from('review_photos').select('id, testimonial_id, status').in('testimonial_id', ids).order('sort') : { data: [] };
+  const photosOf = (id: string) => (photos ?? []).filter((p) => p.testimonial_id === id);
+  const waiting = (photos ?? []).filter((p) => p.status === 'pending').length;
   return (
     <>
-      <PageHead title="Reviews" sub="Customers can leave a review from their account. Reviews wait here until you publish them; only published ones show on the site." />
+      <PageHead title="Reviews" sub={<>Customers can leave a review from their account, with up to 4 photos of their print. Reviews and photos wait here until you publish them; only published ones show on the site.{waiting ? <> <b>{waiting} photo{waiting === 1 ? '' : 's'} waiting.</b></> : null}</>} />
       {error && <div className="adm-alert">{error.message}. Have you run the visitors SQL migration?</div>}
       <div className="adm-grid2 wide">
         <div>
@@ -31,6 +35,27 @@ export default async function Reviews({ searchParams }: { searchParams: Promise<
                       <Pill s={r.status} />{r.verified && <span className="pill fulfilled">verified buyer</span>}
                     </div>
                     <p>{r.body}</p>
+                    {photosOf(r.id).length > 0 && (
+                      <div className="adm-rphotos">
+                        {photosOf(r.id).map((ph) => (
+                          <figure key={ph.id} className={ph.status}>
+                            <a href={`/api/reviews/photos/${ph.id}`} target="_blank" rel="noopener">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={`/api/reviews/photos/${ph.id}`} alt="Customer photo" loading="lazy" />
+                            </a>
+                            <figcaption>
+                              <Pill s={ph.status} />
+                              <form action={setReviewPhoto}>
+                                <input type="hidden" name="id" value={ph.id} />
+                                {ph.status !== 'published' && <button name="to" value="published" className="linkish">Show</button>}
+                                {ph.status !== 'hidden' && <button name="to" value="hidden" className="linkish">Hide</button>}
+                                <button name="to" value="delete" className="linkish" style={{ color: 'var(--bad)' }}>Delete</button>
+                              </form>
+                            </figcaption>
+                          </figure>
+                        ))}
+                      </div>
+                    )}
                     <div className="meta">
                       <span>{toolBySlug(r.tool_slug ?? '')?.name ?? 'General'} · {when(r.created_at)} · {r.source === 'site' ? 'written on the site' : 'added by admin'}{r.user_id && <> · <Link href={`/admin/users/${r.user_id}`}>account</Link></>}</span>
                       <form action={setReview}>

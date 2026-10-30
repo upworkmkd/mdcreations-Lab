@@ -32,6 +32,7 @@ export async function submitReview(_: FormState, form: FormData): Promise<FormSt
   if (error) return { error: error.code === '23505' ? 'You have already sent us a review. Thank you!' : 'Could not save your review. Please try again.' };
   await trackServer('review', { name: `${rating}★`, userId: v.id, props: { rating } });
   revalidatePath('/admin/reviews');
-  revalidatePath('/account');
+  // with photos to follow, the page must stay as it is until they are up (the browser sends them next)
+  if (!Number(form.get('photos'))) revalidatePath('/account');
   return { ok: true, message: 'Thank you! Your review will appear on the site once we have read it.' };
 }
