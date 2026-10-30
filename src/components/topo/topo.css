@@ -2,6 +2,7 @@
 .topo-map { position: absolute; inset: 0; overflow: hidden; background: #cfd5c9; cursor: grab; touch-action: none; user-select: none; }
 .topo-map:active { cursor: grabbing; }
 .topo-map img { position: absolute; width: 256px; height: 256px; pointer-events: none; }
+.topo-map img[src*='eox.at'] { image-rendering: auto; }
 .topo-frame { position: absolute; inset: 0; pointer-events: none; }
 .topo-zoom { position: absolute; right: 12px; top: 12px; display: grid; border: 1px solid var(--line-2); border-radius: var(--radius); overflow: hidden; background: #fff; }
 .topo-zoom button { width: 34px; height: 34px; border: 0; background: #fff; font-size: 20px; cursor: pointer; }
@@ -11,3 +12,9 @@
 .topo-results { list-style: none; display: flex; flex-direction: column; border: 1px solid var(--line); background: #fff; max-height: 220px; overflow: auto; }
 .topo-results button { width: 100%; text-align: left; border: 0; background: none; padding: 7px 10px; font: inherit; font-size: 13px; cursor: pointer; border-bottom: 1px solid var(--line); }
 .topo-results button:hover { background: var(--paper-3); }
+.topo-layer { position: absolute; left: 12px; bottom: 12px; display: flex; border: 1px solid var(--line-2); border-radius: 999px; overflow: hidden; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.topo-layer button { border: 0; background: #fff; padding: 7px 14px; font: 500 13px/1 var(--sans, inherit); cursor: pointer; color: var(--ink-2); }
+.topo-layer button[aria-pressed='true'] { background: var(--olive, #424532); color: #fff; }
+.topo-swatches { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.topo-swatches span { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/1 var(--mono); color: var(--ink-2); }
+.topo-swatches i { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,.15); display: inline-block; }

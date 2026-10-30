@@ -3,10 +3,11 @@ import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
 import { MeshView, type MeshSnap } from '@/components/kit/mesh-view';
 import { Group, Range, Select, Seg, Text } from '@/components/kit/controls';
 import { Workbench, type KitBuy } from '@/components/kit/workbench';
-import { SlippyMap, type Selection, type View } from './slippy-map';
-import { buildTerrain } from '@/lib/topo/build.js';
-import { fetchElevation, xToLon, yToLat } from '@/lib/topo/geo';
-import type { TopoParams, TopoShape } from '@/lib/topo/design';
+import { SlippyMap, type Layer, type Selection, type View } from './slippy-map';
+import { buildColoured, buildTerrain, HEIGHT_PALETTES, heightClasses, satelliteClasses, terrain } from '@/lib/topo/build.js';
+import { heightField } from '@/lib/mesh/mesh.js';
+import { fetchElevation, fetchImagery, xToLon, yToLat } from '@/lib/topo/geo';
+import type { ColourMode, TopoParams, TopoShape } from '@/lib/topo/design';
 import { bytesToB64 } from '@/lib/mesh/b64.js';
 import './topo.css';
 
@@ -24,7 +25,8 @@ const PLACES: [string, View][] = [
   ['Yosemite Valley', { lat: 37.7456, lon: -119.5936, zoom: 12 }],
 ];
 type Model = { tris: Float32Array; size: number[]; relief: number; lo: number; hi: number };
-type Grid = { elev: Int16Array; w: number; h: number; lat: number; lon: number; metres: number; shape: TopoShape };
+type Grid = { elev: Int16Array; rgb: Uint8Array | null; w: number; h: number; lat: number; lon: number; metres: number; shape: TopoShape };
+type Part = { tris: Float32Array; color: string };
 
 export function TopoMaker(buy: KitBuy) {
   const [view, setView] = useState<View>(PLACES[0][1]);
@@ -35,6 +37,9 @@ export function TopoMaker(buy: KitBuy) {
   const [state, setState] = useState<{ kind: 'idle' | 'loading' | 'error'; text?: string }>({ kind: 'idle' });
   const [query, setQuery] = useState(''), [results, setResults] = useState<{ name: string; lat: number; lon: number }[]>([]);
   const [tab, setTab] = useState<'map' | '3d'>('map');
+  const [layer, setLayer] = useState<Layer>('sat');
+  const [mode, setMode] = useState<ColourMode>('satellite');
+  const [colours, setColours] = useState<'2' | '3' | '4'>('4');
   const sel = useRef<Selection | null>(null), snap = useRef<MeshSnap | null>(null);
   const set = <K extends keyof TopoParams>(k: K, v: TopoParams[K]) => setP((o) => ({ ...o, [k]: v }));
   const aspect = p.shape === 'rect' ? 1.5 : 1;
@@ -44,9 +49,11 @@ export function TopoMaker(buy: KitBuy) {
     const n = Number(detail), m = Math.round((n - 1) / aspect) + 1;
     setState({ kind: 'loading', text: 'Fetching elevation…' });
     try {
-      const { elev } = await fetchElevation(s.zoom, s.x0, s.y0, s.x1, s.y1, n, m);
+      // the satellite picture is only needed for its colours; the model still works without it
+      const [{ elev }, rgb] = await Promise.all([fetchElevation(s.zoom, s.x0, s.y0, s.x1, s.y1, n, m), fetchImagery(s.zoom, s.x0, s.y0, s.x1, s.y1, n, m).catch(() => null)]);
       const lat = yToLat((s.y0 + s.y1) / 2, s.zoom), lon = xToLon((s.x0 + s.x1) / 2, s.zoom);
-      setGrid({ elev, w: n, h: m, lat, lon, metres: s.metres, shape: p.shape });
+      if (!rgb) setMode((md) => (md === 'satellite' ? 'height' : md));
+      setGrid({ elev, rgb, w: n, h: m, lat, lon, metres: s.metres, shape: p.shape });
       setP((o) => ({ ...o, metres: Math.round(s.metres) }));
       setState({ kind: 'idle' }); setTab('3d');
     } catch (e) { setState({ kind: 'error', text: (e as Error).message === 'tile' ? 'Could not load the elevation for that area. Check your connection and try again.' : (e as Error).message }); }
@@ -61,20 +68,47 @@ export function TopoMaker(buy: KitBuy) {
     } catch { setState({ kind: 'error', text: 'Search is not available right now. Move the map by hand instead.' }); }
   }
 
-  const live = useMemo(() => ({ p, grid }), [p, grid]);
+  const sat = useMemo(() => {
+    if (!grid?.rgb || mode !== 'satellite') return null;
+    return satelliteClasses(grid.rgb, grid.w, grid.h, Number(colours), null) as { cls: Uint8Array; palette: string[] };
+  }, [grid, mode, colours]);
+  const palette = mode === 'satellite' ? sat?.palette ?? [] : mode === 'height' ? HEIGHT_PALETTES[Number(colours) as 2 | 3 | 4].colours : ['#b9b08f'];
+
+  const live = useMemo(() => ({ p, grid, mode, sat, colours }), [p, grid, mode, sat, colours]);
   const dp = useDeferredValue(live);
-  const model = useMemo<Model | null>(() => {
+  const view3d = useMemo<{ model: Model; parts: Part[] } | null>(() => {
     if (!dp.grid) return null;
     const g = dp.grid, k = g.w > 220 ? 2 : 1, w = Math.floor((g.w - 1) / k) + 1, h = Math.floor((g.h - 1) / k) + 1, e = new Int16Array(w * h);
     for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) e[j * w + i] = g.elev[j * k * g.w + i * k];
-    return buildTerrain({ ...dp.p, shape: g.shape }, e, w, h) as Model;
+    const pp = { ...dp.p, shape: g.shape }, model = buildTerrain(pp, e, w, h) as Model;
+    if (dp.mode === 'satellite' && dp.sat) {
+      // the cell colours, thinned out like the elevation for the preview
+      const cw = w - 1, ch = h - 1, gw = g.w - 1, cls = new Uint8Array(cw * ch);
+      for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) cls[j * cw + i] = dp.sat.cls[j * k * gw + i * k];
+      return { model, parts: (buildColoured(pp, e, w, h, cls, dp.sat.palette) as { parts: Part[] }).parts.map((x) => ({ tris: x.tris, color: x.color })) };
+    }
+    if (dp.mode === 'height') {
+      // what the filament changes give: each band in its colour (the print changes colour by layer, so the bands are flat)
+      const n = Number(dp.colours) as 2 | 3 | 4, t = terrain(pp, e, w, h), cls = heightClasses(t.z, w, h, pp.base, t.relief, n) as Uint8Array, pal = HEIGHT_PALETTES[n].colours;
+      const pitch = pp.width / (w - 1), cw = w - 1, ch = h - 1;
+      const parts: Part[] = [];
+      for (let c = 0; c < n; c++) {
+        const keep = new Uint8Array(cw * ch); let any = false;
+        for (let i = 0; i < cw * ch; i++) if (cls[i] === c) { keep[i] = 1; any = true; }
+        if (any) parts.push({ tris: heightField(t.z, w, h, pitch, maskShape(keep, pp.shape, w, h, pitch)) as Float32Array, color: pal[c] });
+      }
+      return { model, parts };
+    }
+    return { model, parts: [{ tris: model.tris, color: '#b9b08f' }] };
   }, [dp]);
-  const parts = useMemo(() => (model ? [{ tris: model.tris, color: '#b9b08f' }] : []), [model]);
+  const model = view3d?.model ?? null, parts = view3d?.parts ?? [];
 
   const getDesign = useCallback(() => {
     if (!grid) return null;
-    return { design: { name, p: { ...p, shape: grid.shape }, lat: grid.lat, lon: grid.lon, w: grid.w, h: grid.h, elev: bytesToB64(new Uint8Array(grid.elev.buffer)) }, preview: snap.current?.jpeg() ?? '' };
-  }, [grid, name, p]);
+    const colour = mode === 'satellite' && sat && sat.palette.length > 1 ? { mode, n: sat.palette.length, palette: sat.palette, cls: bytesToB64(sat.cls) }
+      : mode === 'height' ? { mode, n: Number(colours) } : { mode: 'one' };
+    return { design: { name, p: { ...p, shape: grid.shape }, colour, lat: grid.lat, lon: grid.lon, w: grid.w, h: grid.h, elev: bytesToB64(new Uint8Array(grid.elev.buffer)) }, preview: snap.current?.jpeg() ?? '' };
+  }, [grid, name, p, mode, sat, colours]);
   const stale = grid && (grid.shape !== p.shape);
 
   return (
@@ -86,11 +120,11 @@ export function TopoMaker(buy: KitBuy) {
         {tab === 'map' && <button type="button" className="btn small" onClick={takeArea} disabled={state.kind === 'loading'}>Use this area <span className="arrow">→</span></button>}
         {stale && <span style={{ color: '#8a3b12', fontSize: 13 }}>Shape changed: press “Use this area” again.</span>}
       </>}
-      stage={tab === 'map' ? <SlippyMap view={view} onView={setView} aspect={aspect} shape={p.shape} onSelection={(s) => { sel.current = s; }} />
-        : <MeshView parts={parts} fitKey={`${grid?.lat}-${grid?.lon}-${grid?.shape}-${dp.p.width}`} snapRef={snap} />}
+      stage={tab === 'map' ? <SlippyMap view={view} onView={setView} aspect={aspect} shape={p.shape} onSelection={(s) => { sel.current = s; }} layer={layer} onLayer={setLayer} />
+        : <MeshView parts={parts} fitKey={`${grid?.lat}-${grid?.lon}-${grid?.shape}-${dp.p.width}`} bg="#e4e2d8" snapRef={snap} />}
       stats={model ? <><span>Model <b>{model.size[0].toFixed(0)} × {model.size[1].toFixed(0)} × {model.size[2].toFixed(0)} mm</b></span><span>Area <b>{(p.metres / 1000).toFixed(p.metres < 10000 ? 1 : 0)} km</b> across</span><span>Elevation <b>{Math.round(model.lo)}–{Math.round(model.hi)} m</b></span></>
         : <span>{state.kind === 'error' ? state.text : 'Move and zoom the map until the frame holds your place, then press “Use this area”.'}</span>}
-      youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>A terrain STL of the area you chose, print tips with heights for colour changes, a preview and a commercial license.</p></>}
+      youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>{mode === 'satellite' && sat && sat.palette.length > 1 ? `A ${sat.palette.length}-colour 3MF ready for Bambu Studio and the AMS, the same parts as STL, print notes, a preview and a commercial license.` : mode === 'height' ? 'A terrain STL, the exact heights for your filament changes, a preview and a commercial license.' : 'A terrain STL of the area you chose, print notes, a preview and a commercial license.'}</p></>}
       side={<>
         <Group title="Place">
           <form onSubmit={search} className="kit-ctl" style={{ gridTemplateColumns: '1fr auto' }}>
@@ -100,6 +134,18 @@ export function TopoMaker(buy: KitBuy) {
           {results.length > 0 && <ul className="topo-results">{results.map((r) => <li key={`${r.lat},${r.lon}`}><button type="button" onClick={() => { setView({ lat: r.lat, lon: r.lon, zoom: 11 }); setName(r.name.split(',')[0].slice(0, 40)); setResults([]); setTab('map'); }}>{r.name}</button></li>)}</ul>}
           <Select label="Or a famous place" value="" onChange={(k) => { const pl = PLACES.find((x) => x[0] === k); if (pl) { setView(pl[1]); setName(pl[0]); setTab('map'); } }} options={[['', 'Choose…'], ...PLACES.map(([k]) => [k, k] as [string, string])]} />
           <Text label="Name" value={name} onChange={setName} max={40} />
+        </Group>
+        <Group title="Colours">
+          <Seg<ColourMode> label="Print in" value={mode} onChange={setMode} options={[['satellite', 'Satellite colours'], ['height', 'By height'], ['one', 'One colour']]} />
+          {mode !== 'one' && <Seg<'2' | '3' | '4'> label="Filaments" value={colours} onChange={setColours} options={[['2', '2'], ['3', '3'], ['4', '4']]} />}
+          {mode !== 'one' && palette.length > 0 && <div className="topo-swatches" aria-label="Colours">{palette.map((c, i) => <span key={i}><i style={{ background: c }} />{i + 1}</span>)}</div>}
+          <p className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>{mode === 'satellite'
+            ? (grid && !grid.rgb ? 'The satellite picture did not load for this area: press “Use this area” again, or colour by height.'
+              : sat && sat.palette.length < 2 ? 'This area is one colour in the satellite picture, so it prints in one colour. Try a bigger area, or colour by height.'
+              : sat && sat.palette.length < Number(colours) ? `This area only has ${sat.palette.length} clearly different colours, so it uses ${sat.palette.length} filaments.`
+              : 'Forests, fields, water and snow in the colours of the real place, for an AMS. Each part comes coloured in the 3MF.')
+            : mode === 'height' ? 'Green valleys to snowy peaks with filament changes at set heights. Works on any printer, no AMS needed.'
+            : 'One filament. Paint it after printing, or print it in white for a clean model.'}</p>
         </Group>
         <Group title="Model">
           <Seg<TopoShape> label="Shape" value={p.shape} onChange={(s) => set('shape', s)} options={[['square', 'Square'], ['rect', '3 : 2'], ['circle', 'Round'], ['hexagon', 'Hexagon']]} />
@@ -112,4 +158,16 @@ export function TopoMaker(buy: KitBuy) {
         </Group>
       </>} />
   );
+}
+
+/** The cells of one colour, cut to the round or hexagonal outline too. */
+function maskShape(keep: Uint8Array, shape: TopoShape, w: number, h: number, pitch: number) {
+  if (shape === 'square' || shape === 'rect') return keep;
+  const W = (w - 1) * pitch, H = (h - 1) * pitch, cw = w - 1, ch = h - 1, R = Math.min(W, H) / 2;
+  for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) {
+    const x = (i + 0.5) * pitch - W / 2, y = H / 2 - (j + 0.5) * pitch, ax = Math.abs(x), ay = Math.abs(y);
+    const ok = shape === 'circle' ? x * x + y * y <= R * R : ay <= R * 0.866 && ax * 0.866 + ay * 0.5 <= R * 0.866;
+    if (!ok) keep[j * cw + i] = 0;
+  }
+  return keep;
 }

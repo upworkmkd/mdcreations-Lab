@@ -1,12 +1,14 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { MAP_URL, TILE, latToY, lonToX, mPerPx, xToLon, yToLat } from '@/lib/topo/geo';
+import { MAP_URL, SAT_MAX_ZOOM, SAT_URL, TILE, latToY, lonToX, mPerPx, xToLon, yToLat } from '@/lib/topo/geo';
+
+export type Layer = 'sat' | 'map';
 
 export type View = { lat: number; lon: number; zoom: number };
 export type Selection = { x0: number; y0: number; x1: number; y1: number; zoom: number; metres: number };
 
 /** A small map to choose an area: drag to move, scroll or the buttons to zoom. The frame in the middle is the model. */
-export function SlippyMap({ view, onView, aspect, shape, onSelection }: { view: View; onView(v: View): void; aspect: number; shape: string; onSelection(s: Selection): void }) {
+export function SlippyMap({ view, onView, aspect, shape, onSelection, layer, onLayer }: { view: View; onView(v: View): void; aspect: number; shape: string; onSelection(s: Selection): void; layer: Layer; onLayer(l: Layer): void }) {
   const box = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 600, h: 420 });
   const drag = useRef<{ x: number; y: number; cx: number; cy: number } | null>(null);
@@ -24,11 +26,14 @@ export function SlippyMap({ view, onView, aspect, shape, onSelection }: { view: 
   const last = useRef('');
   useEffect(() => { if (last.current !== key) { last.current = key; onSelection(sel); } });
 
-  const max = 2 ** z, left = cx - size.w / 2, top = cy - size.h / 2;
+  // satellite pictures stop at SAT_MAX_ZOOM: closer than that, the last level is drawn bigger
+  const tz = layer === 'sat' ? Math.min(z, SAT_MAX_ZOOM) : z, k = 2 ** (z - tz), T = TILE * k;
+  const max = 2 ** tz, left = cx - size.w / 2, top = cy - size.h / 2;
   const tiles: { k: string; src: string; x: number; y: number }[] = [];
-  for (let ty = Math.floor(top / TILE); ty <= Math.floor((top + size.h) / TILE); ty++) {
+  const url = layer === 'sat' ? SAT_URL : MAP_URL;
+  for (let ty = Math.floor(top / T); ty <= Math.floor((top + size.h) / T); ty++) {
     if (ty < 0 || ty >= max) continue;
-    for (let tx = Math.floor(left / TILE); tx <= Math.floor((left + size.w) / TILE); tx++) tiles.push({ k: `${z}/${tx}/${ty}`, src: MAP_URL(z, ((tx % max) + max) % max, ty), x: tx * TILE - left, y: ty * TILE - top });
+    for (let tx = Math.floor(left / T); tx <= Math.floor((left + size.w) / T); tx++) tiles.push({ k: `${layer}/${tz}/${tx}/${ty}`, src: url(tz, ((tx % max) + max) % max, ty), x: tx * T - left, y: ty * T - top });
   }
   const zoomTo = (nz: number) => onView({ ...view, zoom: Math.max(2, Math.min(15, nz)) });
 
@@ -38,15 +43,21 @@ export function SlippyMap({ view, onView, aspect, shape, onSelection }: { view: 
       onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}
       onWheel={(e) => { e.preventDefault(); zoomTo(z + (e.deltaY < 0 ? 1 : -1)); }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {tiles.map((t) => <img key={t.k} src={t.src} alt="" draggable={false} style={{ left: t.x, top: t.y }} />)}
+      {tiles.map((t) => <img key={t.k} src={t.src} alt="" draggable={false} style={{ left: t.x, top: t.y, width: T, height: T }} />)}
       <svg className="topo-frame" width={size.w} height={size.h} aria-hidden="true">
         <defs><mask id="tm"><rect width="100%" height="100%" fill="#fff" />{frameShape(shape, size.w / 2, size.h / 2, fw, fh, '#000')}</mask></defs>
         <rect width="100%" height="100%" fill="rgba(20,22,16,.35)" mask="url(#tm)" />
         {frameShape(shape, size.w / 2, size.h / 2, fw, fh, 'none', '#fff')}
       </svg>
-      <div className="topo-zoom"><button type="button" aria-label="Zoom in" onClick={() => zoomTo(z + 1)}>+</button><button type="button" aria-label="Zoom out" onClick={() => zoomTo(z - 1)}>−</button></div>
+      <div className="topo-zoom" onPointerDown={(e) => e.stopPropagation()}><button type="button" aria-label="Zoom in" onClick={() => zoomTo(z + 1)}>+</button><button type="button" aria-label="Zoom out" onClick={() => zoomTo(z - 1)}>−</button></div>
       <div className="topo-scale">{sel.metres >= 2000 ? `${(sel.metres / 1000).toFixed(sel.metres < 20000 ? 1 : 0)} km` : `${Math.round(sel.metres)} m`} across</div>
-      <div className="topo-attr">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</div>
+      <div className="topo-layer" role="group" aria-label="Map view" onPointerDown={(e) => e.stopPropagation()}>
+        <button type="button" aria-pressed={layer === 'sat'} onClick={() => onLayer('sat')}>Satellite</button>
+        <button type="button" aria-pressed={layer === 'map'} onClick={() => onLayer('map')}>Simple map</button>
+      </div>
+      <div className="topo-attr">{layer === 'sat'
+        ? <><a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless</a> by EOX (Copernicus Sentinel data 2016)</>
+        : <>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</>}</div>
     </div>
   );
 }
