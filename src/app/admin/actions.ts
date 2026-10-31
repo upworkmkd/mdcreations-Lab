@@ -143,7 +143,8 @@ async function removeStoredFiles(db: ReturnType<typeof supabaseAdmin>, filter: {
   if (filter.orderIds) q = q.in('order_id', filter.orderIds);
   if (filter.userIds) q = q.in('user_id', filter.userIds);
   const { data } = await q;
-  const paths = (data ?? []).map((f) => f.storage_path).filter(Boolean);
+  // product zips (products/…) are shared by every buyer of that product: never removed with one customer's files
+  const paths = (data ?? []).map((f) => f.storage_path).filter((x) => x && !x.startsWith('products/'));
   for (let i = 0; i < paths.length; i += 100) await db.storage.from(FILES_BUCKET).remove(paths.slice(i, i + 100));
 }
 

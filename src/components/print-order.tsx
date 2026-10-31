@@ -22,13 +22,14 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 export type PrintOrderProps = {
   tool: string; toolName: string; next: string; ready: boolean; priceMinor: number; signedIn: boolean;
   getDesign: () => { design: unknown; preview: string } | null;
+  productId?: string;   // an STL shop product instead of a design made in a tool
 };
 
 /**
  * "Order it printed": under the download button on a maker page. The customer gives a shipping address (India),
  * pays the printed price (shipping included) and the shop prints, assembles and posts the design.
  */
-export function PrintOrder({ tool, toolName, next, ready, priceMinor, signedIn: signedIn0, getDesign }: PrintOrderProps) {
+export function PrintOrder({ tool, toolName, next, ready, priceMinor, signedIn: signedIn0, getDesign, productId }: PrintOrderProps) {
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(signedIn0);
@@ -60,7 +61,7 @@ export function PrintOrder({ tool, toolName, next, ready, priceMinor, signedIn: 
         </span>
         <span className="po-p mono">{price}<small>shipping incl.</small></span>
       </button>
-      {open && snap && createPortal(<PrintDialog onClose={() => setOpen(false)} tool={tool} toolName={toolName} price={price} snap={snap} />, document.body)}
+      {open && snap && createPortal(<PrintDialog onClose={() => setOpen(false)} tool={tool} toolName={toolName} price={price} snap={snap} productId={productId} />, document.body)}
       {authOpen && createPortal(
         <AuthDialog open onClose={() => setAuthOpen(false)} next={next} reason="Sign in to order a printed piece. Your design stays right here."
           onSignedIn={() => { setSignedIn(true); setAuthOpen(false); const d = getDesign(); if (d) { setSnap(d); setOpen(true); } }} />, document.body)}
@@ -68,7 +69,7 @@ export function PrintOrder({ tool, toolName, next, ready, priceMinor, signedIn: 
   );
 }
 
-function PrintDialog({ onClose, tool, toolName, price, snap }: { onClose(): void; tool: string; toolName: string; price: string; snap: { design: unknown; preview: string } }) {
+function PrintDialog({ onClose, tool, toolName, price, snap, productId }: { onClose(): void; tool: string; toolName: string; price: string; snap: { design: unknown; preview: string }; productId?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const [ship, setShip] = useState<ShipTo>(EMPTY_SHIP);
@@ -99,11 +100,17 @@ function PrintDialog({ onClose, tool, toolName, price, snap }: { onClose(): void
     const c = checkShipTo(ship);
     if (!c.ok) { setErrors(c.errors); ref.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(); return; }
     try {
-      setStep({ kind: 'working', text: 'Saving your design…' });
-      const { id: designId } = await post<{ id: string }>('/api/designs', { tool, design: snap.design, preview: snap.preview });
-      setStep({ kind: 'working', text: 'Starting the payment…' });
-      const co = await post<{ free?: boolean; orderId: string; keyId: string; providerOrderId: string; amount: number; currency: string; description: string; prefill: Record<string, string> }>(
-        '/api/checkout/print', { designId, shipTo: c.value });
+      type Co = { free?: boolean; orderId: string; keyId: string; providerOrderId: string; amount: number; currency: string; description: string; prefill: Record<string, string> };
+      let co: Co;
+      if (productId) {
+        setStep({ kind: 'working', text: 'Starting the payment…' });
+        co = await post<Co>('/api/checkout/stl', { productId, mode: 'print', shipTo: c.value });
+      } else {
+        setStep({ kind: 'working', text: 'Saving your design…' });
+        const { id: designId } = await post<{ id: string }>('/api/designs', { tool, design: snap.design, preview: snap.preview });
+        setStep({ kind: 'working', text: 'Starting the payment…' });
+        co = await post<Co>('/api/checkout/print', { designId, shipTo: c.value });
+      }
       if (co.free) { setStep({ kind: 'done', orderId: co.orderId }); return; }
       await loadCheckout();
       const paid = await new Promise<RzpResponse | null>((resolve, reject) => {
@@ -159,15 +166,15 @@ function PrintDialog({ onClose, tool, toolName, price, snap }: { onClose(): void
               <p>Your order <b className="mono">#{step.orderId.slice(0, 8).toUpperCase()}</b> is in. We will print your {toolName}, put it together by hand and post it to:</p>
               <p className="po-addr">{ship.name}<br />{ship.line1}{ship.line2 ? <>, {ship.line2}</> : null}<br />{ship.city}, {ship.state} – {ship.pin}</p>
               <p className="muted">A receipt is on its way to your email, and we will email you again when it ships.</p>
-              <div className="po-acts"><Link className="btn" href="/account#orders">See your orders</Link><button type="button" className="linkish" onClick={() => ref.current?.close()}>Back to the design</button></div>
+              <div className="po-acts"><Link className="btn" href="/account#orders">See your orders</Link><button type="button" className="linkish" onClick={() => ref.current?.close()}>{productId ? 'Back to the page' : 'Back to the design'}</button></div>
             </div>
           </div>
         ) : (
           <form className="po-body" onSubmit={pay} noValidate>
             <aside className="po-sum">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {snap.preview ? <img src={snap.preview} alt="Your design" /> : <div className="po-ph" />}
-              <p className="po-tool">{toolName}<small>Your design, printed</small></p>
+              {snap.preview ? <img src={snap.preview} alt={productId ? toolName : "Your design"} /> : <div className="po-ph" />}
+              <p className="po-tool">{toolName}<small>{productId ? 'Printed, put together and posted' : 'Your design, printed'}</small></p>
               <dl>
                 <div><dt>Printed, assembled and posted</dt><dd className="mono">{price}</dd></div>
                 <div><dt>Shipping in India</dt><dd>Included</dd></div>

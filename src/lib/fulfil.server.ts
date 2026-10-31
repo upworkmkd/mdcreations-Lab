@@ -10,7 +10,7 @@ function emailLater(orderId: string) {
   try { after(() => sendOrderEmails(orderId)); } catch { void sendOrderEmails(orderId); }
 }
 
-type OrderRow = { id: string; user_id: string; design_id: string; tool_slug: string; status: string; amount_minor: number; currency: string; provider_order_id: string | null };
+type OrderRow = { id: string; user_id: string; design_id: string | null; tool_slug: string; status: string; amount_minor: number; currency: string; provider_order_id: string | null };
 
 /** Records a Razorpay payment against our order. Safe to call more than once for the same payment. */
 export async function recordPayment(order: OrderRow, paymentId: string) {
@@ -30,9 +30,19 @@ export async function recordPayment(order: OrderRow, paymentId: string) {
  * A printed order: builds the same files, but for the shop only. They are kept privately under print/<order>/
  * (not in the customer's account) and the order moves to "To print". Idempotent. Returns ''.
  */
-async function fulfilPrintOrder(order: { id: string; user_id: string; design_id: string; tool_slug: string; status: string; print_file: string | null; print_status: string | null }): Promise<string> {
+async function fulfilPrintOrder(order: { id: string; user_id: string; design_id: string | null; product_id: string | null; tool_slug: string; status: string; print_file: string | null; print_status: string | null }): Promise<string> {
   const db = supabaseAdmin();
   if (order.print_file) { emailLater(order.id); return ''; }   // built already; sends only what has not gone out yet
+  if (order.product_id) {
+    // an STL shop product: the shop prints from the product's own download zip
+    const { data: prod } = await db.from('stl_products').select('package_path').eq('id', order.product_id).maybeSingle();
+    if (!prod?.package_path) {
+      await db.from('orders').update({ error: 'The product files are not packaged yet: build them in Admin → STL files.', print_status: order.print_status ?? 'to_print' }).eq('id', order.id);
+      emailLater(order.id); return '';
+    }
+    await db.from('orders').update({ status: 'fulfilled', fulfilled_at: new Date().toISOString(), print_file: prod.package_path, print_status: order.print_status ?? 'to_print', error: null }).eq('id', order.id);
+    emailLater(order.id); return '';
+  }
   const { data: design } = await db.from('designs').select('id, name, params, preview').eq('id', order.design_id).single();
   if (!design) throw new Error('The design for this order is missing.');
   try {
@@ -59,7 +69,7 @@ async function fulfilPrintOrder(order: { id: string; user_id: string; design_id:
 /** Builds the files for a paid order, stores them privately and returns the file id. Idempotent. */
 export async function fulfilOrder(orderId: string): Promise<string> {
   const db = supabaseAdmin();
-  const { data: head } = await db.from('orders').select('id, user_id, design_id, tool_slug, status, kind, print_file, print_status').eq('id', orderId).maybeSingle();
+  const { data: head } = await db.from('orders').select('id, user_id, design_id, product_id, tool_slug, status, kind, print_file, print_status').eq('id', orderId).maybeSingle();
   if (head?.kind === 'print') {
     if (head.status !== 'paid' && head.status !== 'fulfilled') throw new Error('This order has not been paid.');
     return fulfilPrintOrder(head);
@@ -70,6 +80,7 @@ export async function fulfilOrder(orderId: string): Promise<string> {
   const { data: order, error } = await db.from('orders').select('*').eq('id', orderId).single();
   if (error || !order) throw new Error('Order not found.');
   if (order.status !== 'paid' && order.status !== 'fulfilled') throw new Error('This order has not been paid.');
+  if (order.product_id) return fulfilProductDownload(order);
   const { data: design } = await db.from('designs').select('id, name, params, preview').eq('id', order.design_id).single();
   if (!design) throw new Error('The design for this order is missing.');
 
@@ -95,6 +106,31 @@ export async function fulfilOrder(orderId: string): Promise<string> {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     await db.from('orders').update({ error: msg.slice(0, 500) }).eq('id', order.id);
+    throw e;
+  }
+}
+
+/**
+ * An STL shop download: the product's zip is stored once, privately; the buyer gets a file record pointing at it,
+ * so their account (and only their account) can fetch it through a short signed link.
+ */
+async function fulfilProductDownload(order: { id: string; user_id: string; product_id: string }): Promise<string> {
+  const db = supabaseAdmin();
+  try {
+    const { data: prod } = await db.from('stl_products').select('id, title, package_path, package_bytes').eq('id', order.product_id).maybeSingle();
+    if (!prod) throw new Error('This product is no longer available.');
+    if (!prod.package_path) throw new Error('The files for this product are being prepared. They will appear in your account shortly.');
+    const name = prod.package_path.split('/').pop() ?? 'stl_files.zip';
+    const ins = await db.from('files').upsert({
+      user_id: order.user_id, order_id: order.id, design_id: null, product_id: prod.id, tool_slug: 'stl',
+      name, storage_path: prod.package_path, size_bytes: prod.package_bytes ?? 0,
+    }, { onConflict: 'order_id' }).select('id').single();
+    if (ins.error || !ins.data) throw new Error('Could not save the file record.');
+    await db.from('orders').update({ status: 'fulfilled', fulfilled_at: new Date().toISOString(), error: null }).eq('id', order.id);
+    emailLater(order.id);
+    return ins.data.id;
+  } catch (e) {
+    await db.from('orders').update({ error: (e instanceof Error ? e.message : String(e)).slice(0, 500) }).eq('id', order.id);
     throw e;
   }
 }

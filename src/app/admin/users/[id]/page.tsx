@@ -1,3 +1,4 @@
+import { itemOf } from '@/lib/stl/product';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase/admin';
@@ -29,7 +30,7 @@ export default async function User({ params, searchParams }: { params: Promise<{
     db.auth.admin.getUserById(id),
     db.from('visitors').select('*').eq('user_id', id).order('last_seen', { ascending: false }),
     db.from('designs').select('id, name, preview, tool_slug, created_at').eq('user_id', id).order('created_at', { ascending: false }).limit(60),
-    db.from('orders').select('id, tool_slug, currency, amount_minor, status, provider, provider_order_id, created_at, paid_at, error, designs(name)').eq('user_id', id).order('created_at', { ascending: false }),
+    db.from('orders').select('id, tool_slug, currency, amount_minor, status, provider, provider_order_id, created_at, paid_at, error, designs(name), stl_products(title)').eq('user_id', id).order('created_at', { ascending: false }),
     db.from('payments').select('*').eq('user_id', id).order('created_at', { ascending: false }),
     db.from('files').select('id, name, size_bytes, created_at').eq('user_id', id).order('created_at', { ascending: false }),
     db.from('downloads').select('id, file_id, created_at, files(name)').eq('user_id', id).order('created_at', { ascending: false }).limit(100),
@@ -115,7 +116,7 @@ export default async function User({ params, searchParams }: { params: Promise<{
               {(orders.data ?? []).map((o) => (
                 <tr key={o.id}>
                   <td>{when(o.created_at)}<div className="id">{o.provider_order_id ?? o.provider}</div></td>
-                  <td>{one(o.designs as { name: string } | { name: string }[] | null)?.name ?? '—'}</td>
+                  <td>{itemOf(o).name ?? '—'}</td>
                   <td><Pill s={o.status} />{o.error && <div className="id" style={{ color: 'var(--bad)' }}>{o.error}</div>}</td>
                   <td className="num">{money(o.amount_minor, o.currency)}</td>
                 </tr>

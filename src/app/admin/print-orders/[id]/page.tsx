@@ -1,10 +1,11 @@
+import { itemOf } from '@/lib/stl/product';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { UUID_RE } from '@/lib/consent';
 import { TOOLS } from '@/lib/tools';
 import { PRINT_STATUS, type ShipTo } from '@/lib/ship';
-import { Card, PageHead, emails, money, one, when } from '../../ui';
+import { Card, PageHead, emails, money, when } from '../../ui';
 import { AddressCard, NoteForm, RebuildButton, StatusControl, TrackingForm } from './forms';
 import { emailHistory } from '@/lib/followup.server';
 import { EmailHistory } from '../../followup/history';
@@ -20,7 +21,7 @@ export default async function PrintOrder({ params }: { params: Promise<{ id: str
   if (!UUID_RE.test(id)) notFound();
   const db = supabaseAdmin();
   const { data: o } = await db.from('orders')
-    .select('id, user_id, tool_slug, currency, amount_minor, status, provider, provider_order_id, ship_to, print_status, print_file, courier, tracking_no, shop_note, error, created_at, paid_at, printing_at, shipped_at, delivered_at, shipped_emailed_at, designs(name, preview, params)')
+    .select('id, user_id, tool_slug, currency, amount_minor, status, provider, provider_order_id, ship_to, print_status, print_file, courier, tracking_no, shop_note, error, created_at, paid_at, printing_at, shipped_at, delivered_at, shipped_emailed_at, product_id, designs(name, preview, params), stl_products(title, slug, images)')
     .eq('id', id).eq('kind', 'print').maybeSingle();
   if (!o) notFound();
   const [who, { data: pay }, mails] = await Promise.all([
@@ -28,11 +29,11 @@ export default async function PrintOrder({ params }: { params: Promise<{ id: str
     db.from('payments').select('provider_payment_id, method, status').eq('order_id', o.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     emailHistory({ orderId: id }),
   ]);
-  const d = one(o.designs as { name: string; preview: string | null; params: unknown } | { name: string; preview: string | null; params: unknown }[] | null);
+  const d = itemOf(o);
   const c = who.get(o.user_id);
   const status = o.print_status ?? 'to_print';
   const unpaid = o.status !== 'paid' && o.status !== 'fulfilled';
-  const tool = TOOLS.find((t) => t.slug === o.tool_slug)?.name ?? o.tool_slug;
+  const tool = d.product ? 'STL shop' : TOOLS.find((t) => t.slug === o.tool_slug)?.name ?? o.tool_slug;
   const timeline: [string, string | null][] = [['Ordered and paid', o.paid_at ?? o.created_at], ['Printing', o.printing_at], ['Shipped', o.shipped_at], ['Delivered', o.delivered_at]];
 
   return (
@@ -48,9 +49,9 @@ export default async function PrintOrder({ params }: { params: Promise<{ id: str
           <Card title="What to print">
             <div className="adm-po-what">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {d?.preview ? <img src={d.preview} alt={`Preview of ${d?.name ?? 'the design'}`} /> : <div className="ph" />}
+              {d.preview ? <img src={d.preview} alt={`Preview of ${d.name ?? 'the design'}`} /> : <div className="ph" />}
               <div>
-                <p className="serif" style={{ fontSize: 26, lineHeight: 1.1 }}>{d?.name ?? 'Design'}</p>
+                <p className="serif" style={{ fontSize: 26, lineHeight: 1.1 }}>{d.name ?? 'Design'}</p>
                 <p className="muted">{tool}</p>
                 {o.print_file ? (
                   <a className="btn" href={`/api/admin/print-orders/${o.id}/files`} style={{ marginTop: 14 }}>Download the files <span className="arrow">↓</span></a>

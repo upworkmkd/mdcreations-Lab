@@ -1,8 +1,9 @@
+import { itemOf } from '@/lib/stl/product';
 import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { TOOLS } from '@/lib/tools';
 import { PRINT_STATUS, type ShipTo } from '@/lib/ship';
-import { Card, Empty, Filters, PageHead, Pager, Stat, ago, emails, money, num, one, pageNum, str, when } from '../ui';
+import { Card, Empty, Filters, PageHead, Pager, Stat, ago, emails, money, num, pageNum, str, when } from '../ui';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Print orders' };
@@ -14,7 +15,7 @@ export default async function PrintOrders({ searchParams }: { searchParams: Prom
   const page = pageNum(sp.page), f = str(sp.f) || 'open';
   const db = supabaseAdmin();
   // only paid ones: an unpaid printed order is someone who closed the payment window
-  let q = db.from('orders').select('id, user_id, tool_slug, currency, amount_minor, provider, ship_to, print_status, print_file, error, created_at, paid_at, shipped_at, designs(name, preview)', { count: 'exact' })
+  let q = db.from('orders').select('id, user_id, tool_slug, currency, amount_minor, provider, ship_to, print_status, print_file, error, created_at, paid_at, shipped_at, product_id, designs(name, preview), stl_products(title, images)', { count: 'exact' })
     .eq('kind', 'print').in('status', ['paid', 'fulfilled']);
   if (f === 'open') q = q.in('print_status', ['to_print', 'printing']);
   else if (f !== 'all') q = q.eq('print_status', f);
@@ -41,7 +42,7 @@ export default async function PrintOrders({ searchParams }: { searchParams: Prom
             <thead><tr><th>Ordered</th><th>Design</th><th>Customer</th><th>Ship to</th><th>Status</th><th className="num">Paid</th><th /></tr></thead>
             <tbody>
               {data.map((o) => {
-                const d = one(o.designs as { name: string; preview: string | null } | { name: string; preview: string | null }[] | null);
+                const d = itemOf(o);
                 const s = (o.ship_to ?? {}) as Partial<ShipTo>;
                 const c = who.get(o.user_id);
                 return (
@@ -50,8 +51,8 @@ export default async function PrintOrders({ searchParams }: { searchParams: Prom
                     <td>
                       <Link href={`/admin/print-orders/${o.id}`} className="adm-po-design">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        {d?.preview ? <img src={d.preview} alt="" /> : <span className="ph" />}
-                        <span><b>{d?.name ?? 'Design'}</b><span className="id">{TOOLS.find((t) => t.slug === o.tool_slug)?.name ?? o.tool_slug} · #{o.id.slice(0, 8).toUpperCase()}</span></span>
+                        {d.preview ? <img src={d.preview} alt="" /> : <span className="ph" />}
+                        <span><b>{d.name ?? 'Design'}</b><span className="id">{d.product ? 'STL shop' : TOOLS.find((t) => t.slug === o.tool_slug)?.name ?? o.tool_slug} · #{o.id.slice(0, 8).toUpperCase()}</span></span>
                       </Link>
                     </td>
                     <td>{s.name ?? c?.name ?? '—'}<div className="id">{c?.email}</div></td>

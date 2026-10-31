@@ -46,11 +46,12 @@ export const orderFeedbackUrl = (orderId: string, rating?: number) =>
 /* ------------------------------------------------------------------ what goes into the emails */
 export async function orderMailData(orderId: string): Promise<(PrintMailData & { kind: 'download' | 'print' }) | null> {
 	const db = supabaseAdmin();
-	const { data: o } = await db.from('orders').select('id, user_id, design_id, tool_slug, currency, amount_minor, provider, subscription_id, created_at, paid_at, kind, ship_to, courier, tracking_no, print_file').eq('id', orderId).maybeSingle();
+	const { data: o } = await db.from('orders').select('id, user_id, design_id, product_id, tool_slug, currency, amount_minor, provider, subscription_id, created_at, paid_at, kind, ship_to, courier, tracking_no, print_file').eq('id', orderId).maybeSingle();
 	if (!o) return null;
 	const [{ data: who }, { data: design }, { data: pay }, sub] = await Promise.all([
 		db.from('profiles').select('email, full_name').eq('id', o.user_id).maybeSingle(),
-		db.from('designs').select('name').eq('id', o.design_id).maybeSingle(),
+		o.product_id ? db.from('stl_products').select('title').eq('id', o.product_id).maybeSingle().then((r) => ({ data: r.data ? { name: r.data.title as string } : null }))
+			: db.from('designs').select('name').eq('id', o.design_id ?? '').maybeSingle(),
 		db.from('payments').select('provider_payment_id, method').eq('order_id', o.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
 		o.subscription_id ? db.from('subscriptions').select('plan_id, plans(name)').eq('id', o.subscription_id).maybeSingle() : Promise.resolve({ data: null }),
 	]);
@@ -61,7 +62,7 @@ export async function orderMailData(orderId: string): Promise<(PrintMailData & {
 	return {
 		orderId: o.id, createdAt: o.paid_at ?? o.created_at, userId: o.user_id,
 		customerName: who.full_name ?? '', customerEmail: who.email,
-		toolSlug: o.tool_slug, toolName: TOOLS.find((t) => t.slug === o.tool_slug)?.name ?? o.tool_slug,
+		toolSlug: o.tool_slug, toolName: o.product_id ? 'STL files' : TOOLS.find((t) => t.slug === o.tool_slug)?.name ?? o.tool_slug,
 		designName: design?.name || 'Your design',
 		amount: o.amount_minor > 0 && isCurrency(o.currency) ? formatMoney(o.amount_minor, o.currency) : '',
 		how, planName, method: pay?.method ?? null, paymentId: pay?.provider_payment_id ?? null,

@@ -1,10 +1,11 @@
+import { itemOf } from '@/lib/stl/product';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { UUID_RE } from '@/lib/consent';
 import { TOOLS } from '@/lib/tools';
 import { emailHistory } from '@/lib/followup.server';
-import { Card, PageHead, Pill, emails, money, one, when } from '../../ui';
+import { Card, PageHead, Pill, emails, money, when } from '../../ui';
 import { FollowUpButton } from '../../followup/followup';
 import { EmailHistory } from '../../followup/history';
 
@@ -16,7 +17,7 @@ export default async function Order({ params }: { params: Promise<{ id: string }
   const { id } = await params;
   if (!UUID_RE.test(id)) notFound();
   const db = supabaseAdmin();
-  const { data: o } = await db.from('orders').select('id, user_id, tool_slug, currency, amount_minor, status, provider, provider_order_id, kind, error, created_at, paid_at, fulfilled_at, designs(name, preview)').eq('id', id).maybeSingle();
+  const { data: o } = await db.from('orders').select('id, user_id, tool_slug, currency, amount_minor, status, provider, provider_order_id, kind, error, created_at, paid_at, fulfilled_at, product_id, designs(name, preview), stl_products(title, slug, images)').eq('id', id).maybeSingle();
   if (!o) notFound();
   if (o.kind === 'print') redirect(`/admin/print-orders/${o.id}`);
   const [who, { data: pay }, { data: file }, history] = await Promise.all([
@@ -26,11 +27,11 @@ export default async function Order({ params }: { params: Promise<{ id: string }
     emailHistory({ orderId: o.id }),
   ]);
   const c = who.get(o.user_id);
-  const d = one(o.designs as { name: string; preview: string | null } | { name: string; preview: string | null }[] | null);
+  const d = itemOf(o);
   const unpaid = o.status === 'created' || o.status === 'failed';
   return (
     <>
-      <PageHead title={`Order #${o.id.slice(0, 8).toUpperCase()}`} sub={<><Link href="/admin/orders">← Orders</Link> · {TOOLS.find((t) => t.slug === o.tool_slug)?.name ?? o.tool_slug} · {when(o.created_at)}</>}>
+      <PageHead title={`Order #${o.id.slice(0, 8).toUpperCase()}`} sub={<><Link href="/admin/orders">← Orders</Link> · {d.product ? 'STL files' : TOOLS.find((t) => t.slug === o.tool_slug)?.name ?? o.tool_slug} · {when(o.created_at)}</>}>
         <Pill s={o.status} />
         {unpaid && <FollowUpButton kind="order" id={o.id} sent={history.filter((h) => h.kind === 'followup_order').length} />}
         {o.status === 'fulfilled' && <FollowUpButton kind="review" id={o.id} sent={history.some((h) => h.kind === 'review_request') ? 1 : 0} />}
@@ -40,9 +41,9 @@ export default async function Order({ params }: { params: Promise<{ id: string }
           <Card title="Design">
             <div className="adm-po-what">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {d?.preview ? <img src={d.preview} alt="" /> : <div className="ph" />}
+              {d.preview ? <img src={d.preview} alt="" /> : <div className="ph" />}
               <div>
-                <p className="serif" style={{ fontSize: 26, lineHeight: 1.1 }}>{d?.name ?? 'Design'}</p>
+                <p className="serif" style={{ fontSize: 26, lineHeight: 1.1 }}>{d.name ?? 'Design'}</p>
                 <p className="muted">{file ? `Files built: ${file.name}` : unpaid ? 'Not paid, so no files were built.' : 'Files not built yet.'}</p>
                 {o.error && <p className="msg err" style={{ marginTop: 10 }}>{o.error}</p>}
               </div>

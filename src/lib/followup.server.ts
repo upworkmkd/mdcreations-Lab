@@ -24,13 +24,14 @@ export async function followupDraft(kind: FollowKind, id: string, signer: string
   const db = supabaseAdmin();
   const sign = `Thanks,\n${firstName(signer) || 'The team'}\nMD Creations`;
   if (kind === 'review') {
-    const { data: o } = await db.from('orders').select('id, user_id, tool_slug, kind, created_at, designs(name)').eq('id', id).maybeSingle();
+    const { data: o } = await db.from('orders').select('id, user_id, tool_slug, kind, created_at, designs(name), stl_products(title)').eq('id', id).maybeSingle();
     if (!o) return null;
     const { data: who } = await db.from('profiles').select('email, full_name').eq('id', o.user_id).maybeSingle();
     if (!who?.email) return null;
     const tool = TOOLS.find((t) => t.slug === o.tool_slug);
-    const thing = (tool?.name ?? 'design').replace(/\s+(Maker|Generator|Calculator)$/i, '').toLowerCase();
-    const d = Array.isArray(o.designs) ? o.designs[0] : (o.designs as { name: string } | null);
+    const prod = (Array.isArray(o.stl_products) ? o.stl_products[0] : o.stl_products) as { title: string } | null;   // an STL shop order
+    const thing = prod?.title ?? (tool?.name ?? 'design').replace(/\s+(Maker|Generator|Calculator)$/i, '').toLowerCase();
+    const d = prod ? null : Array.isArray(o.designs) ? o.designs[0] : (o.designs as { name: string } | null);
     const printed = o.kind === 'print';
     return {
       kind, id, to: who.email, name: who.full_name ?? '', userId: o.user_id, tool: o.tool_slug, ref: `Order #${o.id.slice(0, 8).toUpperCase()}`,
@@ -39,6 +40,7 @@ export async function followupDraft(kind: FollowKind, id: string, signer: string
         `Hi ${firstName(who.full_name ?? '') || 'there'},`,
         printed
           ? `Your printed ${thing}${d?.name ? ` ("${d.name}")` : ''} should be with you by now. I hope it arrived safely and looks the way you imagined.`
+          : prod ? `Thank you for buying the ${thing} STL files on ${day(o.created_at)}. I hope the build is going well!`
           : `Thank you for making your ${thing}${d?.name ? ` ("${d.name}")` : ''} with MD Creations Labs on ${day(o.created_at)}. I hope it printed well!`,
         printed
           ? `How is it? Does it look and work as you expected, and is there anything we could do better?`
@@ -49,14 +51,15 @@ export async function followupDraft(kind: FollowKind, id: string, signer: string
     };
   }
   if (kind === 'order') {
-    const { data: o } = await db.from('orders').select('id, user_id, tool_slug, currency, amount_minor, kind, created_at, designs(name)').eq('id', id).maybeSingle();
+    const { data: o } = await db.from('orders').select('id, user_id, tool_slug, currency, amount_minor, kind, created_at, designs(name), stl_products(title)').eq('id', id).maybeSingle();
     if (!o) return null;
     const { data: who } = await db.from('profiles').select('email, full_name').eq('id', o.user_id).maybeSingle();
     if (!who?.email) return null;
     const tool = TOOLS.find((t) => t.slug === o.tool_slug);
-    const thing = (tool?.name ?? 'design').replace(/\s+(Maker|Generator|Calculator)$/i, '');   // "Shadow Lamp", not "Shadow Lamp Maker"
-    const d = Array.isArray(o.designs) ? o.designs[0] : (o.designs as { name: string } | null);
-    const what = o.kind === 'print' ? `a printed ${thing}` : `the files for your ${thing} design`;
+    const prod = (Array.isArray(o.stl_products) ? o.stl_products[0] : o.stl_products) as { title: string } | null;   // an STL shop order
+    const thing = prod?.title ?? (tool?.name ?? 'design').replace(/\s+(Maker|Generator|Calculator)$/i, '');   // "Shadow Lamp", not "Shadow Lamp Maker"
+    const d = prod ? null : Array.isArray(o.designs) ? o.designs[0] : (o.designs as { name: string } | null);
+    const what = o.kind === 'print' ? `a printed ${thing}` : prod ? `the STL files for the ${thing}` : `the files for your ${thing} design`;
     const price = o.amount_minor > 0 && isCurrency(o.currency) ? ` (${formatMoney(o.amount_minor, o.currency)})` : '';
     const link = `${SITE_URL}${tool?.makePath ?? `/tools/${o.tool_slug}`}`;
     return {

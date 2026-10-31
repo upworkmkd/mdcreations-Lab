@@ -94,14 +94,17 @@ export function customerOrderEmail(d: OrderMailData) {
 	const first = d.customerName.trim().split(/\s+/)[0] || '';
 	const filesUrl = `${d.siteUrl}/account#files`;
 	const faces: [number, string, string][] = [[1, '😞', 'Not good'], [2, '🙁', 'Could be better'], [3, '😐', 'Okay'], [4, '🙂', 'Good'], [5, '😍', 'Loved it']];
-	const subject = `Your ${d.toolName} files are ready · Order ${orderNo(d.orderId)}`;
+	const stl = d.toolSlug === 'stl';   // an STL shop purchase: ready-made files, nothing was built from a design
+	const subject = stl ? `Your STL files for ${d.designName} are ready · Order ${orderNo(d.orderId)}` : `Your ${d.toolName} files are ready · Order ${orderNo(d.orderId)}`;
 
 	const body = `
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
     <tr><td class="px" style="background:${C.olive}; padding:40px 40px 36px;">
       <div style="font:500 11px/1.4 ${MONO}; letter-spacing:.18em; text-transform:uppercase; color:${C.light};">&#9679;&nbsp; Order confirmed</div>
       <h1 class="h1" style="margin:14px 0 0; font:400 36px/1.15 ${SERIF}; color:#ffffff;">Thank you${first ? `, ${esc(first)}` : ''}.</h1>
-      <p style="margin:14px 0 0; font:400 16px/1.6 ${SANS}; color:#e6e7dc;">Your ${esc(d.toolName)} design <b style="color:#ffffff; font-weight:600;">&ldquo;${esc(d.designName)}&rdquo;</b> is built and waiting in your account, ready to slice and print.</p>
+      <p style="margin:14px 0 0; font:400 16px/1.6 ${SANS}; color:#e6e7dc;">${stl
+        ? `The STL files for <b style="color:#ffffff; font-weight:600;">&ldquo;${esc(d.designName)}&rdquo;</b> are waiting in your account, with the assembly guide and print settings.`
+        : `Your ${esc(d.toolName)} design <b style="color:#ffffff; font-weight:600;">&ldquo;${esc(d.designName)}&rdquo;</b> is built and waiting in your account, ready to slice and print.`}</p>
       <div style="padding-top:26px;">${button(filesUrl, 'Download your files &rarr;')}</div>
     </td></tr>
 
@@ -150,7 +153,7 @@ export function customerOrderEmail(d: OrderMailData) {
 	const text = [
 		`Thank you${first ? `, ${first}` : ''}.`,
 		``,
-		`Your ${d.toolName} design "${d.designName}" is built and waiting in your account.`,
+		stl ? `The STL files for "${d.designName}" are waiting in your account.` : `Your ${d.toolName} design "${d.designName}" is built and waiting in your account.`,
 		`Download your files: ${filesUrl}`,
 		``,
 		`Order:  #${orderNo(d.orderId)}`,
@@ -167,7 +170,7 @@ export function customerOrderEmail(d: OrderMailData) {
 		`MD Creations Labs · ${d.siteUrl}`,
 	].join('\n');
 
-	return { subject, html: frame({ preheader: `Your ${d.toolName} design “${d.designName}” is ready to download.`, body, foot, siteUrl: d.siteUrl }), text };
+	return { subject, html: frame({ preheader: stl ? `The STL files for “${d.designName}” are ready to download.` : `Your ${d.toolName} design “${d.designName}” is ready to download.`, body, foot, siteUrl: d.siteUrl }), text };
 }
 
 /* ------------------------------------------------------------------ to the shop */
