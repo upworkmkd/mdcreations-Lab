@@ -1178,3 +1178,15 @@ a.pill { text-decoration: none; }
 .adm-days { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
 .adm-days .input { width: 64px; padding: 4px 8px; }
 .adm-due { margin: 10px 0 0; padding-left: 18px; font-size: 13px; max-height: 240px; overflow: auto; }
+
+/* Send email: the placeholder list */
+.adm-ph { border: 1px solid var(--line, #cbcdbd); border-radius: 4px; padding: 10px 12px; background: rgba(255,255,255,.5); }
+.adm-ph-h { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+.adm-ph-h span { font-weight: 400; color: var(--ink3, #7b7e69); }
+.adm-ph ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 4px 12px; }
+.adm-ph li button { display: flex; gap: 8px; align-items: baseline; width: 100%; text-align: left; background: none; border: 0; padding: 4px 6px; border-radius: 3px; cursor: pointer; font: inherit; font-size: 13px; color: inherit; }
+.adm-ph li button:hover, .adm-ph li button:focus-visible { background: rgba(66,69,50,.08); }
+.adm-ph code { flex: none; font-size: 12px; color: var(--olive, #424532); font-weight: 600; }
+.adm-ph li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink2, #555846); }
+.adm-ph li b { font-weight: 500; color: var(--ink, #20221a); }
+.adm-ph-note { margin: 8px 0 0; font-size: 12.5px; color: var(--ink3, #7b7e69); }
