@@ -52,7 +52,7 @@ function Dialog({ userId, email, name, confirmed, signer, onClose }: { userId: s
               {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.label}{t.id === 'confirm' && confirmed ? ' (already confirmed)' : ''}</option>)}
             </select>
           </label>
-          <p className="adm-fu-note">{info.note}{tpl !== 'blank' ? ' The line [button] marks where the button goes; remove it and the button comes last.' : ''}</p>
+          <p className="adm-fu-note">{info.note}{tpl !== 'blank' ? ' The line [button] marks where the button goes; remove it and the button comes last.' : ' There is no button in a blank email.'} You can write {'{name}'}, {'{first_name}'} or {'{email}'} and they are filled in; any other text in {'{braces}'} stops the email from sending, so a placeholder never goes out by mistake.</p>
           <label className="lbl">Subject<input className="input" value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={200} disabled={pending} /></label>
           <label className="lbl">Message<textarea className="input" rows={13} value={body} onChange={(e) => setBody(e.target.value)} maxLength={8000} disabled={pending} /></label>
           <div className="adm-inline" style={{ alignItems: 'center' }}>

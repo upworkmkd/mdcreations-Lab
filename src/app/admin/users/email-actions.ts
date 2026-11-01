@@ -8,7 +8,7 @@ import { sendMail, replyAddress } from '@/lib/mail.server';
 import { log } from '@/lib/order-mail.server';
 import { noteEmail } from '@/lib/emails/note-email';
 import { makeLink, sendLinkEmail } from '@/lib/auth-mail.server';
-import type { TemplateId } from '@/lib/emails/auth-emails';
+import { BUTTON_MARK, type TemplateId } from '@/lib/emails/auth-emails';
 
 type Result = { ok?: string; error?: string };
 
@@ -22,16 +22,23 @@ export async function sendUserEmail(userId: string, template: TemplateId, subjec
   const db = supabaseAdmin();
   const { data: u } = await db.from('profiles').select('id, email, full_name').eq('id', userId).maybeSingle();
   if (!u?.email) return { error: 'This user has no email address.' };
+  // {name}, {first_name} and {email} are filled in; anything else in {braces} is a placeholder that was not replaced
+  const full = (u.full_name ?? '').trim(), firstName = full.split(/\s+/)[0] || 'there';
+  const fill = (t: string) => t.replace(/\{\s*(first[_ ]?name|name|email)\s*\}/gi, (_, k: string) => (/email/i.test(k) ? u.email! : /first/i.test(k) ? firstName : full || firstName));
+  const s2 = fill(s), b2 = fill(b);
+  const left = `${s2}\n${b2}`.match(/\{[^{}\n]{1,60}\}/);
+  if (left) return { error: `Not sent: “${left[0]}” is still in the text. Replace it with the real words (or use {name}, {first_name} or {email}, which fill in by themselves).` };
+  if (template === 'blank' && BUTTON_MARK.test(b2)) return { error: 'Not sent: a Blank email has no button, so the [button] line would show as text. Remove it, or pick the Sign-in link, Email confirmation or Password reset template, which add the button there.' };
   try {
     if (template === 'blank') {
-      const r = await sendMail({ to: u.email, ...noteEmail({ subject: s, body: b, siteUrl: SITE_URL, supportEmail: replyAddress() }) });
-      await log('manual', [u.email], s, null, r, { userId, body: b, sentBy: me.id });
+      const r = await sendMail({ to: u.email, ...noteEmail({ subject: s2, body: b2, siteUrl: SITE_URL, supportEmail: replyAddress() }) });
+      await log('manual', [u.email], s2, null, r, { userId, body: b2, sentBy: me.id });
       revalidatePath(`/admin/users/${userId}`);
       return r.ok ? { ok: `Sent to ${u.email}.` } : { error: r.error };
     }
     const link = await makeLink(template === 'reset' ? 'recovery' : 'magiclink', u.email, { name: u.full_name ?? '' });
     if (!link.ok) return { error: `Supabase could not make the link: ${link.error}` };
-    const r = await sendLinkEmail(template, link, { subject: s, body: b, sentBy: me.id });
+    const r = await sendLinkEmail(template, link, { subject: s2, body: b2, sentBy: me.id });
     revalidatePath(`/admin/users/${userId}`);
     return r.ok ? { ok: `Sent to ${u.email}.` } : { error: r.error };
   } catch (e) {
