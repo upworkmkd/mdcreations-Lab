@@ -52,7 +52,7 @@ export function ReviewByLink({ orderId, token, stars: s0, design, defaultName, e
       <h1>Thank you!</h1>
       <p className="muted">We read every review{photos.length ? ' and look at every photo' : ''}. Yours will appear on the site once we have had a look.</p>
       {step.photoError && <p className="msg err">{step.photoError} You can add photos again from this link.</p>}
-      <p className="ofb-links"><Link href="/#tools" className="btn small">Make something new</Link> <Link href="/account#review" className="linkish">Your account</Link></p>
+      <p className="ofb-links"><Link href="/tools" className="btn small">Make something new</Link> <Link href="/account#review" className="linkish">Your account</Link></p>
     </div>
   );
 

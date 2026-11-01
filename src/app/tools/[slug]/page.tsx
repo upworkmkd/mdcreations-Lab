@@ -46,7 +46,7 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
       },
       { '@type': 'BreadcrumbList', itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Labs', item: SITE_URL },
-        { '@type': 'ListItem', position: 2, name: 'Tools', item: `${SITE_URL}/#tools` },
+        { '@type': 'ListItem', position: 2, name: 'Tools', item: `${SITE_URL}/tools` },
         { '@type': 'ListItem', position: 3, name: tool.name, item: url },
       ] },
       ...(tool.faq.length ? [{ '@type': 'FAQPage', mainEntity: tool.faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }] : []),
@@ -57,14 +57,14 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
     <>
       <JsonLd data={ld} />
       <div className="wrap page-title">
-        <nav className="crumbs" aria-label="Breadcrumb"><Link href="/#tools">Tools</Link><span>/</span><span>{tool.index}</span></nav>
+        <nav className="crumbs" aria-label="Breadcrumb"><Link href="/tools">Tools</Link><span>/</span><span>{tool.index}</span></nav>
         <h1>{tool.name}</h1>
         <p className="lede">{tool.lede}</p>
         <div className="actions">
           {live && tool.makePath ? (
             <>
-              <Link href={tool.makePath} className="btn">{tool.free ? 'Open the tool' : 'Open the maker'} <span className="arrow">→</span></Link>
-              {tool.free ? <span className="mono muted" style={{ fontSize: 14 }}>Free · no account needed</span>
+              <Link href={tool.makePath} className="btn">{tool.noAccount ? 'Open the tool' : 'Open the maker'} <span className="arrow">→</span></Link>
+              {tool.free ? <span className="mono muted" style={{ fontSize: 14 }}>{tool.noAccount ? 'Free · no account needed' : 'Free · sign in to download your files'}</span>
                 : price != null && <span className="mono muted" style={{ fontSize: 14 }}>Free to try · {formatMoney(price, currency)} to download a design</span>}
             </>
           ) : (
@@ -128,9 +128,9 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
               <div className="price-card">
                 <p className="eyebrow">Free tool</p>
                 <div className="amount">Free</div>
-                <p className="per">no account, no payment · works in your browser</p>
+                <p className="per">{tool.noAccount ? 'no account, no payment · works in your browser' : 'no payment · sign in to save and download your files'}</p>
                 <ul>{tool.youGet.map((x) => <li key={x}>{x}</li>)}</ul>
-                {tool.makePath && <Link href={tool.makePath} className="btn">Open the tool <span className="arrow">→</span></Link>}
+                {tool.makePath && <Link href={tool.makePath} className="btn">{tool.noAccount ? 'Open the tool' : 'Open the maker'} <span className="arrow">→</span></Link>}
                 <p className="per" style={{ marginTop: 14 }}>Want more? <Link href="/pricing">Our paid makers</Link> turn pictures into lamps, sculptures and more.</p>
               </div>
               ) : (

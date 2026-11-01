@@ -91,7 +91,7 @@ export default async function Pricing() {
 								<ul>{range.tools.map((t) => <li key={t.slug}><Link href={`/tools/${t.slug}`}>{t.name}</Link><b>{formatMoney(t.price, currency)}</b></li>)}</ul>
 							</details>
 						)}
-						<Link href="/#tools" className="btn ghost">Start designing</Link>
+						<Link href="/tools" className="btn ghost">Start designing</Link>
 					</article>
 
 					{plans.map((p) => {

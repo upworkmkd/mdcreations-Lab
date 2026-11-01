@@ -25,6 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       images: t.slug === 'shadow-lamp' ? [u(t.image), ...LAMP_GALLERY.map((g) => u(g.src))] : [u(t.image)],
     })),
     ...live.filter((t) => t.makePath).map((t) => ({ url: u(t.makePath!), changeFrequency: 'weekly' as const, priority: 0.9 })),
+    { url: u('/tools'), changeFrequency: 'weekly' as const, priority: 0.8 },
     { url: u('/stl-files'), changeFrequency: 'weekly' as const, priority: 0.8 },
     ...stl.map((p) => ({ url: u(`/stl-files/${p.slug}`), lastModified: p.updated_at, changeFrequency: 'weekly' as const, priority: 0.8, images: p.images.map((i) => publicImageUrl(i.path)) })),
     { url: u('/pricing'), changeFrequency: 'monthly', priority: 0.7 },
