@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabase/client';
+import { createAccount, resendConfirmation } from '@/app/login/actions';
+import { track } from '@/components/tracker';
 
 type Mode = 'signin' | 'signup';
 
@@ -21,23 +23,25 @@ export function AuthDialog({ open, onClose, onSignedIn, next, reason }: { open: 
     const f = new FormData(e.currentTarget);
     const email = String(f.get('email') || '').trim(), password = String(f.get('password') || ''), name = String(f.get('name') || '').trim();
     setBusy(true); setMsg(null);
-    const sb = supabaseBrowser();
     try {
       if (mode === 'signin') {
-        const { error } = await sb.auth.signInWithPassword({ email, password });
+        const { error } = await supabaseBrowser().auth.signInWithPassword({ email, password });
+        if (error?.code === 'email_not_confirmed') {
+          const r = await resendConfirmation(email, next);
+          setMsg(r?.error ? { ok: false, text: r.error } : { ok: true, text: `${r?.message ?? ''} Then come back here and press the buy button again. Your design stays on this page.` });
+          return;
+        }
         if (error) throw error;
         onSignedIn();
       } else {
-        const { data, error } = await sb.auth.signUp({
-          email, password,
-          options: { data: { full_name: name }, emailRedirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
-        });
-        if (error) throw error;
-        if (data.session) onSignedIn();
+        const r = await createAccount({ name, email, password, next });
+        if (r?.error) { track('form_error', r.error, { form: 'Create account (window)' }); setMsg({ ok: false, text: r.error }); }
         else setMsg({ ok: true, text: `We sent a link to ${email}. Open it (any tab is fine), then come back here and press the buy button again. Your design stays on this page.` });
       }
     } catch (err) {
-      setMsg({ ok: false, text: (err as Error).message || 'That did not work. Please try again.' });
+      const text = (err as Error).message || 'That did not work. Please try again.';
+      track('form_error', text, { form: mode === 'signin' ? 'Sign in (window)' : 'Create account (window)' });
+      setMsg({ ok: false, text: /fetch|network|timeout|unexpected response/i.test(text) ? 'We could not reach the server. Please check your connection and try again.' : text });
     } finally {
       setBusy(false);
     }
