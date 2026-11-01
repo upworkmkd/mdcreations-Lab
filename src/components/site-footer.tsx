@@ -23,6 +23,7 @@ export async function SiteFooter() {
         <div>
           <h4>Help</h4>
           <ul>
+            <li><Link href="/stl-files">STL files</Link></li>
             <li><Link href="/pricing">Pricing and plans</Link></li>
             <li><Link href="/license">Commercial license</Link></li>
             <li><Link href="/account">Your files</Link></li>

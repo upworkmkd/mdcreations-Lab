@@ -1,3 +1,4 @@
+import { itemOf } from '@/lib/stl/product';
 import 'server-only';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { SITE_URL } from '@/lib/env';
@@ -18,13 +19,13 @@ export const reviewUrl = (orderId: string, stars?: number) => `${SITE_URL}/revie
 /** The order behind a review link, and the review its customer already wrote (one per customer). */
 export async function reviewContext(orderId: string) {
   const db = supabaseAdmin();
-  const { data: o } = await db.from('orders').select('id, user_id, tool_slug, kind, status, print_status, created_at, designs(name, preview)').eq('id', orderId).maybeSingle();
+  const { data: o } = await db.from('orders').select('id, user_id, tool_slug, kind, status, print_status, created_at, designs(name, preview), stl_products(title, images)').eq('id', orderId).maybeSingle();
   if (!o) return null;
   const [{ data: who }, { data: review }] = await Promise.all([
     db.from('profiles').select('email, full_name').eq('id', o.user_id).maybeSingle(),
     db.from('testimonials').select('id, rating, body, name, place, status').eq('user_id', o.user_id).eq('source', 'site').maybeSingle(),
   ]);
   const { data: photos } = review ? await db.from('review_photos').select('id, status').eq('testimonial_id', review.id).order('sort') : { data: [] };
-  const d = Array.isArray(o.designs) ? o.designs[0] : (o.designs as { name: string; preview: string | null } | null);
+  const it = itemOf(o), d = it.name ? { name: it.name, preview: it.preview } : null;   // a design, or an STL shop product
   return { order: o, design: d, who, review, photos: photos ?? [] };
 }
