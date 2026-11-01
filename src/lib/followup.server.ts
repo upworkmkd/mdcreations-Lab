@@ -118,7 +118,7 @@ export async function emailHistory(o: { userId?: string | null; email?: string |
 }
 
 export const KIND_LABEL: Record<string, string> = {
-  review_request: 'Review request',
+  review_request: 'Review request', auth_confirm: 'Email confirmation', auth_login: 'Sign-in link', auth_reset: 'Password reset', manual: 'Email from admin',
   order_customer: 'Receipt', print_customer: 'Printed order receipt', print_printing: 'Printing started', print_shipped: 'Shipped',
   print_tracking: 'Tracking number', print_delivered: 'Delivered', print_cancelled: 'Cancelled', followup_order: 'Follow-up (order)',
   followup_subscription: 'Follow-up (plan)', sub_welcome: 'Plan welcome', order_admin: 'Order alert', print_admin: 'Print order alert', sub_admin: 'Plan alert', test: 'Test',

@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { Card, Filters, PageHead, Pager, pageNum, str, visitorNames } from '../ui';
-import { NOISE, Timeline, type Ev, type Sess } from '../timeline';
+import { ERRORS, NOISE, Timeline, type Ev, type Sess } from '../timeline';
 import { AutoRefresh } from '../auto-refresh';
 import { BulkForm } from '../bulk';
 
@@ -10,8 +10,8 @@ const SIZE = 200;
 const GROUPS: Record<string, string[]> = {
   pages: ['pageview'],
   sales: ['subscribe_start', 'subscribed', 'subscribe_cancelled', 'subscription_cancel', 'plan_build', 'design_saved', 'checkout', 'payment_done', 'payment', 'payment_cancelled', 'purchase_error', 'download'],
-  accounts: ['signup', 'email_confirmed', 'signin', 'signin_failed', 'signout', 'password_reset'],
-  errors: ['error', 'purchase_error', 'signin_failed'],
+  accounts: ['signup', 'email_confirmed', 'link_signin', 'signin', 'signin_failed', 'signout', 'password_reset'],
+  errors: ERRORS,
 };
 
 export default async function Activity({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

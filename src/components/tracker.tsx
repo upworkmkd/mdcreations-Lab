@@ -186,10 +186,39 @@ export function Tracker() {
     const onHide = () => { if (document.visibilityState === 'hidden') { leave(); flush(true); } else if (!page.current) page.current = { path: location.pathname + location.search, start: Date.now(), scroll: 0 }; };
     const onPageHide = () => { leave(); flush(true); };
     const onError = (ev: ErrorEvent | PromiseRejectionEvent) => {
-      if (errors.current++ >= 5) return;
+      if (errors.current++ >= 8) return;
       const msg = 'message' in ev ? ev.message : String((ev as PromiseRejectionEvent).reason?.message ?? (ev as PromiseRejectionEvent).reason);
       track('error', clean(msg, 150), 'filename' in ev ? { src: ev.filename?.slice(-80), line: ev.lineno } : {});
     };
+    // failed requests (server errors, timeouts, no connection) to this site or to Supabase go into the timeline too
+    const realFetch = window.fetch;
+    const watchedFetch: typeof fetch = async (input, init) => {
+      let u: URL | null = null;
+      try { u = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url, location.href); } catch { /* ignore */ }
+      const watch = u && !u.pathname.startsWith('/api/track') && (u.origin === location.origin || u.hostname.endsWith('.supabase.co'));
+      if (!watch || !u) return realFetch(input, init);
+      const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
+      let action = false;
+      try { action = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined)).has('next-action'); } catch { /* ignore */ }
+      const what = `${action ? 'Server request' : method} ${u.hostname === location.hostname ? u.pathname : `${u.hostname}${u.pathname}`}`;
+      const started = Date.now();
+      const report = (msg: string, props: Record<string, unknown>) => {
+        if (errors.current++ >= 8) return;
+        track('request_failed', clean(msg, 150), { ...props, path: u.pathname, action, seconds: Math.round((Date.now() - started) / 1000) });
+      };
+      try {
+        const r = await realFetch(input, init);
+        if (r.status >= 500 || r.status === 429) {
+          const label = r.status === 504 ? 'Gateway timeout' : r.status === 429 ? 'Too many requests' : r.statusText || 'Server error';
+          report(`${r.status} ${label} · ${what}`, { status: r.status });
+        }
+        return r;
+      } catch (err) {
+        if ((err as Error)?.name !== 'AbortError') report(`No response · ${what} (${(err as Error)?.message || 'network error'})`, { status: 0 });
+        throw err;
+      }
+    };
+    window.fetch = watchedFetch;
     const reopen = () => setAsking(true);
     (window as unknown as { mdTrack: typeof track }).mdTrack = track;
     document.addEventListener('click', onClick, true);
@@ -211,6 +240,7 @@ export function Tracker() {
       removeEventListener('error', onError);
       removeEventListener('unhandledrejection', onError);
       removeEventListener('mdl:consent', reopen);
+      if (window.fetch === watchedFetch) window.fetch = realFetch;
     };
   }, []);
 
