@@ -9,7 +9,7 @@ export const metadata: Metadata = pageMeta({
   absoluteTitle: true,
   description: 'Turn any rangoli, mandala or kolam design into a 3D printable stencil for Diwali, with loose parts joined automatically. Also cookie cutters and stamps.',
   path: '/tools/cookie-cutter/make',
-  keywords: ['rangoli stencil maker', '3d printed rangoli', 'diwali rangoli stencil', 'rangoli stencil stl', 'mandala stencil', 'kolam stencil', 'cookie cutter stl generator', 'cookie stamp stl'],
+  keywords: ['rangoli stencil maker', '3d printed rangoli', 'diwali rangoli stencil', 'rangoli stencil stl', 'mandala stencil', 'kolam stencil', 'cookie cutter stl generator', 'cookie stamp stl', 'cookie cutter from image', 'stencil from image'],
 });
 
 export default async function MakeCookie() {

@@ -9,7 +9,7 @@ export const metadata: Metadata = pageMeta({
   absoluteTitle: true,
   description: 'Turn a photo into a 3D printable embossed plaque: bas-relief on a rectangle, circle, oval, heart or arch, with a raised frame and a hanging hole.',
   path: '/tools/photo-relief/make',
-  keywords: ['photo to relief stl', 'embossed plaque stl', 'bas relief generator', 'photo plaque 3d print', 'image to 3d relief', 'memorial plaque stl'],
+  keywords: ['photo to stl', 'image to stl', 'picture to stl', 'photo to relief stl', 'embossed plaque stl', 'bas relief generator', 'photo plaque 3d print', 'image to 3d relief', 'memorial plaque stl'],
 });
 
 export default async function MakeRelief() {

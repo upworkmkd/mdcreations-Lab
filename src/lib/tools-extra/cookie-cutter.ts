@@ -45,8 +45,8 @@ export const seo: ToolSeo | null = {
   title: 'Rangoli Stencil & Cookie Cutter Maker – 3D Print STL',
   description: 'Make 3D printed rangoli stencils for Diwali from any design or mandala, plus custom cookie cutters with matching stamps. Print-ready STL files.',
   keywords: [
-    'rangoli stencil maker', '3d printed rangoli', '3d printed rangoli stencil', 'rangoli stencil stl', 'diwali rangoli stencil', 'rangoli maker online',
-    'rangoli design stencil', 'mandala stencil stl', 'kolam stencil', 'diwali 3d print', 'rangoli stencil generator', 'custom rangoli stencil',
-    'cookie cutter stl generator', 'custom cookie cutter 3d print', 'cookie stamp stl', 'fondant stamp', 'picture to cookie cutter',
+    'rangoli stencil maker', 'rangoli stencil stl', '3d printed rangoli stencil', 'diwali rangoli stencil', 'rangoli stencil generator', 'custom rangoli stencil',
+    'rangoli design stencil', 'mandala stencil stl', 'kolam stencil', 'diwali 3d print', 'stencil from image', 'picture to stencil stl',
+    'cookie cutter stl generator', 'custom cookie cutter 3d print', 'cookie cutter from image', 'cookie stamp stl', 'fondant stamp stl', 'clay cutter stl',
   ],
 };

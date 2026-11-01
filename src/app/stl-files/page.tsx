@@ -10,7 +10,7 @@ export const revalidate = 300;
 export const metadata = pageMeta({
   title: 'STL Files for 3D Printing – Scale Models & Kits by MD Creations',
   absoluteTitle: true,
-  description: 'Print-ready STL files designed and test-printed by MD Creations: scale models and build kits with assembly guides, hardware lists and a commercial license to sell your prints.',
+  description: 'Print-ready STL files designed and test-printed by MD Creations: scale models and kits with assembly guides and a commercial license to sell your prints.',
   path: '/stl-files',
   keywords: ['stl files', '3d print stl files', 'stl files for 3d printing', 'scale model stl', '3d printable model kits', 'buy stl files india'],
 });
