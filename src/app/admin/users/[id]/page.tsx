@@ -13,6 +13,7 @@ import { EmailHistory } from '../../followup/history';
 import { SendEmailButton } from '../send-email';
 import { confirmUserEmail } from '../email-actions';
 import { getViewer } from '@/lib/auth.server';
+import { SITE_URL } from '@/lib/env';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'User' };
@@ -54,7 +55,7 @@ export default async function User({ params, searchParams }: { params: Promise<{
     <>
       <PageHead title={u.full_name || u.email} sub={<>{u.email} · joined {when(u.created_at)}{u.role === 'admin' ? ' · admin' : ''}</>}>
         <Link href="/admin/users" className="btn small ghost">← All users</Link>
-        {u.email && <SendEmailButton userId={u.id} email={u.email} name={u.full_name ?? ''} confirmed={Boolean(au?.email_confirmed_at)} signer={me?.name ?? ''} />}
+        {u.email && <SendEmailButton userId={u.id} email={u.email} name={u.full_name ?? ''} confirmed={Boolean(au?.email_confirmed_at)} signer={me?.name ?? ''} siteUrl={SITE_URL} />}
         <form action={setTracking}>
           <input type="hidden" name="id" value={u.id} /><input type="hidden" name="on" value={u.track === false ? '1' : '0'} />
           <button className="btn small ghost" title={u.track === false ? 'Start recording this account again' : 'Stop recording this account and remove what was recorded'}>{u.track === false ? 'Tracking off · turn on' : 'Stop tracking'}</button>
