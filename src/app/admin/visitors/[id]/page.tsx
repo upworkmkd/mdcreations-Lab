@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { UUID_RE } from '@/lib/consent';
 import { Card, Filters, PageHead, Pager, Stat, ago, country, duration, emails, num, pageNum, place, shortId, str, when } from '../../ui';
-import { NOISE, Timeline, type Ev, type Sess } from '../../timeline';
+import { ERRORS, NOISE, Timeline, type Ev, type Sess } from '../../timeline';
 import { BulkForm, DeleteOne } from '../../bulk';
 import { PictureGrid, type SharedPicture } from '../../pictures/grid';
 import { ScoreBadge } from '../score';
@@ -27,6 +27,7 @@ export default async function Visitor({ params, searchParams }: { params: Promis
   if (!v) notFound();
   let evq = db.from('visitor_events').select('*', { count: 'exact' }).eq('visitor_id', id);
   if (f === 'key') evq = evq.not('type', 'in', `(${NOISE.join(',')})`);
+  if (f === 'err') evq = evq.in('type', ERRORS);
   const [ev, sessions, others, ov, pics] = await Promise.all([
     evq.order('created_at', { ascending: false }).order('id', { ascending: false }).range((page - 1) * SIZE, page * SIZE - 1),
     db.from('visitor_sessions').select('*').eq('visitor_id', id).order('started_at', { ascending: false }).limit(200),
@@ -146,7 +147,7 @@ export default async function Visitor({ params, searchParams }: { params: Promis
         </table></div>
       </Card>
 
-      <Card title="Activity timeline" action={<Filters base={`/admin/visitors/${id}`} current={f} options={[['', 'Everything'], ['key', 'Pages and key actions']]} />}>
+      <Card title="Activity timeline" action={<Filters base={`/admin/visitors/${id}`} current={f} options={[['', 'Everything'], ['key', 'Pages and key actions'], ['err', 'Errors']]} />}>
         <BulkForm kind="events" noun="event"><Timeline events={(ev.data ?? []) as Ev[]} sessions={sess} selectable /></BulkForm>
         <Pager page={page} size={SIZE} total={ev.count ?? 0} base={`/admin/visitors/${id}`} params={{ f }} />
       </Card>
