@@ -63,3 +63,32 @@ export function accountEmail(o: { subject: string; body: string; siteUrl: string
   const text = `${plain}${o.link && !BUTTON_MARK.test(o.body) ? `\n\n${o.link.label}: ${o.link.href}` : ''}\n\n—\nMD Creations · ${o.siteUrl}`;
   return { subject: o.subject, html: frame({ preheader: pre.slice(0, 140), body, foot, siteUrl: o.siteUrl }), text };
 }
+
+/* ------------------------------------------------------------------ placeholders in admin emails */
+export type Vars = { name: string; email: string; siteUrl: string };
+type Ph = { key: string; label: string; value: (v: Vars) => string };
+const firstOf = (v: Vars) => v.name.trim().split(/\s+/)[0] || 'there';
+
+/** What the admin can write in a subject or message; each is replaced for the person the email goes to. */
+export const PLACEHOLDERS: Ph[] = [
+  { key: 'first_name', label: 'First name', value: firstOf },
+  { key: 'name', label: 'Full name', value: (v) => v.name.trim() || firstOf(v) },
+  { key: 'email', label: 'Their email', value: (v) => v.email },
+  { key: 'login_url', label: 'Sign-in page', value: (v) => `${v.siteUrl}/login` },
+  { key: 'signup_url', label: 'Create-account page', value: (v) => `${v.siteUrl}/signup` },
+  { key: 'pricing_url', label: 'Plans and prices', value: (v) => `${v.siteUrl}/pricing` },
+  { key: 'tools_url', label: 'All tools', value: (v) => `${v.siteUrl}/tools` },
+  { key: 'stl_url', label: 'STL files shop', value: (v) => `${v.siteUrl}/stl-files` },
+  { key: 'account_url', label: 'Their account', value: (v) => `${v.siteUrl}/account` },
+];
+
+/** Replaces the known placeholders ({first_name}, {pricing_url} …; spaces and case do not matter). */
+export function fillPlaceholders(text: string, v: Vars) {
+  return text.replace(/\{\s*([a-z_ ]{2,30}?)\s*\}/gi, (whole, k: string) => {
+    const p = PLACEHOLDERS.find((x) => x.key === k.toLowerCase().replace(/\s+/g, '_'));
+    return p ? p.value(v) : whole;
+  });
+}
+
+/** Text in {braces} that is not a known placeholder: a note that was meant to be replaced by hand. */
+export const unknownPlaceholders = (text: string) => [...new Set(text.match(/\{[^{}\n]{1,60}\}/g) ?? [])];

@@ -8,7 +8,7 @@ import { sendMail, replyAddress } from '@/lib/mail.server';
 import { log } from '@/lib/order-mail.server';
 import { noteEmail } from '@/lib/emails/note-email';
 import { makeLink, sendLinkEmail } from '@/lib/auth-mail.server';
-import { BUTTON_MARK, type TemplateId } from '@/lib/emails/auth-emails';
+import { BUTTON_MARK, fillPlaceholders, unknownPlaceholders, type TemplateId } from '@/lib/emails/auth-emails';
 
 type Result = { ok?: string; error?: string };
 
@@ -22,12 +22,11 @@ export async function sendUserEmail(userId: string, template: TemplateId, subjec
   const db = supabaseAdmin();
   const { data: u } = await db.from('profiles').select('id, email, full_name').eq('id', userId).maybeSingle();
   if (!u?.email) return { error: 'This user has no email address.' };
-  // {name}, {first_name} and {email} are filled in; anything else in {braces} is a placeholder that was not replaced
-  const full = (u.full_name ?? '').trim(), firstName = full.split(/\s+/)[0] || 'there';
-  const fill = (t: string) => t.replace(/\{\s*(first[_ ]?name|name|email)\s*\}/gi, (_, k: string) => (/email/i.test(k) ? u.email! : /first/i.test(k) ? firstName : full || firstName));
-  const s2 = fill(s), b2 = fill(b);
-  const left = `${s2}\n${b2}`.match(/\{[^{}\n]{1,60}\}/);
-  if (left) return { error: `Not sent: “${left[0]}” is still in the text. Replace it with the real words (or use {name}, {first_name} or {email}, which fill in by themselves).` };
+  // known placeholders ({first_name}, {pricing_url} …) are filled in; anything else in {braces} was meant to be replaced by hand
+  const vars = { name: u.full_name ?? '', email: u.email, siteUrl: SITE_URL };
+  const s2 = fillPlaceholders(s, vars), b2 = fillPlaceholders(b, vars);
+  const left = unknownPlaceholders(`${s2}\n${b2}`);
+  if (left.length) return { error: `Not sent: ${left.map((x) => `“${x}”`).join(', ')} is still in the text. Replace it with the real words, or use one of the placeholders listed above the message.` };
   if (template === 'blank' && BUTTON_MARK.test(b2)) return { error: 'Not sent: a Blank email has no button, so the [button] line would show as text. Remove it, or pick the Sign-in link, Email confirmation or Password reset template, which add the button there.' };
   try {
     if (template === 'blank') {
