@@ -10,7 +10,7 @@ import { AutomationForm, AutomationRun, EmailSettingsForm, ShopForm, TestButton 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Settings' };
 
-const KIND: Record<string, string> = { order_customer: 'Receipt', order_admin: 'Order alert', test: 'Test', print_customer: 'Printed order receipt', print_admin: 'Print order alert', print_printing: 'Printing', print_shipped: 'Shipped', print_tracking: 'Tracking number', print_delivered: 'Delivered', print_cancelled: 'Cancelled', followup_order: 'Follow-up (order)', followup_subscription: 'Follow-up (plan)', sub_welcome: 'Plan welcome', sub_admin: 'Plan alert', review_request: 'Review request' };
+const KIND: Record<string, string> = { order_customer: 'Receipt', order_admin: 'Order alert', test: 'Test', print_customer: 'Printed order receipt', print_admin: 'Print order alert', print_printing: 'Printing', print_shipped: 'Shipped', print_tracking: 'Tracking number', print_delivered: 'Delivered', print_cancelled: 'Cancelled', followup_order: 'Follow-up (order)', followup_subscription: 'Follow-up (plan)', sub_welcome: 'Plan welcome', sub_admin: 'Plan alert', review_request: 'Review request', auth_confirm: 'Email confirmation', auth_login: 'Sign-in link', auth_reset: 'Password reset', manual: 'Email from admin' };
 
 export default async function Settings() {
   const me = await requireAdmin();

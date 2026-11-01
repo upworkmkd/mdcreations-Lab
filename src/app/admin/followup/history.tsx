@@ -7,6 +7,7 @@ const LABEL: Record<string, string> = {
   order_customer: 'Receipt', print_customer: 'Printed order receipt', print_printing: 'Printing started', print_shipped: 'Shipped',
   print_tracking: 'Tracking number', print_delivered: 'Delivered', print_cancelled: 'Cancelled', followup_order: 'Follow-up (order)',
   followup_subscription: 'Follow-up (plan)', sub_welcome: 'Plan welcome', review_request: 'Review request',
+  auth_confirm: 'Email confirmation', auth_login: 'Sign-in link', auth_reset: 'Password reset', manual: 'Email from admin',
 };
 const when = (s: string) => new Date(s).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -17,7 +18,7 @@ export function EmailHistory({ rows, compact = false }: { rows: HistoryRow[]; co
   return (
     <ol className={`adm-mails${compact ? ' compact' : ''}`}>
       {rows.map((r) => (
-        <li key={r.id} className={r.kind.startsWith('followup') ? 'fu' : ''}>
+        <li key={r.id} className={r.kind.startsWith('followup') || r.kind === 'manual' ? 'fu' : ''}>
           <div className="adm-mails-top">
             <b>{LABEL[r.kind] ?? r.kind}{r.auto ? <span className="adm-mails-auto" title="Sent automatically by the daily email job">auto</span> : null}</b>
             <span className={`pill ${r.status === 'sent' ? 'fulfilled' : r.status === 'failed' ? 'failed' : ''}`}>{r.status}</span>

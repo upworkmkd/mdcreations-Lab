@@ -26,7 +26,7 @@ export default async function Tools() {
           <table className="tbl adm-tbl">
             <thead><tr><th>Tool</th><th colSpan={6}><div className="adm-tool-form adm-tool-head"><span>Status</span><span className="g">Download, per design</span><span className="g">Printed and posted, shipping incl.</span><span /></div></th></tr></thead>
             <tbody>
-              {(tools.data ?? []).map((t) => (
+              {(tools.data ?? []).filter((t) => t.slug !== 'stl').map((t) => (   // 'stl' only groups STL shop orders: priced in Admin → STL files
                 <ToolRow key={t.slug} slug={t.slug} name={TOOLS.find((x) => x.slug === t.slug)?.name ?? t.name} status={t.status} inr={priceOf(t.slug, 'INR')} usd={priceOf(t.slug, 'USD')}
                   printInr={printOf(t.slug, 'INR')} printUsd={printOf(t.slug, 'USD')} printable={printable(t.slug)} />
               ))}

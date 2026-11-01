@@ -11,7 +11,11 @@ export const TOOL_SEO: Record<string, { title: string; description: string; keyw
   'shadow-lamp': {
     title: 'Shadow Lamp Maker – Turn Any Picture into a 3D Printable Shadow Lamp (STL)',
     description: 'Make a custom shadow lamp from your own picture. Upload a silhouette or photo, preview the exact shadow on the wall, and download print-ready STL files: walls, base and an inlaid cover plate.',
-    keywords: ['shadow lamp maker', 'shadow lamp STL', 'custom shadow lamp', '3D printed shadow lamp', 'photo to shadow lamp', 'shadow lamp generator', 'wall shadow lamp', 'silhouette lamp STL', 'shadow projection lamp', '3D print lamp file'],
+    keywords: [
+    'shadow lamp maker', 'shadow lamp STL', 'custom shadow lamp', '3D printed shadow lamp', 'photo to shadow lamp', 'picture to shadow lamp',
+    'shadow lamp generator', 'wall shadow lamp', 'silhouette lamp STL', 'shadow projection lamp', 'shadow box lamp', 'god shadow lamp',
+    'mahadev shadow lamp', 'personalised shadow lamp gift', '3D print lamp file', 'shadow lamp India',
+  ],
   },
   statue: {
     title: 'Statue Maker – Photos to a 3D Printable Statue STL',
@@ -57,7 +61,10 @@ export const NOINDEX: Metadata = { robots: { index: false, follow: false } };
 export const organizationLd = () => ({
   '@context': 'https://schema.org',
   '@graph': [
-    { '@type': 'Organization', '@id': `${SITE_URL}/#org`, name: 'MD Creations', url: SITE_URL, logo: `${SITE_URL}/brand/logo-1024.png`,
+    { '@type': 'Organization', '@id': `${SITE_URL}/#org`, name: 'MD Creations', alternateName: 'MD Creations Labs', url: SITE_URL, logo: `${SITE_URL}/brand/logo-1024.png`,
+      description: 'A 3D printing studio in India that makes online tools for turning pictures and text into print-ready STL files, and sells its own 3D printable designs.',
+      areaServed: 'Worldwide', address: { '@type': 'PostalAddress', addressCountry: 'IN' },
+      knowsAbout: ['3D printing', 'STL files', 'shadow lamps', 'lithophanes', 'name keychains', 'rangoli stencils', 'filament painting', 'vase mode printing'],
       email: SUPPORT_EMAIL, sameAs: SOCIALS.map((s) => s.url) },
     { '@type': 'WebSite', '@id': `${SITE_URL}/#site`, name: SITE_NAME, url: SITE_URL, publisher: { '@id': `${SITE_URL}/#org` }, inLanguage: 'en' },
   ],
@@ -65,4 +72,22 @@ export const organizationLd = () => ({
 
 export function JsonLd({ data }: { data: object }) {
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, '\\u003c') }} />;
+}
+
+/** Structured data for a maker page (the workbench itself): what it is, that it runs in the browser, and where it sits. */
+export function makerLd(slug: string, name: string, path: string) {
+  const url = `${SITE_URL}${path}`, seo = TOOL_SEO[slug];
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      { '@type': 'WebApplication', name, url, description: seo?.description, applicationCategory: 'DesignApplication', operatingSystem: 'Any (web browser)',
+        browserRequirements: 'Requires JavaScript and WebGL', isAccessibleForFree: true, publisher: { '@id': `${SITE_URL}/#org` },
+        ...(seo?.keywords?.length ? { keywords: seo.keywords.join(', ') } : {}) },
+      { '@type': 'BreadcrumbList', itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Labs', item: SITE_URL },
+        { '@type': 'ListItem', position: 2, name, item: `${SITE_URL}/tools/${slug}` },
+        { '@type': 'ListItem', position: 3, name: 'Make', item: url },
+      ] },
+    ],
+  };
 }

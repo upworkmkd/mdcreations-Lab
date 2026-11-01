@@ -25,7 +25,7 @@ const mono = localFont({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: 'MD Creations Labs – Shadow Lamp Maker & 3D Printing Tools', template: '%s | MD Creations Labs' },
-  description: 'Online tools that turn your pictures into print-ready 3D files. Make a custom shadow lamp from any picture and download the STL files.',
+  description: 'Online 3D printing tools: turn pictures into shadow lamps, lithophanes, name keychains, rangoli stencils, photo reliefs and vases. Download print-ready STL files.',
   applicationName: 'MD Creations Labs',
   authors: [{ name: 'MD Creations' }],
   creator: 'MD Creations',

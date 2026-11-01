@@ -22,6 +22,7 @@ export async function SiteHeader() {
         </Link>
         <nav className="site-nav" aria-label="Main">
           <ToolsMenu paid={tools.filter((t) => !t.free).map(entry)} free={tools.filter((t) => t.free).map(entry)} />
+          <Link href="/stl-files">STL files</Link>
           <Link href="/tools/shadow-lamp" className="hide-sm">Shadow lamps</Link>
           <Link href="/pricing">Pricing</Link>
           {viewer ? (

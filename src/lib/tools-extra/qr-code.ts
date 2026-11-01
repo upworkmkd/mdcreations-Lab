@@ -44,5 +44,9 @@ export const tool: Tool | null = {
 export const seo: ToolSeo | null = {
   title: 'QR Code to STL (Free) – Wi-Fi, UPI & WhatsApp QR Plates',
   description: 'Free QR code STL generator: Wi-Fi, UPI, WhatsApp, website and contact QR codes as two-colour 3D printable plates, keychains and coasters.',
-  keywords: ['qr code stl', 'qr code to stl', '3d printed qr code', 'wifi qr code stl', 'upi qr code 3d print', 'qr code keychain', 'qr code coaster stl', 'free qr code 3d model'],
+  keywords: [
+    'qr code stl', 'qr code to stl', 'qr code 3d print', '3d printed qr code', 'qr code stl generator', 'qr code to 3d model',
+    'wifi qr code stl', 'wifi qr code sign', 'upi qr code 3d print', 'upi qr stand', 'whatsapp qr code stand', 'qr code keychain',
+    'qr code coaster stl', 'free qr code 3d model', 'business qr code stand',
+  ],
 };

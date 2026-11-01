@@ -46,11 +46,12 @@ export const orderFeedbackUrl = (orderId: string, rating?: number) =>
 /* ------------------------------------------------------------------ what goes into the emails */
 export async function orderMailData(orderId: string): Promise<(PrintMailData & { kind: 'download' | 'print' }) | null> {
 	const db = supabaseAdmin();
-	const { data: o } = await db.from('orders').select('id, user_id, design_id, tool_slug, currency, amount_minor, provider, subscription_id, created_at, paid_at, kind, ship_to, courier, tracking_no, print_file').eq('id', orderId).maybeSingle();
+	const { data: o } = await db.from('orders').select('id, user_id, design_id, product_id, tool_slug, currency, amount_minor, provider, subscription_id, created_at, paid_at, kind, ship_to, courier, tracking_no, print_file').eq('id', orderId).maybeSingle();
 	if (!o) return null;
 	const [{ data: who }, { data: design }, { data: pay }, sub] = await Promise.all([
 		db.from('profiles').select('email, full_name').eq('id', o.user_id).maybeSingle(),
-		db.from('designs').select('name').eq('id', o.design_id).maybeSingle(),
+		o.product_id ? db.from('stl_products').select('title').eq('id', o.product_id).maybeSingle().then((r) => ({ data: r.data ? { name: r.data.title as string } : null }))
+			: db.from('designs').select('name').eq('id', o.design_id ?? '').maybeSingle(),
 		db.from('payments').select('provider_payment_id, method').eq('order_id', o.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
 		o.subscription_id ? db.from('subscriptions').select('plan_id, plans(name)').eq('id', o.subscription_id).maybeSingle() : Promise.resolve({ data: null }),
 	]);
@@ -61,7 +62,7 @@ export async function orderMailData(orderId: string): Promise<(PrintMailData & {
 	return {
 		orderId: o.id, createdAt: o.paid_at ?? o.created_at, userId: o.user_id,
 		customerName: who.full_name ?? '', customerEmail: who.email,
-		toolSlug: o.tool_slug, toolName: TOOLS.find((t) => t.slug === o.tool_slug)?.name ?? o.tool_slug,
+		toolSlug: o.tool_slug, toolName: o.product_id ? 'STL files' : TOOLS.find((t) => t.slug === o.tool_slug)?.name ?? o.tool_slug,
 		designName: design?.name || 'Your design',
 		amount: o.amount_minor > 0 && isCurrency(o.currency) ? formatMoney(o.amount_minor, o.currency) : '',
 		how, planName, method: pay?.method ?? null, paymentId: pay?.provider_payment_id ?? null,
@@ -86,7 +87,7 @@ export function sampleMailData(email: string, name: string): OrderMailData {
 }
 
 /* ------------------------------------------------------------------ sending */
-export type LogKind = 'order_customer' | 'order_admin' | 'test' | 'print_customer' | 'print_admin' | 'print_printing' | 'print_shipped' | 'print_tracking' | 'print_delivered' | 'print_cancelled' | 'followup_order' | 'followup_subscription' | 'sub_welcome' | 'sub_admin' | 'review_request';
+export type LogKind = 'order_customer' | 'order_admin' | 'test' | 'print_customer' | 'print_admin' | 'print_printing' | 'print_shipped' | 'print_tracking' | 'print_delivered' | 'print_cancelled' | 'followup_order' | 'followup_subscription' | 'sub_welcome' | 'sub_admin' | 'review_request' | 'auth_confirm' | 'auth_login' | 'auth_reset' | 'manual';
 export type LogExtra = { userId?: string | null; subscriptionId?: string | null; body?: string | null; sentBy?: string | null; auto?: boolean };
 /** Every email the site sends is logged: Settings shows the latest, and the admin shows each customer's history. */
 export async function log(kind: LogKind, to: string[], subject: string, orderId: string | null, r: MailResult, x: LogExtra = {}) {

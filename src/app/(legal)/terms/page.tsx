@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Legal } from '@/components/legal';
 import Link from 'next/link';
 import { SUPPORT_EMAIL } from '@/lib/env';
-export const metadata: Metadata = { title: 'Terms of use', description: 'Terms of use and file licence for MD Creations Labs.', alternates: { canonical: '/terms' } };
+export const metadata: Metadata = { title: 'Terms of use', description: 'Terms of use for MD Creations Labs: accounts, payments, plans, the files you download and the commercial license that comes with them.', keywords: ['MD Creations Labs terms of use'], alternates: { canonical: '/terms' } };
 export default function Page() {
   return (
     <Legal title="Terms of use" updated="20 October 2026">
