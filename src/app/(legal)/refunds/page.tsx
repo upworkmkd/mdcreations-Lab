@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Legal } from '@/components/legal';
 import { SUPPORT_EMAIL } from '@/lib/env';
-export const metadata: Metadata = { title: 'Refunds and cancellations', description: 'Refund and cancellation policy for digital downloads from MD Creations Labs.', alternates: { canonical: '/refunds' } };
+export const metadata: Metadata = { title: 'Refunds and cancellations', description: 'Refund and cancellation policy for STL downloads and monthly plans from MD Creations Labs: when we refund, how to ask, and cancelling a plan.', keywords: ['MD Creations Labs refund policy', 'STL download refund'], alternates: { canonical: '/refunds' } };
 export default function Page() {
   return (
     <Legal title="Refunds and cancellations" updated="20 October 2026">

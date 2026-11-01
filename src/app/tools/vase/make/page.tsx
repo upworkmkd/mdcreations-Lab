@@ -9,7 +9,7 @@ export const metadata: Metadata = pageMeta({
   absoluteTitle: true,
   description: 'Design a vase, planter or lamp shade with sliders: shape, twist, sides, ripples and rings. Vase-mode STL or real walls, and an E27/E14 fitting ring for shades.',
   path: '/tools/vase/make',
-  keywords: ['vase generator stl', 'vase mode stl', 'lamp shade stl generator', 'planter stl generator', 'twisted vase 3d print', 'parametric vase'],
+  keywords: ['vase generator stl', 'vase mode stl', 'lamp shade stl generator', 'planter stl generator', 'twisted vase 3d print', 'parametric vase', 'spiral vase stl', 'lamp shade generator'],
 });
 
 export default async function MakeVase() {

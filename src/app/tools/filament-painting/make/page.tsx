@@ -9,7 +9,7 @@ export const metadata: Metadata = pageMeta({
   absoluteTitle: true,
   description: 'Turn a picture into a filament painting: one relief STL plus the exact layers to change filament, with a painted preview. Works with any single-nozzle printer.',
   path: '/tools/filament-painting/make',
-  keywords: ['filament painting', 'hueforge alternative', 'filament swap painting stl', 'colour change 3d print picture', 'hueforge online'],
+  keywords: ['filament painting', 'hueforge alternative', 'filament swap painting stl', 'colour change 3d print picture', 'hueforge online', 'free hueforge alternative', 'filament painting generator'],
 });
 
 export default async function MakePainting() {

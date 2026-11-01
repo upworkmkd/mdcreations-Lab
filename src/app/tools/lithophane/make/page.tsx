@@ -9,7 +9,7 @@ export const metadata: Metadata = pageMeta({
   absoluteTitle: true,
   description: 'Turn a photo into a 3D printable lithophane: flat or curved panel, cylinder lamp with base, heart or moon lamp with stand. Live 3D and backlit preview.',
   path: '/tools/lithophane/make',
-  keywords: ['lithophane maker', 'photo to lithophane', 'lithophane stl generator', 'cylinder lithophane lamp', 'moon lamp lithophane', 'heart lithophane'],
+  keywords: ['lithophane maker online', 'image to lithophane', 'lithophane lamp stl', 'lithophane maker', 'photo to lithophane', 'lithophane stl generator', 'cylinder lithophane lamp', 'moon lamp lithophane', 'heart lithophane'],
 });
 
 export default async function MakeLithophane() {

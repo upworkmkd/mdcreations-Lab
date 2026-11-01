@@ -7,14 +7,15 @@ import { HeroSlider, type Slide } from '@/components/hero-slider';
 import { LAMP_GALLERY, KIND_LABEL } from '@/lib/gallery';
 import { SocialBand } from '@/components/social-band';
 import { Reviews } from '@/components/reviews';
-import { pageMeta } from '@/lib/seo';
+import { JsonLd, TOOL_SEO, pageMeta } from '@/lib/seo';
+import { CANONICAL_URL as SITE_URL } from '@/lib/env';
 
 export const metadata = pageMeta({
   title: 'MD Creations Labs – Shadow Lamp Maker & 3D Printing Tools',
   absoluteTitle: true,
   description: 'Design 3D prints in your browser: custom shadow lamps, Diwali rangoli stencils, photo lithophanes, name keychains and more. Download print-ready STL files.',
   path: '/',
-  keywords: ['3D printing tools', 'shadow lamp maker', '3D printed rangoli stencil', 'lithophane maker', 'name keychain STL', 'custom shadow lamp STL', 'photo to STL', 'MD Creations'],
+  keywords: ['3D printing tools', 'online STL generator', 'STL maker online', 'photo to STL', 'image to STL', 'shadow lamp maker', 'custom shadow lamp STL', 'lithophane maker', 'name keychain STL', '3D printed rangoli stencil', 'cookie cutter STL generator', 'photo relief STL', 'filament painting', 'HueForge alternative', 'vase mode STL generator', 'QR code to STL', '3D print cost calculator', 'STL files India', 'MD Creations Labs'],
 });
 
 // The tools in the slider at the top, in this order, with the little badge on each. Everything else is listed below.
@@ -69,6 +70,7 @@ export default async function Home() {
 
   return (
     <>
+      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'ItemList', name: '3D printing tools by MD Creations Labs', itemListElement: tools.filter((t) => t.status === 'live').map((t, n) => ({ '@type': 'ListItem', position: n + 1, name: t.name, url: `${SITE_URL}/tools/${t.slug}`, description: TOOL_SEO[t.slug]?.description ?? t.lede })) }} />
       <HeroSlider slides={slides} />
 
       <section className="section ways">
