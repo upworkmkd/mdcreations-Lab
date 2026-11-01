@@ -11,7 +11,7 @@ export const metadata: Metadata = pageMeta({
   absoluteTitle: true,
   description: 'Make a 3D printable QR code for Wi-Fi, UPI, WhatsApp, a website or a contact card. One STL with a label, as a plate, keychain or coaster. Free.',
   path: '/tools/qr-code/make',
-  keywords: ['qr code to stl', '3d printable qr code', 'qr code stl generator', 'wifi qr code 3d print', 'upi qr code stand', 'qr code keychain stl'],
+  keywords: ['qr code to stl', '3d printable qr code', 'qr code stl generator', 'wifi qr code 3d print', 'upi qr code stand', 'qr code keychain stl', 'qr code 3d print', 'upi qr code 3d print'],
 });
 
 export default async function QrPage() {

@@ -1,3 +1,4 @@
+import { itemOf } from '@/lib/stl/product';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requireViewer } from '@/lib/auth.server';
@@ -24,8 +25,8 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   const sp = await searchParams;
   const supabase = await createClient();
   const [files, orders, payments, downloads] = await Promise.all([
-    supabase.from('files').select('id, name, size_bytes, created_at, tool_slug, design_id, designs(name, preview)').order('created_at', { ascending: false }),
-    supabase.from('orders').select('id, tool_slug, currency, amount_minor, status, created_at, provider_order_id, kind, print_status, ship_to, courier, tracking_no, shipped_at, designs(name, preview)').order('created_at', { ascending: false }).limit(100),
+    supabase.from('files').select('id, name, size_bytes, created_at, tool_slug, design_id, product_id, designs(name, preview), stl_products(title, slug, images)').order('created_at', { ascending: false }),
+    supabase.from('orders').select('id, tool_slug, currency, amount_minor, status, created_at, provider_order_id, kind, print_status, ship_to, courier, tracking_no, shipped_at, product_id, designs(name, preview), stl_products(title, slug, images)').order('created_at', { ascending: false }).limit(100),
     supabase.from('payments').select('provider_payment_id, amount_minor, currency, status, method, created_at').order('created_at', { ascending: false }).limit(100),
     supabase.from('downloads').select('file_id'),
   ]);
@@ -35,7 +36,6 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   const { data: myPhotos } = myReview ? await supabaseAdmin().from('review_photos').select('id, status').eq('testimonial_id', myReview.id).order('sort') : { data: [] };
   const dl = new Map<string, number>();
   for (const d of downloads.data ?? []) dl.set(d.file_id, (dl.get(d.file_id) ?? 0) + 1);
-  const one = <T,>(v: T | T[] | null | undefined) => (Array.isArray(v) ? v[0] : v) ?? null;
   const printed = (orders.data ?? []).filter((o) => o.kind === 'print' && (o.status === 'paid' || o.status === 'fulfilled'));
   const STEPS = ['to_print', 'printing', 'shipped', 'delivered'];
 
@@ -62,13 +62,13 @@ export default async function Account({ searchParams }: { searchParams: Promise<
             {files.data?.length ? (
               <div className="files">
                 {files.data.map((f) => {
-                  const d = one(f.designs as { name: string; preview: string | null } | { name: string; preview: string | null }[] | null);
+                  const d = itemOf(f);
                   return (
                     <article className="file" key={f.id}>
-                      <div className="thumb">{d?.preview ? <img src={d.preview} alt={`Shadow preview of ${d.name}`} /> : null}</div>
+                      <div className="thumb">{d.preview ? <img src={d.preview} alt={`Preview of ${d.name}`} /> : null}</div>
                       <div className="meta">
-                        <b>{d?.name ?? f.name}</b>
-                        <span>{toolBySlug(f.tool_slug)?.name ?? f.tool_slug} · {when(f.created_at)} · {kb(f.size_bytes)}{dl.get(f.id) ? ` · downloaded ${dl.get(f.id)}×` : ''}</span>
+                        <b>{d.name ?? f.name}</b>
+                        <span>{d.product ? 'STL files' : toolBySlug(f.tool_slug)?.name ?? f.tool_slug} · {when(f.created_at)} · {kb(f.size_bytes)}{dl.get(f.id) ? ` · downloaded ${dl.get(f.id)}×` : ''}</span>
                         <a className="btn small" href={`/api/files/${f.id}/download`}>Download zip ↓</a>
                       </div>
                     </article>
@@ -120,14 +120,14 @@ export default async function Account({ searchParams }: { searchParams: Promise<
               <h2>Printed orders</h2>
               <div className="acc-po-list">
                 {printed.map((o) => {
-                  const d = one(o.designs as { name: string; preview: string | null } | { name: string; preview: string | null }[] | null);
+                  const d = itemOf(o);
                   const st = o.print_status ?? 'to_print', at = STEPS.indexOf(st);
                   return (
                     <article key={o.id} className="acc-po">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      {d?.preview ? <img src={d.preview} alt="" /> : <span className="ph" />}
+                      {d.preview ? <img src={d.preview} alt="" /> : <span className="ph" />}
                       <div className="acc-po-main">
-                        <p className="acc-po-t"><b>{d?.name ?? 'Your design'}</b> <span className="muted">· {toolBySlug(o.tool_slug)?.name ?? o.tool_slug}, printed</span></p>
+                        <p className="acc-po-t"><b>{d.name ?? 'Your design'}</b> <span className="muted">· {d.product ? 'STL shop' : toolBySlug(o.tool_slug)?.name ?? o.tool_slug}, printed</span></p>
                         <p className="id">Order #{o.id.slice(0, 8).toUpperCase()} · {when(o.created_at)} · {money(o.amount_minor, o.currency)}</p>
                         {st === 'cancelled' ? <p className="msg">This order was cancelled. Write to us if you have any questions.</p> : (
                           <ol className="acc-po-steps" aria-label={`Status: ${PRINT_STATUS[st]?.label}`}>
@@ -153,8 +153,8 @@ export default async function Account({ searchParams }: { searchParams: Promise<
                   {(orders.data ?? []).map((o) => (
                     <tr key={o.id}>
                       <td>{when(o.created_at)}</td>
-                      <td>{one(o.designs as { name: string } | { name: string }[] | null)?.name ?? '—'}</td>
-                      <td>{toolBySlug(o.tool_slug)?.name ?? o.tool_slug}{o.kind === 'print' && <span className="id"> · printed</span>}</td>
+                      <td>{itemOf(o).name ?? '—'}</td>
+                      <td>{o.product_id ? 'STL files' : toolBySlug(o.tool_slug)?.name ?? o.tool_slug}{o.kind === 'print' && <span className="id"> · printed</span>}</td>
                       <td>{o.kind === 'print' && o.status !== 'created' && o.status !== 'failed'
                         ? <a href="#printed" className={`pill po-${o.print_status ?? 'to_print'}`}>{PRINT_STATUS[o.print_status ?? 'to_print']?.label}</a>
                         : <><span className={`pill ${o.status}`}>{o.status === 'created' ? 'not paid' : o.status}</span>{o.amount_minor === 0 && o.status === 'fulfilled' ? <span className="id"> · plan</span> : null}{o.status === 'paid' && <> <RetryBuild orderId={o.id} /></>}</>}</td>

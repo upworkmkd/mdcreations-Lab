@@ -46,5 +46,9 @@ export const tool: Tool | null = {
 export const seo: ToolSeo | null = {
   title: '3D Print Cost Calculator (Free) – Filament, Power & GST',
   description: 'Free 3D printing cost and price calculator: filament, electricity, printer wear, failed prints, labour, margin, marketplace fees and GST. Reads G-code and 3MF.',
-  keywords: ['3d print cost calculator', '3d printing cost calculator', 'filament cost calculator', '3d print price calculator', 'printer depreciation', '3d printing cost per hour', '3d printing pricing india', 'how much to charge for 3d printing'],
+  keywords: [
+    '3d print cost calculator', '3d printing cost calculator', '3d print price calculator', 'filament cost calculator', 'filament price per gram', '3d printing cost per hour',
+    'electricity cost 3d printer', 'printer depreciation', '3d printing pricing india', 'how much to charge for 3d printing', '3d print quote calculator', 'bambu lab cost calculator',
+    'g-code cost calculator', '3d printing business pricing',
+  ],
 };

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { pageMeta } from '@/lib/seo';
+import { JsonLd, makerLd, pageMeta } from '@/lib/seo';
 import { Maker } from '@/components/maker/maker';
 import { getCurrency, getTool } from '@/lib/catalog.server';
 import { getViewer } from '@/lib/auth.server';
@@ -34,6 +34,7 @@ export default async function MakePage({ searchParams }: PageProps<'/tools/shado
   const printMinor = currency === 'INR' && (payConfigured || viewer?.role === 'admin') ? tool?.printPrices.INR ?? null : null;
   return (
     <div className="wrap">
+      <JsonLd data={makerLd('shadow-lamp', 'Shadow Lamp Maker', '/tools/shadow-lamp/make')} />
       <div style={{ padding: '36px 0 26px', display: 'flex', flexWrap: 'wrap', alignItems: 'end', justifyContent: 'space-between', gap: 16 }}>
         <div>
           <nav className="crumbs" aria-label="Breadcrumb"><Link href="/tools">Tools</Link><span>/</span><Link href="/tools/shadow-lamp">Shadow Lamp Maker</Link></nav>

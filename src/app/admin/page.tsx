@@ -1,7 +1,8 @@
+import { itemOf } from '@/lib/stl/product';
 import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { formatMoney } from '@/lib/money';
-import { BarList, Card, DailyChart, Empty, Filters, PageHead, Pill, Stat, ago, country, duration, emails, money, num, one, str, visitorNames, when } from './ui';
+import { BarList, Card, DailyChart, Empty, Filters, PageHead, Pill, Stat, ago, country, duration, emails, money, num, str, visitorNames, when } from './ui';
 import { Timeline, type Ev } from './timeline';
 import { hasAccess } from '@/lib/plans.server';
 import { purgeOldTracking } from '@/lib/retention.server';
@@ -30,7 +31,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
     db.from('downloads').select('id', { count: 'exact', head: true }),
     db.from('orders').select('currency, amount_minor').in('status', ['paid', 'fulfilled']).eq('provider', 'razorpay'),
     db.from('subscriptions').select('status, current_end, currency, amount_minor, cancel_at_period_end'),
-    db.from('orders').select('id, user_id, currency, amount_minor, status, created_at, designs(name)').order('created_at', { ascending: false }).limit(8),
+    db.from('orders').select('id, user_id, currency, amount_minor, status, created_at, designs(name), stl_products(title)').order('created_at', { ascending: false }).limit(8),
     db.from('visitor_events').select('*').in('type', ['signup', 'email_confirmed', 'signin', 'design_saved', 'checkout', 'payment', 'download', 'payment_cancelled', 'purchase_error', 'subscribed', 'subscription_cancel', 'plan_build']).order('created_at', { ascending: false }).limit(15),
     db.rpc('admin_anon_stats', { p_days: days }),
   ]);
@@ -87,7 +88,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
             <tbody>
               {(orders.data ?? []).map((o) => (
                 <tr key={o.id}>
-                  <td title={when(o.created_at)}>{ago(o.created_at)}<div className="id">{one(o.designs as { name: string } | { name: string }[] | null)?.name ?? '—'}</div></td>
+                  <td title={when(o.created_at)}>{ago(o.created_at)}<div className="id">{itemOf(o).name ?? '—'}</div></td>
                   <td><Link href={`/admin/users/${o.user_id}`}>{who.get(o.user_id)?.email ?? o.user_id.slice(0, 8)}</Link></td>
                   <td><Pill s={o.status} /></td>
                   <td className="num">{money(o.amount_minor, o.currency)}</td>

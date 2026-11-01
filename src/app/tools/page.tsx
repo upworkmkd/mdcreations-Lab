@@ -5,11 +5,11 @@ import { JsonLd, pageMeta } from '@/lib/seo';
 import { CANONICAL_URL as SITE_URL } from '@/lib/env';
 
 export const metadata = pageMeta({
-  title: 'All 3D Printing Tools – Design Makers & Free Utilities | MD Creations Labs',
+  title: 'All 3D Printing Tools – Online STL Makers & Free Utilities',
   absoluteTitle: true,
-  description: 'Every MD Creations Labs tool in one place: shadow lamps, lithophanes, name signs, rangoli stencils, vases and more, plus free utilities like the print cost calculator.',
+  description: 'Every MD Creations Labs tool: shadow lamps, lithophanes, name keychains, rangoli stencils, vases and more, plus free utilities like the print cost calculator.',
   path: '/tools',
-  keywords: ['3D printing tools', 'STL generator online', 'free 3D printing tools', 'custom STL maker', 'MD Creations Labs'],
+  keywords: ['3D printing tools', 'online STL generator', 'STL maker online', 'free 3D printing tools', 'custom STL maker', 'photo to STL', 'image to STL', 'shadow lamp maker', 'lithophane maker', 'name keychain STL', 'rangoli stencil STL', 'QR code to STL', '3D print cost calculator', 'MD Creations Labs'],
 });
 
 export default async function AllTools() {
