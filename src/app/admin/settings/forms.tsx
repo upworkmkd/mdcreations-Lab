@@ -1,6 +1,6 @@
 'use client';
 import { useActionState } from 'react';
-import { runAutomationNow, saveAutomation, saveEmailSettings, saveShopSettings, sendTest, type FormState, type RunState } from './actions';
+import { runAutomationNow, saveAutomation, saveEmailSettings, saveGuides, saveShopSettings, sendTest, type FormState, type RunState } from './actions';
 import type { Automation } from '@/lib/automation.server';
 
 export function EmailSettingsForm({ customer, admin, notify }: { customer: boolean; admin: boolean; notify: string[] }) {
@@ -99,6 +99,23 @@ export function AutomationRun() {
       {!!state?.due?.length && (
         <ul className="adm-due">{state.due.map((d, i) => <li key={i}><b>{d.label}</b> <span className="adm-mails-meta">{d.to} · {d.ref}</span></li>)}</ul>
       )}
+    </form>
+  );
+}
+
+export function GuidesForm({ shadowVideo }: { shadowVideo: string }) {
+  const [state, run, pending] = useActionState<FormState, FormData>(saveGuides, null);
+  return (
+    <form action={run} className="adm-set">
+      <label className="lbl">Shadow Lamp tutorial video
+        <input name="shadowVideo" type="url" className="input" defaultValue={shadowVideo} placeholder="https://youtu.be/…" />
+        <small className="muted">Shown as “Watch the video” at the top of “Which pictures work best?” in the Shadow Lamp Maker. Leave empty to hide it.</small>
+      </label>
+      <div className="adm-inline" style={{ alignItems: 'center' }}>
+        <button className="btn small" disabled={pending}>{pending ? 'Saving…' : 'Save'}</button>
+        {state?.ok && <span className="msg ok">{state.ok}</span>}
+        {state?.error && <span className="msg err">{state.error}</span>}
+      </div>
     </form>
   );
 }

@@ -6,7 +6,7 @@ export type Ev = { id: number; visitor_id: string; session_id: string | null; us
 export type Sess = { id: string; started_at: string; last_seen: string; pageviews: number; events: number; referrer: string | null; landing: string | null; browser: string | null; os: string | null; device_type: string | null; city: string | null; country: string | null; ip: string | null; utm_source: string | null; utm_campaign: string | null };
 
 const KEY = new Set(['subscribed', 'plan_build', 'subscription_cancel', 'signup', 'signin', 'email_confirmed', 'design_saved', 'checkout', 'payment', 'payment_done', 'download', 'review']);
-const BAD = new Set(['subscribe_error', 'error', 'purchase_error', 'signin_failed', 'payment_cancelled', 'server_error', 'form_error', 'request_failed']);
+const BAD = new Set(['subscribe_error', 'error', 'purchase_error', 'signin_failed', 'payment_cancelled', 'server_error', 'form_error', 'request_failed', 'upload_rejected']);
 
 const q = (s: unknown) => `“${String(s ?? '')}”`;
 const p = (e: Ev, k: string) => e.props?.[k] as string | number | boolean | undefined;
@@ -48,6 +48,9 @@ function describe(e: Ev): { icon: string; text: React.ReactNode } {
     case 'server_error': return { icon: '!', text: <><b>Error</b>{p(e, 'where') ? ` in ${p(e, 'where')}` : ''}: {n}</> };
     case 'form_error': return { icon: '!', text: <>Was shown the error {q(n)}{p(e, 'form') ? <> on the form {q(p(e, 'form'))}</> : null}</> };
     case 'request_failed': return { icon: '!', text: <><b>Request failed</b>: {n}{p(e, 'seconds') ? ` after ${duration(Number(p(e, 'seconds')))}` : ''}</> };
+    case 'upload_rejected': return { icon: '!', text: <>Picture refused ({String(p(e, 'ext') ?? p(e, 'type') ?? '?')}, {String(p(e, 'kb') ?? '?')} KB): {n}</> };
+    case 'guide_open': return { icon: '?', text: <>Opened “Which pictures work best?”</> };
+    case 'guide_video': return { icon: '▶', text: <>Opened the tutorial video</> };
     case 'link_signin': return { icon: '→', text: <>Signed in with an email link <b>{n}</b></> };
     default: return { icon: '·', text: <>{e.type}{n ? `: ${n}` : ''}</> };
   }

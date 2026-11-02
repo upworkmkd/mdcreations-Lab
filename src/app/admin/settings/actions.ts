@@ -69,3 +69,16 @@ export async function runAutomationNow(_: RunState, form: FormData): Promise<Run
     return { error: e instanceof Error ? e.message : 'Could not run.' };
   }
 }
+
+/** Links to the tutorial videos shown in the tools' "Which pictures work best?" help. */
+export async function saveGuides(_: FormState, form: FormData): Promise<FormState> {
+  await requireAdmin();
+  const { cleanVideoUrl } = await import('@/lib/guides.server');
+  const shadowVideo = cleanVideoUrl(String(form.get('shadowVideo') ?? ''));
+  if (shadowVideo === null) return { error: 'That is not a link. Paste the full address, starting with https:// (for example https://youtu.be/…).' };
+  const { error } = await supabaseAdmin().from('site_settings').upsert({ key: 'guides', value: { shadowVideo }, updated_at: new Date().toISOString() });
+  if (error) return { error: error.message };
+  revalidatePath('/admin/settings');
+  revalidatePath('/tools/shadow-lamp/make');
+  return { ok: shadowVideo ? 'Saved. The video link now shows in the Shadow Lamp Maker.' : 'Saved. No video link is shown.' };
+}

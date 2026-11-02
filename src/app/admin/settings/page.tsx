@@ -5,7 +5,8 @@ import { getEmailSettings, getShopSettings, sampleMailData } from '@/lib/order-m
 import { adminOrderEmail, customerOrderEmail } from '@/lib/emails/order-emails';
 import { Card, Empty, PageHead, ago, when } from '../ui';
 import { getAutomation, lastRun } from '@/lib/automation.server';
-import { AutomationForm, AutomationRun, EmailSettingsForm, ShopForm, TestButton } from './forms';
+import { AutomationForm, AutomationRun, EmailSettingsForm, GuidesForm, ShopForm, TestButton } from './forms';
+import { getGuides } from '@/lib/guides.server';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Settings' };
@@ -14,12 +15,13 @@ const KIND: Record<string, string> = { order_customer: 'Receipt', order_admin: '
 
 export default async function Settings() {
   const me = await requireAdmin();
-  const [s, shop, auto, last, log] = await Promise.all([
+  const [s, shop, auto, last, log, guides] = await Promise.all([
     getEmailSettings(),
     getShopSettings(),
     getAutomation(),
     lastRun(),
     supabaseAdmin().from('email_log').select('*').order('created_at', { ascending: false }).limit(25),
+    getGuides(),
   ]);
   const provider = mailProvider();
   const sample = sampleMailData(me.email, me.name);
@@ -72,6 +74,10 @@ export default async function Settings() {
           <p className="muted adm-help">Only orders and plans from the two weeks before the due day are looked at, so switching this on does not email old customers. Up to 40 of each email a day; the rest go the next day.</p>
         </Card>
       </div>
+
+      <Card title="Tutorial videos">
+        <GuidesForm shadowVideo={guides.shadowVideo} />
+      </Card>
 
       <Card title="Printed orders">
         <ShopForm returnAddress={shop.returnAddress} />
