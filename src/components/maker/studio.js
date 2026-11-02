@@ -90,6 +90,22 @@ function readPicture(img, w, h, o) {
   return { m, sigma, field, empty, bbox: empty ? { x0: 0, x1: w - 1, y0: 0, y1: h - 1 } : { x0, x1, y0, y1 }, maskCanvas: mc };
 }
 
+/* Only PNG, JPG and SVG: other formats (WebP, HEIC, GIF, AVIF …) are refused with a clear message.
+ * The type can be missing (some phones, drag and drop), so the file name is checked too. */
+const OK_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+const MAX_MB = 20;
+export function pictureProblem(f) {
+  if (!f) return 'Choose a picture file: PNG, JPG or SVG.';
+  const ext = (f.name.match(/\.([a-z0-9]+)$/i) || [])[1]?.toLowerCase() || '';
+  const okType = OK_TYPES.includes((f.type || '').toLowerCase()) || (!f.type && ['png', 'jpg', 'jpeg', 'svg'].includes(ext));
+  if (!okType) {
+    const what = ext ? ext.toUpperCase() : (f.type || 'this').replace(/^image\//, '').toUpperCase();
+    return `${what} files are not supported. Please upload a PNG, JPG or SVG picture (save or export it as PNG or JPG first).`;
+  }
+  if (f.size > MAX_MB * 1024 * 1024) return `That picture is over ${MAX_MB} MB. Please use a smaller PNG, JPG or SVG.`;
+  return '';
+}
+
 export function mountStudio(root, hooks) {
   const ac = new AbortController(), on = (el, ev, fn, opt) => el.addEventListener(ev, fn, Object.assign({ signal: ac.signal }, opt || {}));
   const $ = (id) => root.querySelector('#' + id);
@@ -409,7 +425,7 @@ export function mountStudio(root, hooks) {
   on($('plateFit'), 'click', () => plateFit(false));
   on($('platePick'), 'click', () => $('plateFile').click());
   const takePlateFile = (f) => {
-    if (!f || !/^image\//.test(f.type)) { $('plateName').textContent = 'Choose a picture file (PNG, JPG or WebP).'; return; }
+    const bad = pictureProblem(f); if (bad) { $('plateName').textContent = bad; if (hooks.onRejected) hooks.onRejected(f, bad); return; }
     offerPicture(f, 'shadow-lamp-plate', f.name);
     const rd = new FileReader();
     rd.onload = () => decode(rd.result, (p) => {
@@ -438,7 +454,7 @@ export function mountStudio(root, hooks) {
   on(pbox, 'wheel', (e) => { e.preventDefault(); plate.view.mmPerPx *= Math.exp(-e.deltaY * 0.0012); syncPlateSize(); plate.dirty = true; drawPlate(); schedule(true); }, { passive: false });
   on($('plateGap'), 'input', () => { out(); plateChanged(); });
   on($('pick'), 'click', () => $('file').click());
-  const takeFile = (f) => { if (!f || !/^image\//.test(f.type)) { $('fname').textContent = 'Choose a picture file (PNG, JPG or WebP).'; return; } offerPicture(f, 'shadow-lamp', f.name); const rd = new FileReader(); rd.onload = () => loadImage(rd.result, f.name, false); rd.readAsDataURL(f); };
+  const takeFile = (f) => { const bad = pictureProblem(f); if (bad) { $('fname').textContent = bad; if (hooks.onRejected) hooks.onRejected(f, bad); return; } offerPicture(f, 'shadow-lamp', f.name); const rd = new FileReader(); rd.onload = () => loadImage(rd.result, f.name, false); rd.readAsDataURL(f); };
   on($('file'), 'change', (e) => takeFile(e.target.files[0]));
   const drop = $('drop');
   for (const el of [drop, $('wallbox')]) {
