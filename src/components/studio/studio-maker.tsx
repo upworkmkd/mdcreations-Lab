@@ -9,7 +9,8 @@ import type { StudioBase, StudioColour, StudioTemplate } from '@/lib/studio/desi
 import { encodeRle } from '@/lib/layers/rle.js';
 import { loadGoogleFont } from '@/lib/mesh/text-mask';
 import { track } from '@/components/tracker';
-import { type Board, type Item, type Shape, type Sym, compose, corners, drawLocal, fillItem, hits, itemMatrix, newId, symMatrices } from './scene';
+import { TextPanel } from './text-panel';
+import { type Board, type Item, type Shape, type Sym, type TextStyle, compose, forgetGlyphs, corners, drawLocal, fillItem, hits, itemMatrix, newId, symMatrices } from './scene';
 
 /* Design Studio: draw with up to four colours on a plate, a keychain, a coaster or a pixel grid; every colour is
  * raised to its own height and the piece downloads as STL files and a coloured 3MF. Everything drawn is an object
@@ -37,7 +38,7 @@ const SETUP: Record<StudioTemplate, Setup> = {
 };
 const START_COLOURS = ['#161616', '#c0392b', '#f2c14e', '#1f5fa8'];
 const PALETTE = ['#161616', '#f4f1e8', '#ffffff', '#c0392b', '#e67e22', '#f2c14e', '#2e7d4f', '#8fbf5a', '#1f5fa8', '#8fb8c9', '#7a4fa0', '#d36fa0', '#8a8f98', '#b98a5a', '#c9a227', '#6b3a2a'];
-const FONTS: [string, number, string][] = [['Poppins', 800, 'Poppins Bold'], ['Baloo 2', 800, 'Baloo (Hindi + English)'], ['Pacifico', 400, 'Pacifico (script)'], ['Bebas Neue', 400, 'Bebas Neue (tall)'], ['Great Vibes', 400, 'Great Vibes (wedding)'], ['Yatra One', 400, 'Yatra One (Hindi)']];
+const START_TEXT: TextStyle = { text: 'Welcome', font: 'Poppins', weight: 800, italic: false, hmm: 18, align: 'center', spacing: 0, lineGap: 0.25, outline: 0 };
 const STICKERS = ['ॐ', '🪔', '🌸', '🦋', '🐾', '❤️', '⭐', '🌙', '☀️', '🏠', '🚗', '✈️', '🎂', '⚽', '🏏', '🐘', '🦚', '🎵', '🍀', '👑', '🐟', '🌳', '🔑', '☕'];
 const TOOLS: [Tool, string, string][] = [
   ['select', '⬚', 'Select'], ['brush', '✎', 'Brush'], ['eraser', '⌫', 'Eraser'], ['fill', '◧', 'Fill'], ['line', '╱', 'Line'], ['rect', '▭', 'Box'],
@@ -71,7 +72,8 @@ export function StudioMaker(buy: KitBuy) {
   const [tool, setTool] = useState<Tool>('text');
   const [size, setSize] = useState(3);
   const [sym, setSym] = useState<Sym>('none');
-  const [text, setText] = useState('Welcome'), [font, setFont] = useState(0), [textH, setTextH] = useState(18);
+  const [ts, setTs] = useState<TextStyle>(START_TEXT);   // the next text to place
+  const lastEdit = useRef<{ id: number; at: number } | null>(null);
   const [sticker, setSticker] = useState('ॐ'), [stickerH, setStickerH] = useState(30);
   const [view, setView] = useState<'draw' | '3d'>('draw');
   const [name, setName] = useState('My design');
@@ -83,8 +85,13 @@ export function StudioMaker(buy: KitBuy) {
   const selected = items.find((i) => i.id === sel) ?? null;
 
   // fonts: the canvas draws text only once its font has loaded; tick to redraw
-  useEffect(() => { const [f, wt] = FONTS[font]; let ok = true; loadGoogleFont(f, wt, text || 'Aa').then(() => ok && setFontTick((n) => n + 1)); return () => { ok = false; }; }, [font, text]);
-  useEffect(() => { let ok = true; loadGoogleFont('Baloo 2', 800, 'ॐ').then(() => ok && setFontTick((n) => n + 1)); return () => { ok = false; }; }, []);
+  const selFont = selected?.t === 'text' ? `${selected.font}|${selected.weight}` : '';
+  useEffect(() => {
+    let ok = true; const fs = [[ts.font, ts.weight], ...(selFont ? [selFont.split('|')] : [])] as [string, number | string][];
+    Promise.all(fs.map(([f, w]) => loadGoogleFont(f, Number(w), 'Aaआ'))).then(() => { if (!ok) return; forgetGlyphs(); setFontTick((n) => n + 1); });
+    return () => { ok = false; };
+  }, [ts.font, ts.weight, selFont]);
+  useEffect(() => { let ok = true; loadGoogleFont('Baloo 2', 800, 'ॐ').then(() => { if (!ok) return; forgetGlyphs(); setFontTick((n) => n + 1); }); return () => { ok = false; }; }, []);
 
   /* ---------------------------------------------------------------- history */
   const record = useCallback(() => setHist((h) => ({ undo: [...h.undo.slice(-49), { items, pixels }], redo: [] })), [items, pixels]);
@@ -177,10 +184,9 @@ export function StudioMaker(buy: KitBuy) {
       return;
     }
     if (tool === 'text' || tool === 'sticker') {
-      if (tool === 'text' && !text.trim()) return;
-      const [f, wt] = FONTS[font];
+      if (tool === 'text' && !ts.text.trim()) return;
       const it: Item = tool === 'text'
-        ? { id: newId(), t: 'text', text: text.trim(), font: f, weight: wt, hmm: textH, colour: active, x: p.x, y: p.y, s: 1, r: 0, sym }
+        ? { id: newId(), t: 'text', ...ts, text: ts.text.trim(), colour: active, x: p.x, y: p.y, s: 1, r: 0, sym }
         : { id: newId(), t: 'sticker', ch: sticker, hmm: stickerH, colour: active, x: p.x, y: p.y, s: 1, r: 0, sym };
       setItems((l) => [...l, it]); setSel(it.id); setTool('select'); track('studio_place', tool); return;
     }
@@ -295,7 +301,7 @@ export function StudioMaker(buy: KitBuy) {
     setColours((o) => o.map((c) => ({ ...c, height: s.heights })));
     setItems([]); setPixels(new Uint8Array(t === 'pixel' ? b.w * b.h : 0)); setSel(null); setHist({ undo: [], redo: [] });
     setTool(t === 'sign' || t === 'keychain' ? 'text' : 'brush');
-    if (t === 'keychain') { setText('Aarav'); setTextH(14); } if (t === 'sign') { setText('Welcome'); setTextH(18); }
+    if (t === 'keychain') setTs((o) => ({ ...o, text: 'Aarav', hmm: 14 })); if (t === 'sign') setTs((o) => ({ ...o, text: 'Welcome', hmm: 18 }));
     track('studio_template', t);
   };
   const pick = (t: StudioTemplate) => { if (t === template) return; if (used.size) setPending(t); else start(t); };
@@ -343,7 +349,7 @@ export function StudioMaker(buy: KitBuy) {
   ) : <p className="wyg" style={{ color: 'var(--ink-3)' }}>Open the 3D view once to see the parts of your design.</p>;
 
   const hint = tool === 'select' ? (selected ? 'Drag to move. Corner squares resize, the round handle turns it (hold Shift for 15° steps). Delete removes it.' : 'Click anything you drew to select it.')
-    : tool === 'text' ? 'Type your text above, then click where it goes. You can move it afterwards.' : tool === 'sticker' ? 'Pick a sticker, then click where it goes.'
+    : tool === 'text' ? 'Set the text above, then click where it goes. Select it later to move it or change its font.' : tool === 'sticker' ? 'Pick a sticker, then click where it goes.'
     : tool === 'fill' ? 'Click an area to fill it with the colour.' : tool === 'brush' || tool === 'eraser' ? 'Drag to draw.' : 'Drag to draw the shape (hold Shift for an even one).';
 
   return (
@@ -373,7 +379,6 @@ export function StudioMaker(buy: KitBuy) {
               </span>
               {tool === 'select' && selected && <>
                 <span className="st-selname">{kindName(selected)}</span>
-                {selected.t === 'text' && <input className="st-text" value={selected.text} maxLength={40} onFocus={record} onChange={(e) => update(selected.id, { text: e.target.value } as Partial<Item>)} aria-label="Edit the text" />}
                 {selected.t === 'path' && <label className="st-opt">Width <input type="range" min={0.5} max={15} step={0.5} value={selected.width} onPointerDown={record} onChange={(e) => update(selected.id, { width: Number(e.target.value) } as Partial<Item>)} /> <b>{selected.width} mm</b></label>}
                 <span className="st-actions">
                   <button type="button" onClick={duplicate} title="Duplicate (Ctrl+D)">Duplicate</button>
@@ -384,11 +389,6 @@ export function StudioMaker(buy: KitBuy) {
                 </span>
               </>}
               {(tool === 'brush' || tool === 'eraser' || tool === 'line') && !pixel && <label className="st-opt">Size <input type="range" min={0.5} max={15} step={0.5} value={size} onChange={(e) => setSize(Number(e.target.value))} /> <b>{size} mm</b></label>}
-              {tool === 'text' && <>
-                <input className="st-text" value={text} maxLength={40} onChange={(e) => setText(e.target.value)} placeholder="Type, then click on the design" aria-label="Text" />
-                <select value={font} onChange={(e) => setFont(Number(e.target.value))} aria-label="Font">{FONTS.map((f, i) => <option key={f[0]} value={i}>{f[2]}</option>)}</select>
-                <label className="st-opt">Height <input type="range" min={pixel ? 9 : 4} max={pixel ? 60 : 80} value={textH} onChange={(e) => setTextH(Number(e.target.value))} /> <b>{textH} mm</b></label>
-              </>}
               {tool === 'sticker' && <>
                 <span className="st-stickers">{STICKERS.map((s) => <button key={s} type="button" aria-pressed={sticker === s} onClick={() => setSticker(s)}>{s}</button>)}</span>
                 <label className="st-opt">Size <input type="range" min={6} max={120} value={stickerH} onChange={(e) => setStickerH(Number(e.target.value))} /> <b>{stickerH} mm</b></label>
@@ -405,6 +405,19 @@ export function StudioMaker(buy: KitBuy) {
       stats={<><span>Size <b>{pixel ? `${board.w} × ${board.h} squares of ${cellMm} mm` : `${board.W} × ${board.H} mm`}</b></span><span>Objects <b>{items.length}</b></span><span>Colours used <b>{used.size}</b></span>{base.kind !== 'none' && used.size > 0 && <span>Colour change at <b>{base.thickness.toFixed(1)} mm</b></span>}{view === '3d' && model && !err && model.pieces > 1 && <span style={{ color: '#8a3b12' }}><b>{model.pieces} separate pieces</b></span>}</>}
       youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>A colour 3MF ready for Bambu Studio and OrcaSlicer (each colour already set), one STL per colour and the base, print notes with the colour-change height, a preview and a commercial license.</p></>}
       side={<>
+        {view === 'draw' && (tool === 'text' || (tool === 'select' && selected?.t === 'text')) && (
+          <Group title={tool === 'select' ? 'Selected text' : 'Text'}><TextPanel pixel={pixel} editing={tool === 'select' && selected?.t === 'text'}
+                value={tool === 'select' && selected?.t === 'text' ? selected : ts}
+                onChange={(patch) => {
+                  if (tool === 'select' && selected?.t === 'text') {
+                    // one undo step per burst of edits to the same text
+                    const now = Date.now(), le = lastEdit.current;
+                    if (!le || le.id !== selected.id || now - le.at > 1500) record();
+                    lastEdit.current = { id: selected.id, at: now };
+                    update(selected.id, patch as Partial<Item>);
+                  } else setTs((o) => ({ ...o, ...patch }));
+                }} /></Group>
+        )}
         <Group title="What are you making?">
           <Seg<StudioTemplate> label="Template" value={template} onChange={pick} options={TEMPLATES.map((t) => [t.id, t.label])} />
           {pending ? (

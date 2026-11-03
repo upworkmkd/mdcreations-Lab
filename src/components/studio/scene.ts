@@ -9,10 +9,12 @@ type Common = { id: number; colour: number; x: number; y: number; s: number; r: 
 export type Item = Common & (
   | { t: 'path'; pts: number[]; width: number }                        // points in mm around (x, y)
   | { t: 'shape'; kind: Shape; w: number; h: number }
-  | { t: 'text'; text: string; font: string; weight: number; hmm: number }
+  | ({ t: 'text' } & TextStyle)
   | { t: 'sticker'; ch: string; hmm: number }
   | { t: 'bitmap'; m: Uint8Array; mw: number; mh: number; pxmm: number }   // a filled area
 );
+/** How a piece of text looks. hmm: letter height in mm (the tallest line, ink top to bottom). */
+export type TextStyle = { text: string; font: string; weight: number; italic: boolean; hmm: number; align: 'left' | 'center' | 'right'; spacing: number; lineGap: number; outline: number };
 export type Board = { W: number; H: number; pxmm: number; w: number; h: number };
 
 let nextId = 1;
@@ -20,6 +22,8 @@ export const newId = () => nextId++;
 
 /* ---------------------------------------------------------------- pictures of text, stickers and fills */
 const glyphs = new Map<string, HTMLCanvasElement | null>();
+/** Drops the cached pictures of text and stickers (after a font has loaded, so they are drawn again in it). */
+export function forgetGlyphs() { for (const k of [...glyphs.keys()]) if (!k.startsWith('b')) glyphs.delete(k); }
 function maskCanvas(m: Uint8Array, w: number, h: number) {
   const c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = Math.max(1, h);
   const g = c.getContext('2d')!, im = g.createImageData(c.width, c.height);
@@ -32,8 +36,11 @@ function glyph(it: Item, pxmm: number): HTMLCanvasElement | null {
     const key = `b${it.id}`; if (!glyphs.has(key)) glyphs.set(key, maskCanvas(it.m, it.mw, it.mh)); return glyphs.get(key)!;
   }
   if (it.t === 'text') {
-    const res = Math.max(pxmm, 6), key = `t|${it.font}|${it.weight}|${it.hmm}|${res}|${it.text}`;
-    if (!glyphs.has(key)) { const m = textMask(it.text.split('\n').slice(0, 3), { family: it.font, weight: it.weight, heightMm: it.hmm, pxPerMm: res, align: 'center' }); glyphs.set(key, m ? maskCanvas(m.mask, m.w, m.h) : null); }
+    const res = Math.max(pxmm, 6), key = `t|${it.font}|${it.weight}|${it.italic}|${it.hmm}|${it.align}|${it.spacing}|${it.lineGap}|${it.outline}|${res}|${it.text}`;
+    if (!glyphs.has(key)) {
+      const m = textMask(it.text.split('\n').slice(0, 4), { family: it.font, weight: it.weight, italic: it.italic, heightMm: it.hmm, pxPerMm: res, align: it.align, letterSpacing: it.spacing, lineGap: it.lineGap, outlineMm: it.outline });
+      glyphs.set(key, m ? maskCanvas(m.mask, m.w, m.h) : null);
+    }
     return glyphs.get(key)!;
   }
   if (it.t === 'sticker') {
