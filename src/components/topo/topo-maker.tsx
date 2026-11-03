@@ -3,6 +3,7 @@ import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
 import { MeshView, type MeshSnap } from '@/components/kit/mesh-view';
 import { Group, Range, Select, Seg, Text } from '@/components/kit/controls';
 import { Workbench, type KitBuy } from '@/components/kit/workbench';
+import { WhatYouGet, STANDARD_FILES } from '@/components/kit/what-you-get';
 import { SlippyMap, type Layer, type Selection, type View } from './slippy-map';
 import { buildColoured, buildTerrain, HEIGHT_PALETTES, heightClasses, satelliteClasses, terrain } from '@/lib/topo/build.js';
 import { heightField } from '@/lib/mesh/mesh.js';
@@ -124,6 +125,8 @@ export function TopoMaker(buy: KitBuy) {
         : <MeshView parts={parts} fitKey={`${grid?.lat}-${grid?.lon}-${grid?.shape}-${dp.p.width}`} bg="#e4e2d8" snapRef={snap} />}
       stats={model ? <><span>Model <b>{model.size[0].toFixed(0)} × {model.size[1].toFixed(0)} × {model.size[2].toFixed(0)} mm</b></span><span>Area <b>{(p.metres / 1000).toFixed(p.metres < 10000 ? 1 : 0)} km</b> across</span><span>Elevation <b>{Math.round(model.lo)}–{Math.round(model.hi)} m</b></span></>
         : <span>{state.kind === 'error' ? state.text : 'Move and zoom the map until the frame holds your place, then press “Use this area”.'}</span>}
+      getting={model ? <WhatYouGet meta={`${p.width} mm wide`} parts={mode === 'satellite' && parts.length > 1 ? parts.map((q, i) => ({ title: `Colour ${i + 1}`, text: 'One colour of the map, as its own part. They fit together into one model.', tris: q.tris, color: q.color })) : mode === 'height' ? parts.map((q, i) => ({ title: `Height band ${i + 1}`, text: 'Shown in colour: you get one terrain and swap filament at the heights in the README.', tris: q.tris, color: q.color })) : [{ title: '3D map', text: 'The terrain of the area you chose, on a base.', tris: model.tris, color: '#b9b08f', tag: 'your area' }]}
+      files={[...(mode === 'satellite' && parts.length > 1 ? [{ title: 'Colour 3MF', text: `All ${parts.length} colours in one file, ready for the AMS in Bambu Studio.` }] : []), ...STANDARD_FILES]} /> : null}
       youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>{mode === 'satellite' && sat && sat.palette.length > 1 ? `A ${sat.palette.length}-colour 3MF ready for Bambu Studio and the AMS, the same parts as STL, print notes, a preview and a commercial license.` : mode === 'height' ? 'A terrain STL, the exact heights for your filament changes, a preview and a commercial license.' : 'A terrain STL of the area you chose, print notes, a preview and a commercial license.'}</p></>}
       side={<>
         <Group title="Place">

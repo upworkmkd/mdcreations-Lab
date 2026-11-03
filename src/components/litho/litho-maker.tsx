@@ -3,6 +3,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { MeshView, type MeshSnap } from '@/components/kit/mesh-view';
 import { Group, PicturePick, Range, Select, Text } from '@/components/kit/controls';
 import { Workbench, type KitBuy } from '@/components/kit/workbench';
+import { WhatYouGet, STANDARD_FILES } from '@/components/kit/what-you-get';
 import { BASES, BASE_LABEL, BASE_LEN, RATIOS, baseOf, buildLitho, gridFor } from '@/lib/litho/build.js';
 import type { LithoParams, LithoShape } from '@/lib/litho/design';
 import { adjust, grayGrid, loadImage, type Framing } from '@/lib/mesh/image-grid';
@@ -124,6 +125,11 @@ export function LithoMaker(buy: KitBuy) {
       stage={<>{view === '3d' && <MeshView parts={parts} fitKey={`${dp.p.shape}-${baseOf(dp.p)}`} steady snapRef={snap} />}
         <div className="litho-glow" hidden={view !== 'lit'}><canvas ref={lit} /></div></>}
       stats={model ? <><span>Size <b>{sizeText}</b></span><span>Thickness <b>{p.minT}–{p.maxT} mm</b></span><span>Detail <b>{G.pitch} mm</b></span><span>Files <b>{model.parts.length} STL</b></span></> : <span>Upload a photo to begin.</span>}
+      getting={model ? <WhatYouGet meta={`${model.size[0].toFixed(0)} × ${model.size[1].toFixed(0)} × ${model.size[2].toFixed(0)} mm`} parts={model.parts.map((q) => {
+        const lit = !(q.file.includes('base') || q.file === 'stand' || q.file === 'pedestal' || q.file === 'ring_foot');
+        return { title: lit ? 'Lithophane' : (q as { label?: string }).label ?? q.file, text: lit ? `Your photo, ${p.minT}–${p.maxT} mm thick: thin parts glow, thick parts stay dark. Print in white PLA, 100% infill.` : 'Holds the lithophane upright with the light behind it.', tris: q.tris, color: lit ? '#f3ecd9' : '#8f8a7a', tag: lit ? 'your photo' : undefined };
+      })} files={STANDARD_FILES}
+      needs={[{ title: 'White PLA', text: 'Plain white (not silk) shows the photo best.' }, { title: 'A light behind it', text: p.shape === 'cylinder' || p.shape === 'moon' ? 'A warm LED tea light or a small LED bulb inside.' : 'A window, a phone torch or an LED strip behind the panel.' }]} /> : null}
       youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>The lithophane STL{baseOf(p) !== 'none' ? ` and the ${(BASE_LABEL as Record<string, string>)[baseOf(p)].replace(/ \(.*\)$/, '').toLowerCase()}` : ''}, a preview picture, print settings and a commercial license. We keep a copy of your photo for 10 days to improve the tool, unless you untick the box under the upload. Your files are built from a brightness grid when you download.</p></>}
       side={<>
         <Group title="Photo">

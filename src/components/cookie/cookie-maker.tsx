@@ -3,6 +3,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, us
 import { MeshView, type MeshSnap } from '@/components/kit/mesh-view';
 import { Check, Group, PicturePick, Range, Select, Seg, Text } from '@/components/kit/controls';
 import { Workbench, type KitBuy } from '@/components/kit/workbench';
+import { WhatYouGet, STANDARD_FILES } from '@/components/kit/what-you-get';
 import { buildCookie, fillHoles, grow, shrink, pieces, pxFor } from '@/lib/cookie/build.js';
 import { PRESETS, drawPreset, type Preset } from '@/lib/cookie/shapes';
 import type { CookieMode, CookieParams } from '@/lib/cookie/design';
@@ -129,6 +130,11 @@ export function CookieMaker(buy: KitBuy) {
       stats={model ? <><span>Size <b>{p.size} mm</b></span>{p.mode === 'cutter' && <span>Height <b>{p.height} mm</b></span>}<span>Files <b>{model.length} STL</b></span>
         {p.mode !== 'stencil' && (masks?.n ?? 0) > 1 && !largest && <span style={{ color: '#8a3b12' }}>{masks!.n} separate outlines</span>}
         {p.mode === 'stencil' && stencilPieces > 1 && <span style={{ color: '#8a3b12' }}>{stencilPieces - 1} loose piece{stencilPieces > 2 ? 's' : ''}{p.islands === 'remove' ? ' removed' : p.islands === 'join' ? ' joined with bridges' : ' (they will fall out)'}</span>}</> : <span>Choose a shape to begin.</span>}
+      getting={model ? <WhatYouGet parts={model.map((q) => ({
+        title: ({ cutter: 'Cookie cutter', stencil: 'Stencil', stamp: 'Stamp plate', stamp_details: 'Stamp details', stamp_handle: 'Handle' } as Record<string, string>)[q.file] ?? q.file,
+        text: ({ cutter: `The cutting wall of your shape, ${p.size} mm across, with a flange to press on.`, stencil: `Your stencil, ${q.pieces && q.pieces > 1 ? `${q.pieces} pieces held by bridges` : 'one piece'}.`, stamp: 'Presses the inner lines into the dough.', stamp_details: 'The raised lines of the stamp.', stamp_handle: 'Clicks onto the back of the stamp.' } as Record<string, string>)[q.file] ?? '',
+        tris: q.tris, color: q.file === 'cutter' ? '#d9534f' : q.file === 'stencil' ? '#2e7d4f' : q.file === 'stamp_handle' ? '#f2c14e' : '#f4f1e8', tag: q.file === 'stamp_handle' ? undefined : 'your design' }))}
+      files={STANDARD_FILES} needs={p.mode === 'stencil' ? [] : [{ title: 'Food-safe filament (PLA or PETG)', text: 'Wash by hand in cool water; use it for dough and fondant, not for storing food.' }]} /> : null}
       youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>{p.mode === 'cutter' ? 'The cutter STL' + (masks?.detail && p.stampToo ? ', a matching stamp that presses the inner lines, and a handle' : '') : p.mode === 'stamp' ? 'The stamp plate, its raised details and a handle' : 'The stencil STL'}, print notes and a commercial license to sell what you print.</p></>}
       side={<>
         <Group title="What to make">

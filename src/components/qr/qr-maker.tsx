@@ -3,6 +3,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import QR from 'qrcode';
 import { MeshView, type MeshSnap } from '@/components/kit/mesh-view';
 import { PrintOrder } from '@/components/print-order';
+import { WhatYouGet } from '@/components/kit/what-you-get';
 import { usePackedModel } from '@/lib/browser-file.client';
 import { coloured3mf } from '@/lib/mesh/threemf.js';
 import { Check, Group, Num, Range, Seg, Select, Text } from '@/components/kit/controls';
@@ -39,7 +40,7 @@ export function QrMaker({ print = null, signedIn = false }: { print?: { priceMin
   const [baseT, setBaseT] = useState(2), [codeT, setCodeT] = useState(1), [shape, setShape] = useState<Shape>('rounded'), [corner, setCorner] = useState(4), [hole, setHole] = useState(5);
   const [labelOn, setLabelOn] = useState(true), [labelText, setLabelText] = useState(''), [labelSize, setLabelSize] = useState(5);
   const [baseCol, setBaseCol] = useState('#f4f1e8'), [codeCol, setCodeCol] = useState('#161616');
-  const [view, setView] = useState<'3d' | 'flat'>('3d');
+  const [view, setView] = useState<'3d' | 'flat' | 'get'>('3d');
   const [fontReady, setFontReady] = useState(false);
   const flat = useRef<HTMLCanvasElement>(null);
 
@@ -154,12 +155,17 @@ export function QrMaker({ print = null, signedIn = false }: { print?: { priceMin
       </aside>
       <div className="kit-main">
         <div className="kit-bar">
-          <div className="kit-tabs" role="group" aria-label="View"><button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')}>3D</button><button type="button" aria-pressed={view === 'flat'} onClick={() => setView('flat')}>Flat (test the scan)</button></div>
-          <span className="muted">{view === 'flat' ? 'Point your phone camera at the screen to check it opens the right thing.' : 'Drag to turn, scroll to zoom.'}</span>
+          <div className="kit-tabs" role="group" aria-label="View"><button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')}>3D</button><button type="button" aria-pressed={view === 'flat'} onClick={() => setView('flat')}>Flat (test the scan)</button><button type="button" aria-pressed={view === 'get'} onClick={() => setView('get')}>What you get</button></div>
+          <span className="muted">{view === 'get' ? '' : view === 'flat' ? 'Point your phone camera at the screen to check it opens the right thing.' : 'Drag to turn, scroll to zoom.'}</span>
         </div>
         <div className="kit-stage">
           {view === '3d' ? <MeshView parts={parts} fitKey={`${shape}-${size}-${labelShown ? 1 : 0}`} height={520} snapRef={snap} /> : null}
           <canvas ref={flat} className="flat" hidden={view !== 'flat'} style={{ maxHeight: 520, imageRendering: 'pixelated' }} />
+          {view === 'get' && model && <div className="wyg-stage" style={{ position: 'absolute', inset: 0, overflow: 'auto', background: 'var(--paper-3)' }}><WhatYouGet title="Everything in your download" meta={`${model.size[0].toFixed(0)} × ${model.size[1].toFixed(0)} × ${(baseT + codeT).toFixed(1)} mm`} parts={[
+            { title: shape === 'keychain' ? 'Keychain plate' : shape === 'circle' ? 'Coaster plate' : 'Plate', text: `${baseT} mm thick${shape === 'keychain' ? `, with a ${hole} mm ring hole` : ''}. Print it in the light colour.`, tris: model.base, color: baseCol },
+            { title: labelShown ? 'QR code and label' : 'QR code', text: `${codeT} mm high on top of the plate. Change filament at ${baseT.toFixed(1)} mm for the dark colour.`, tris: model.code, color: codeCol, tag: 'your code' },
+          ]} files={[{ title: 'STL', text: 'Plate and code as one solid, for any slicer.' }, { title: 'Flat PNG', text: 'The same code, to test the scan with your phone first.' }, { title: 'README.txt', text: 'Print notes and the height of the colour change.' }]}
+          needs={shape === 'keychain' ? [{ title: 'A key ring', text: `Through the ${hole} mm hole.` }] : []} /></div>}
         </div>
         <div className="kit-foot">
           {model && qr ? <>
