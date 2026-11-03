@@ -29,30 +29,35 @@ export default async function AllTools() {
   return (
     <>
       <JsonLd data={ld} />
-      <div className="wrap page-title">
-        <nav className="crumbs" aria-label="Breadcrumb"><Link href="/">Labs</Link><span>/</span><span>Tools</span></nav>
-        <h1>All tools</h1>
-        <p className="lede">Design it in your browser with a live 3D preview, then download the print-ready files. {design.length} design {design.length === 1 ? 'tool' : 'tools'}{free.length ? ` and ${free.length} free ${free.length === 1 ? 'one' : 'ones'}` : ''}, with more every month.</p>
+      <div className="wrap tools-hero">
+        <div>
+          <nav className="crumbs" aria-label="Breadcrumb"><Link href="/">Labs</Link><span>/</span><span>Tools</span></nav>
+          <h1>All 3D printing tools</h1>
+          <p className="lede">Design it in your browser with a live 3D preview, then download the print-ready files, or order it printed and posted to you in India.</p>
+        </div>
+        <nav className="tools-jump" aria-label="Jump to">
+          <a href="#design-tools"><b>{design.length}</b><span>Design tools<small>Free to preview, pay per design or a plan</small></span><i aria-hidden>↓</i></a>
+          {free.length > 0 && <a href="#free-tools"><b>{free.length}</b><span>Free tools<small>No account, nothing to pay</small></span><i aria-hidden>↓</i></a>}
+          <Link href="/stl-files"><b aria-hidden><svg viewBox="0 0 24 24" width="24" height="24"><path d="M3 8.5 12 4l9 4.5-9 4.5L3 8.5Zm0 0V16l9 4.5m0-7.5v7.5m9-12V16l-9 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg></b><span>STL files<small>Ready-made models and kits</small></span><i aria-hidden>→</i></Link>
+        </nav>
       </div>
 
-      <section className="section" id="design-tools">
+      <section className="section tools-sec" id="design-tools">
         <div className="wrap">
-          <div className="center-head">
-            <p className="eyebrow">The workbench</p>
+          <div className="tools-sec-head">
             <h2>Design tools</h2>
-            <p>Free to design and preview. Pay once per design for the files, or choose a plan.</p>
+            <p>Free to design and preview. Pay once per design for the files, or choose a plan. Most can also be ordered printed.</p>
           </div>
           <ul className={`toolgrid${design.length < 4 ? ' few' : ''}`}>{design.map((t) => <ToolCard key={t.slug} t={t} currency={currency} />)}</ul>
         </div>
       </section>
 
       {free.length > 0 && (
-        <section className="section soft" id="free-tools">
+        <section className="section soft tools-sec" id="free-tools">
           <div className="wrap">
-            <div className="center-head">
-              <p className="eyebrow">Nothing to pay</p>
+            <div className="tools-sec-head">
               <h2>Free tools</h2>
-              <p>Handy tools for the jobs around printing, free to use.</p>
+              <p>Handy tools for the jobs around printing. Free, no account, made in your browser.</p>
             </div>
             <ul className={`toolgrid${free.length < 4 ? ' few' : ''}`}>{free.map((t) => <ToolCard key={t.slug} t={t} currency={currency} />)}</ul>
           </div>
