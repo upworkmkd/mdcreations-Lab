@@ -1,7 +1,10 @@
 'use client';
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import QR from 'qrcode';
-import { MeshView } from '@/components/kit/mesh-view';
+import { MeshView, type MeshSnap } from '@/components/kit/mesh-view';
+import { PrintOrder } from '@/components/print-order';
+import { usePackedModel } from '@/lib/browser-file.client';
+import { coloured3mf } from '@/lib/mesh/threemf.js';
 import { Check, Group, Num, Range, Seg, Select, Text } from '@/components/kit/controls';
 import { KINDS, payload, type Fields, type Kind } from '@/lib/qr/payload';
 import { PX, buildQrPlate } from '@/lib/qr/build.js';
@@ -28,7 +31,8 @@ const FORM: Record<Kind, { k: string; label: string; area?: boolean; placeholder
   email: [{ k: 'email', label: 'Email address' }, { k: 'subject', label: 'Subject (optional)' }, { k: 'body', label: 'Message (optional)', area: true }],
 };
 
-export function QrMaker() {
+export function QrMaker({ print = null, signedIn = false }: { print?: { priceMinor: number; toolName: string } | null; signedIn?: boolean }) {
+  const snap = useRef<MeshSnap | null>(null);
   const [kind, setKind] = useState<Kind>('url');
   const [fields, setFields] = useState<Record<Kind, Fields>>({ url: { url: 'labs.themdcreations.com' }, text: {}, wifi: { security: 'WPA' }, upi: {}, whatsapp: {}, contact: {}, phone: {}, email: {} });
   const [size, setSize] = useState(50), [ecc, setEcc] = useState<Ecc>('M'), [quiet, setQuiet] = useState(2);
@@ -49,7 +53,8 @@ export function QrMaker() {
     catch { return null; }
   }, [pl.text, ecc]);
   const labelShown = labelOn ? (labelText.trim() || pl.label).slice(0, 40) : '';
-  const settings = useDeferredValue({ qr, size, quiet, baseT, codeT, shape, corner, hole, labelShown, labelSize, fontReady });
+  const live = useMemo(() => ({ qr, size, quiet, baseT, codeT, shape, corner, hole, labelShown, labelSize, fontReady }), [qr, size, quiet, baseT, codeT, shape, corner, hole, labelShown, labelSize, fontReady]);
+  const settings = useDeferredValue(live);
 
   const model = useMemo(() => {
     const s = settings; if (!s.qr) return null;
@@ -98,6 +103,16 @@ export function QrMaker() {
     track('free_download', 'qr-code', { kind, shape, size });
   }
 
+  // "Order it printed": the shop prints from the finished two-colour model, sent with the order
+  const makeModel = useMemo(() => (model ? () => coloured3mf([{ name: 'Plate', tris: model.base, color: baseCol }, { name: 'Code', tris: model.code, color: codeCol }], { title: 'QR code plate' }) : null), [model, baseCol, codeCol]);
+  const packed = usePackedModel(print ? makeModel : null);
+  const getDesign = useCallback(() => {
+    if (!model || !qr || !packed.file) return null;
+    const what = KINDS.find((k) => k[0] === kind)?.[1] ?? kind;
+    const notes = [`Opens: ${what}${kind === 'wifi' ? ` (${f.ssid ?? ''})` : pl.label ? ` (${pl.label})` : ''}`, `Size: ${model.size[0].toFixed(1)} x ${model.size[1].toFixed(1)} mm, ${(baseT + codeT).toFixed(1)} mm tall`, `Shape: ${shape}`, `Colour change at ${baseT.toFixed(1)} mm`, ...(labelShown ? [`Label: ${labelShown}`] : [])];
+    return { design: { name: `QR ${pl.label || what}`.slice(0, 40), format: '3mf', file: packed.file, parts: [{ name: 'Plate', color: baseCol }, { name: 'Code', color: codeCol }], notes }, preview: snap.current?.jpeg() ?? '' };
+  }, [model, qr, packed.file, kind, f, pl.label, baseT, codeT, shape, labelShown, baseCol, codeCol]);
+
   const parts = useMemo(() => (model ? [{ tris: model.base, color: baseCol }, { tris: model.code, color: codeCol }] : []), [model, baseCol, codeCol]);
 
   return (
@@ -143,7 +158,7 @@ export function QrMaker() {
           <span className="muted">{view === 'flat' ? 'Point your phone camera at the screen to check it opens the right thing.' : 'Drag to turn, scroll to zoom.'}</span>
         </div>
         <div className="kit-stage">
-          {view === '3d' ? <MeshView parts={parts} fitKey={`${shape}-${size}-${labelShown ? 1 : 0}`} height={520} /> : null}
+          {view === '3d' ? <MeshView parts={parts} fitKey={`${shape}-${size}-${labelShown ? 1 : 0}`} height={520} snapRef={snap} /> : null}
           <canvas ref={flat} className="flat" hidden={view !== 'flat'} style={{ maxHeight: 520, imageRendering: 'pixelated' }} />
         </div>
         <div className="kit-foot">
@@ -161,6 +176,7 @@ export function QrMaker() {
           <div className="buy-slot">
             <button type="button" className="btn buybtn" disabled={!model} onClick={download}>Download the STL files <span className="arrow">↓</span></button>
             <p className="hint">Free, no account needed.</p>
+            {print && <PrintOrder tool="qr-code" toolName={print.toolName} next="/tools/qr-code/make" ready={Boolean(model && packed.file)} priceMinor={print.priceMinor} signedIn={signedIn} getDesign={getDesign} />}
           </div>
         </div>
       </div>
