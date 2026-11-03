@@ -7442,3 +7442,11 @@ a.pill {
 .st-pal button { width: 20px; height: 20px; }
 .st-confirm { display: grid; gap: 8px; padding: 10px; border: 1px solid #e3c88f; background: #fbf3e2; border-radius: 8px; font-size: 14px; }
 .st-confirm div { display: flex; gap: 8px; flex-wrap: wrap; }
+.st-undo { display: inline-flex; gap: 4px; }
+.st-undo button { border: 1px solid var(--line-2); background: #fff; border-radius: var(--radius); padding: 6px 10px; font: inherit; font-size: 14px; cursor: pointer; }
+.st-undo button:disabled { opacity: .45; cursor: default; }
+.st-selname { font: 500 12px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; color: #7a4fa0; }
+.st-actions { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.st-actions button { border: 1px solid var(--line-2); background: #fff; border-radius: 6px; padding: 5px 9px; font: inherit; font-size: 13px; cursor: pointer; }
+.st-actions button.danger { color: #a3301f; border-color: #e3b4ab; }
+.st-canvas canvas[data-tool="select"] { cursor: default; }
