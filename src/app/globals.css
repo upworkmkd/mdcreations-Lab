@@ -1801,6 +1801,19 @@ tr.adm-unread td {
 	color: color-mix(in srgb, var(--paper) 62%, transparent);
 }
 
+.way.dark li a,
+.way.dark a.note {
+	color: var(--paper);
+	text-decoration: underline;
+	text-decoration-color: color-mix(in srgb, var(--paper) 40%, transparent);
+	text-underline-offset: 3px;
+}
+
+.way.dark a.note:hover,
+.way.dark li a:hover {
+	text-decoration-color: var(--paper);
+}
+
 @media (max-width: 760px) {
 	.ways-grid {
 		grid-template-columns: minmax(0, 1fr);
