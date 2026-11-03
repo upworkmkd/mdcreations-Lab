@@ -13,6 +13,7 @@ import { kit as filamentPainting } from '@/lib/kits/filament-painting.server';
 import { kit as topoMap } from '@/lib/kits/topo-map.server';
 import { kit as vase } from '@/lib/kits/vase.server';
 import { kit as browserFile } from '@/lib/kits/browser-file.server';
+import { kit as designStudio } from '@/lib/kits/design-studio.server';
 import { kit as gridfinity } from '@/lib/kits/gridfinity.server';
 export type { License, Built } from '@/lib/kits/types';
 
@@ -25,6 +26,7 @@ export const KITS: Record<string, Kit> = {
   'layered-sculpture': { parse: parseLayerDesign, build: buildLayerZip as Kit['build'] },
   // free tools built in the browser: only for printed orders (the browser sends the finished model)
   'qr-code': browserFile, 'image-to-stl': browserFile,
+  'design-studio': designStudio,
   ...Object.fromEntries(Object.entries({ lithophane, 'name-sign': nameSign, 'cookie-cutter': cookieCutter, 'photo-relief': photoRelief, 'filament-painting': filamentPainting, 'topo-map': topoMap, vase, gridfinity }).filter((e): e is [string, Kit] => e[1] != null)),
 };
 

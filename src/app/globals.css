@@ -7406,3 +7406,39 @@ a.pill {
 	.wyg-card { grid-template-columns: 72px minmax(0, 1fr); }
 	.wyg-list li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
 }
+
+/* ------------------------------------------------------------------ Design Studio: the drawing area */
+.st { display: grid; gap: 10px; padding: 12px; align-content: start; }
+.st-tools { display: flex; flex-wrap: wrap; gap: 4px; }
+.st-tools button { display: grid; justify-items: center; gap: 2px; min-width: 52px; padding: 6px 4px 5px; border: 1px solid var(--line); border-radius: 8px; background: #fff; cursor: pointer; font: inherit; color: var(--ink); }
+.st-tools button span { font-size: 18px; line-height: 1; }
+.st-tools button small { font-size: 11px; color: var(--ink-3); }
+.st-tools button[aria-pressed="true"] { background: var(--olive-ink); border-color: var(--olive-ink); color: var(--paper); }
+.st-tools button[aria-pressed="true"] small { color: color-mix(in srgb, var(--paper) 75%, transparent); }
+.st-sep { width: 1px; background: var(--line-2); margin: 4px 6px; }
+.st-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 14px; }
+.st-opts select, .st-text { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--line-2); border-radius: 6px; background: #fff; }
+.st-text { width: min(260px, 100%); }
+.st-opt { display: inline-flex; align-items: center; gap: 8px; }
+.st-opt input[type="range"] { width: 110px; }
+.st-opt b { font: 500 12.5px/1 var(--mono); min-width: 48px; }
+.st-colours { display: inline-flex; gap: 6px; }
+.st-colours button { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line-2); cursor: pointer; font: 600 12px/1 var(--mono); color: #fff; text-shadow: 0 0 3px rgba(0,0,0,.7); }
+.st-colours button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--olive-ink); transform: scale(1.08); }
+.st-stickers { display: inline-flex; flex-wrap: wrap; gap: 3px; max-width: 100%; }
+.st-stickers button { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font-size: 19px; cursor: pointer; padding: 0; }
+.st-stickers button[aria-pressed="true"] { border-color: var(--olive-ink); box-shadow: 0 0 0 1px var(--olive-ink); }
+.st-canvas { position: relative; width: 100%; max-height: 620px; max-width: min(100%, calc(620px * var(--ar, 1))); margin: 0 auto; background: #fff; box-shadow: 0 1px 0 var(--line), 0 6px 24px rgba(0,0,0,.06); }
+.st-canvas canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.st-canvas canvas:first-child { touch-action: none; cursor: crosshair; }
+.st-canvas canvas.px { image-rendering: pixelated; }
+.st-over { pointer-events: none; }
+.st-hint { font-size: 13px; color: var(--ink-3); text-align: center; }
+.st-empty { padding: 40px; text-align: center; color: var(--ink-3); }
+.st-colrow { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 4px 10px; align-items: start; padding-bottom: 10px; border-bottom: 1px dashed var(--line); margin-bottom: 10px; }
+.st-colrow .kit-ctl { grid-column: 1 / -1; }
+.st-dot { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line-2); cursor: pointer; }
+.st-dot[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--olive-ink); }
+.st-pal button { width: 20px; height: 20px; }
+.st-confirm { display: grid; gap: 8px; padding: 10px; border: 1px solid #e3c88f; background: #fbf3e2; border-radius: 8px; font-size: 14px; }
+.st-confirm div { display: flex; gap: 8px; flex-wrap: wrap; }
