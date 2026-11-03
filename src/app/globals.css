@@ -7208,3 +7208,31 @@ a.pill {
 	font-size: 12.5px;
 	color: var(--ink3, #7b7e69);
 }
+/* Image to STL: the second download button and the notes under the converter */
+.kit-buy .buy-slot .btn.ghost {
+	width: 100%;
+	justify-content: center;
+}
+
+.istl-notes {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 40px;
+	margin-top: 48px;
+	font-size: 15.5px;
+	line-height: 1.6;
+	color: var(--ink-2, inherit);
+}
+
+.istl-notes h2 {
+	font: 500 26px/1.15 var(--serif);
+	margin-bottom: 12px;
+}
+
+.istl-notes p + p { margin-top: 10px; }
+.istl-notes ul { padding-left: 18px; display: grid; gap: 8px; }
+.istl-notes a { text-decoration: underline; text-underline-offset: 3px; }
+
+@media (max-width: 760px) {
+	.istl-notes { grid-template-columns: 1fr; gap: 28px; }
+}
