@@ -62,7 +62,7 @@ export function ToolsMenu({ paid, free }: { paid: MenuTool[]; free: MenuTool[] }
             <header><h2 id={`${id}-f`}>Free tools</h2><p>No account, no payment.</p></header>
             <ul className="tm-list">{free.map(item)}</ul>
             <div className="tm-foot">
-              <Link href="/#tools" className="btn small" onClick={hide}>See all tools <span className="arrow">→</span></Link>
+              <Link href="/tools" className="btn small" onClick={hide}>See all tools <span className="arrow">→</span></Link>
               <Link href="/pricing" className="linkish" onClick={hide}>Pricing and plans</Link>
             </div>
           </section>

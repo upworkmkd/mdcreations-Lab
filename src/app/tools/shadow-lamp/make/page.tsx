@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { pageMeta } from '@/lib/seo';
+import { JsonLd, makerLd, pageMeta } from '@/lib/seo';
 import { Maker } from '@/components/maker/maker';
 import { getCurrency, getTool } from '@/lib/catalog.server';
 import { getViewer } from '@/lib/auth.server';
@@ -8,6 +8,7 @@ import { supabaseConfigured } from '@/lib/env';
 import { entitlement, getPlans } from '@/lib/plans.server';
 import { formatMoney } from '@/lib/money';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { getGuides } from '@/lib/guides.server';
 
 export const metadata: Metadata = pageMeta({
   title: 'Make a Shadow Lamp Online – Free Preview, Download STL Files',
@@ -20,7 +21,7 @@ export const metadata: Metadata = pageMeta({
 export default async function MakePage({ searchParams }: PageProps<'/tools/shadow-lamp/make'>) {
   const sp = await searchParams;
   const example = typeof sp.example === 'string' ? sp.example : undefined;
-  const [tool, currency, viewer] = await Promise.all([getTool('shadow-lamp'), getCurrency(), getViewer()]);
+  const [tool, currency, viewer, guides] = await Promise.all([getTool('shadow-lamp'), getCurrency(), getViewer(), getGuides()]);
   const amount = tool?.prices[currency] ?? null;
   const ent = viewer ? await entitlement(viewer.id, 'shadow-lamp').catch(() => null) : null;
   const reviewed = viewer ? ((await supabaseAdmin().from('testimonials').select('id', { count: 'exact', head: true }).eq('user_id', viewer.id).eq('source', 'site')).count ?? 0) > 0 : false;
@@ -34,14 +35,15 @@ export default async function MakePage({ searchParams }: PageProps<'/tools/shado
   const printMinor = currency === 'INR' && (payConfigured || viewer?.role === 'admin') ? tool?.printPrices.INR ?? null : null;
   return (
     <div className="wrap">
+      <JsonLd data={makerLd('shadow-lamp', 'Shadow Lamp Maker', '/tools/shadow-lamp/make')} />
       <div style={{ padding: '36px 0 26px', display: 'flex', flexWrap: 'wrap', alignItems: 'end', justifyContent: 'space-between', gap: 16 }}>
         <div>
-          <nav className="crumbs" aria-label="Breadcrumb"><Link href="/#tools">Tools</Link><span>/</span><Link href="/tools/shadow-lamp">Shadow Lamp Maker</Link></nav>
+          <nav className="crumbs" aria-label="Breadcrumb"><Link href="/tools">Tools</Link><span>/</span><Link href="/tools/shadow-lamp">Shadow Lamp Maker</Link></nav>
           <h1 className="serif" style={{ font: '500 clamp(36px, 4.6vw, 56px)/1.02 var(--serif)', marginTop: 12 }}>Make a shadow lamp</h1>
         </div>
         <p className="muted" style={{ maxWidth: '46ch', fontSize: 15 }}>Everything on this page runs in your browser and is free to try. The printable files are built when you buy.</p>
       </div>
-      <Maker currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} example={example} plan={plan} plans={plans} otherPlan={Boolean(ent && !ent.covers)} viewerName={viewer?.name ?? ''} reviewed={reviewed} printMinor={printMinor} />
+      <Maker currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} example={example} plan={plan} plans={plans} otherPlan={Boolean(ent && !ent.covers)} viewerName={viewer?.name ?? ''} reviewed={reviewed} printMinor={printMinor} free={Boolean(tool?.free)} guideVideo={guides.shadowVideo || null} />
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { ThankYou } from './thank-you';
 import { LampView, type LampData } from './lamp-view';
 import './maker.css';
 import { KeepPicture } from '@/components/keep-picture';
+import { PictureGuide } from './picture-guide';
 
 type Studio = { designPayload(): unknown; previewJpeg(): string; destroy(): void; loadExample(src: string, name: string): void };
 type Phase = { kind: 'idle' } | { kind: 'working'; text: string } | { kind: 'done'; fileId: string } | { kind: 'error'; text: string; orderId?: string };
@@ -41,7 +42,7 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 
 export type MakerPlan = { name: string; remaining: number | null; limit: number | null };
 
-export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false, printMinor = null }: { currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean; viewerName?: string; reviewed?: boolean; printMinor?: number | null }) {
+export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false, printMinor = null, free = false, guideVideo = null }: { guideVideo?: string | null; free?: boolean; currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean; viewerName?: string; reviewed?: boolean; printMinor?: number | null }) {
   const [thanks, setThanks] = useState<string | null>(null);   // file id while the thank-you window is open
   const [askedReview, setAskedReview] = useState(reviewed);
   const [plan, setPlan] = useState<MakerPlan | null>(plan0 ?? null);
@@ -62,7 +63,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
 
   useEffect(() => {
     if (!root.current) return;
-    const s = mountStudio(root.current, { onReady: setReady, onResult: setLamp, sample: `/examples/${first.id}.png`, sampleName: first.name }) as Studio;
+    const s = mountStudio(root.current, { onReady: setReady, onResult: setLamp, onRejected: (f: File, why: string) => track('upload_rejected', why.slice(0, 120), { type: f.type, ext: f.name.split('.').pop()?.toLowerCase(), kb: Math.round(f.size / 1024) }), sample: `/examples/${first.id}.png`, sampleName: first.name }) as Studio;
     studio.current = s;
     (window as unknown as { __lamp?: Studio }).__lamp = s;   // handy for support and tests
     return () => { s.destroy(); studio.current = null; };
@@ -133,10 +134,10 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
   }, [signedIn]);
 
   const onBuy = useCallback(async () => {
-    if (plan) { choice.current = 'single'; if (await ensureSignedIn()) purchase(); return; }   // on a plan: the server decides if it is included
+    if (plan || free) { choice.current = 'single'; if (await ensureSignedIn()) purchase(); return; }   // on a plan: the server decides if it is included
     track('chooser_open', 'Download options');
     setChooser(true);
-  }, [plan, ensureSignedIn, purchase]);
+  }, [plan, free, ensureSignedIn, purchase]);
 
   const onChoose = useCallback(async (c: Choice) => {
     choice.current = c; setChooser(false);
@@ -181,8 +182,9 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                 <span className="name" id="fname">{first.name}</span>
                 <div className="row">
                   <button type="button" className="btn small" id="pick" onClick={() => setPicked(null)}>Upload your picture</button>
-                  <input type="file" id="file" accept="image/*" hidden />
+                  <input type="file" id="file" accept="image/png,image/jpeg,image/svg+xml,.png,.jpg,.jpeg,.svg" hidden />
                 </div>
+                <PictureGuide videoUrl={guideVideo} />
               </div>
             </div>
             <KeepPicture />
@@ -196,7 +198,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                 ))}
               </div>
             </div>
-            <p className="hint">Any picture works: dark parts become shadow and light parts let the light through, so a photo keeps its face, beard or spokes. Bold, high-contrast pictures read best. Too much or too little shadow? Move the darkness cut-off. You can also drop or paste a picture.</p>
+            <p className="hint">Any picture works: dark parts become shadow and light parts let the light through, so a photo keeps its face, beard or spokes. Bold, high-contrast pictures read best. Too much or too little shadow? Move the darkness cut-off. You can also drop or paste a picture (PNG, JPG or SVG).</p>
             <div className="row">
               <div className="field">
                 <label htmlFor="mode">How to read it</label>
@@ -252,7 +254,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                 <div className="row">
                   <button type="button" className="btn small ghost" id="platePick">Choose a plate picture</button>
                   <button type="button" className="btn small ghost" id="plateSame" hidden>Use the shadow picture</button>
-                  <input type="file" id="plateFile" accept="image/*" hidden />
+                  <input type="file" id="plateFile" accept="image/png,image/jpeg,image/svg+xml,.png,.jpg,.jpeg,.svg" hidden />
                 </div>
                 <KeepPicture />
                 <div className="platectl" id="plateRead" hidden>
@@ -295,10 +297,11 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
               </div>
             ) : (
               <>
-                <button type="button" className="btn buybtn" onClick={onBuy} disabled={!ready || working || (!onPlan && !payConfigured)}>
-                  {working ? phase.text : onPlan ? <>Download <span className="sep" /> <span className="mono">in your {plan!.name} plan</span></> : plan ? <>Buy and download <span className="sep" /> <span className="mono">{price}</span></> : <>Download <span className="sep" /> <span className="mono">{price ? `from ${price}` : 'choose an option'}</span></>}
+                <button type="button" className="btn buybtn" onClick={onBuy} disabled={!ready || working || (!onPlan && !free && !payConfigured)}>
+                  {working ? phase.text : free ? <>Download <span className="sep" /> <span className="mono">free</span></> : onPlan ? <>Download <span className="sep" /> <span className="mono">in your {plan!.name} plan</span></> : plan ? <>Buy and download <span className="sep" /> <span className="mono">{price}</span></> : <>Download <span className="sep" /> <span className="mono">{price ? `from ${price}` : 'choose an option'}</span></>}
                 </button>
-                {onPlan ? <p className="note ok">{left == null ? 'Unlimited designs on your plan.' : `${left} of ${plan!.limit} plan designs left today.`}</p>
+                {free ? <p className="note ok">This tool is free. {signedIn ? 'Your files are saved in your account.' : 'Sign in (or make an account) to download and keep your files.'}</p>
+                  : onPlan ? <p className="note ok">{left == null ? 'Unlimited designs on your plan.' : `${left} of ${plan!.limit} plan designs left today.`}</p>
                   : plan ? <p className="note">You have used today&apos;s {plan.limit} plan designs. This one is charged separately, or come back after midnight (India time).</p>
                   : !payConfigured ? <p className="note">Payments are being set up. Please check back soon.</p>
                   : amountMinor == null ? <p className="note">This tool is not sold in {currency} yet. Please contact us to buy it.</p> : null}
@@ -309,7 +312,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                   <PrintOrder tool="shadow-lamp" toolName="Shadow Lamp" next="/tools/shadow-lamp/make" ready={ready && !working} priceMinor={printMinor} signedIn={signedIn}
                     getDesign={() => { const s = studio.current; const design = s?.designPayload(); return s && design ? { design, preview: s.previewJpeg() } : null; }} />
                 )}
-                <p className="hint">Free to try. {signedIn ? 'You are signed in.' : 'You will sign in or create an account before paying.'} {onPlan ? 'Your files stay in your account.' : <>One payment per design, or <Link href="/pricing">a monthly plan</Link>; your files stay in your account.</>} Every download includes a <Link href="/license">commercial license</Link>.</p>
+                <p className="hint">{free ? 'Free to design and download.' : 'Free to try.'} {signedIn ? 'You are signed in.' : free ? 'You will sign in or create an account to download.' : 'You will sign in or create an account before paying.'} {free ? 'Your files stay in your account.' : onPlan ? 'Your files stay in your account.' : <>One payment per design, or <Link href="/pricing">a monthly plan</Link>; your files stay in your account.</>} Every download includes a <Link href="/license">commercial license</Link>.</p>
               </>
             )}
 

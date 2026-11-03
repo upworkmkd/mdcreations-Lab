@@ -75,3 +75,43 @@ function wrap(s: string, w = 76) {
   if (line) out.push(line);
   return out.join('\n');
 }
+
+/* ------------------------------------------------------------------ STL shop designs (our own designs, sold as files)
+ * Same commercial freedom for the printed objects, but the files themselves stay ours: a buyer may not pass them on.
+ * Otherwise the first buyer could share the files with everyone. */
+export const PRODUCT_LICENSE_NAME = 'MD Creations STL Commercial License';
+export const PRODUCT_LICENSE_POINTS: string[] = [
+  'Print the files as often as you like, for yourself or for customers.',
+  'Sell the printed models anywhere: your shop, Etsy, Amazon, Instagram, fairs.',
+  'Change and remix the files for your own prints.',
+  'The STL files are for you: please do not share, upload or resell them, changed or not.',
+  'No royalties, no attribution required, and the license never expires.',
+];
+const PRODUCT_SECTIONS: { h: string; p: string[] }[] = [
+  { h: '1. What you may do', p: [
+    'MD Creations grants you a worldwide, non-exclusive, perpetual and royalty-free license to print the files in this download for personal and commercial purposes.',
+    'You may print them any number of times; sell, give away or display the printed models; and modify or remix the files to make your own prints.',
+    'You do not need to credit MD Creations, although a mention is always appreciated.',
+  ] },
+  { h: '2. What you may not do', p: [
+    'You may not share, upload, sell, license or give away the STL files themselves, or files made from them, whether unchanged or modified. This includes file-sharing sites, model libraries and marketplaces. Each person who wants the files can buy them from MD Creations.',
+  ] },
+  { h: '3. What stays with MD Creations', p: [
+    'MD Creations keeps the copyright in the design and the files. You may not present your products as made or endorsed by MD Creations.',
+  ] },
+  { h: '4. No warranty', p: [
+    'The files are provided as they are. MD Creations checks that the parts fit together as described but does not guarantee that a print will succeed on every printer, material or setting, and is not responsible for how printed objects are used. Small parts are not suitable for young children.',
+  ] },
+];
+
+/** Plain-text license for an STL shop download. */
+export function productLicenseText(o: { design: string; owner?: string; orderId?: string; date?: Date }) {
+  const date = (o.date ?? new Date()).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' });
+  const out = [`${PRODUCT_LICENSE_NAME} (version 1.0)`, '='.repeat(60), '', `Design:     ${o.design}`,
+    ...(o.owner ? [`Licensed to: ${o.owner}`] : ['Licensed to: the person who bought these files from MD Creations']),
+    ...(o.orderId ? [`Order:      ${o.orderId}`] : []), `Date:       ${date}`, 'Issued by:  MD Creations, India  ·  https://labs.themdcreations.com', '',
+    'IN SHORT', ...PRODUCT_LICENSE_POINTS.map((p) => `  - ${p}`), ''];
+  for (const s of PRODUCT_SECTIONS) out.push(s.h.toUpperCase(), ...s.p.flatMap((p) => [wrap(p), '']));
+  out.push('Questions: hello@themdcreations.com');
+  return out.join('\n');
+}

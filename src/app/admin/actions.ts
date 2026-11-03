@@ -14,9 +14,11 @@ export async function saveTool(_: SaveState, form: FormData): Promise<SaveState>
   const slug = String(form.get('slug') || ''), status = String(form.get('status') || '');
   if (!slug || !['live', 'coming_soon', 'hidden'].includes(status)) return { error: 'Bad input.' };
   const db = supabaseAdmin();
-  const t = await db.from('tools').update({ status, updated_at: new Date().toISOString() }).eq('slug', slug);
-  if (t.error) return { error: t.error.message };
-  for (const c of CURRENCIES) {
+  const free = form.get('free') === 'on';
+  const t = await db.from('tools').update({ status, free, updated_at: new Date().toISOString() }).eq('slug', slug);
+  if (t.error) return { error: /free/.test(t.error.message) ? 'Not saved: run the free tools SQL migration (20261102000000_free_tools.sql) in Supabase first.' : t.error.message };
+  // a free tool keeps its download prices on file (greyed out), so unticking Free brings them back
+  for (const c of free ? [] : CURRENCIES) {
     const raw = String(form.get(`price_${c}`) ?? '').trim();
     if (raw === '') { await db.from('tool_prices').delete().eq('tool_slug', slug).eq('currency', c); continue; }
     const major = Number(raw);
@@ -143,7 +145,8 @@ async function removeStoredFiles(db: ReturnType<typeof supabaseAdmin>, filter: {
   if (filter.orderIds) q = q.in('order_id', filter.orderIds);
   if (filter.userIds) q = q.in('user_id', filter.userIds);
   const { data } = await q;
-  const paths = (data ?? []).map((f) => f.storage_path).filter(Boolean);
+  // product zips (products/…) are shared by every buyer of that product: never removed with one customer's files
+  const paths = (data ?? []).map((f) => f.storage_path).filter((x) => x && !x.startsWith('products/'));
   for (let i = 0; i < paths.length; i += 100) await db.storage.from(FILES_BUCKET).remove(paths.slice(i, i + 100));
 }
 

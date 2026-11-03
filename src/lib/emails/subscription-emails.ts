@@ -29,7 +29,7 @@ export function subWelcomeEmail(d: SubMailData) {
       <div style="font:500 11px/1.4 ${MONO}; letter-spacing:.18em; text-transform:uppercase; color:${C.light};">&#9679;&nbsp; Plan started</div>
       <h1 class="h1" style="margin:14px 0 0; font:400 36px/1.15 ${SERIF}; color:#ffffff;">Welcome${first(d) ? `, ${esc(first(d))}` : ''}.</h1>
       <p style="margin:14px 0 0; font:400 16px/1.6 ${SANS}; color:#e6e7dc;">Your <b style="color:#fff; font-weight:600;">${esc(d.planName)} plan</b> is active. Design as much as you like and download straight away, with no payment each time.</p>
-      <div style="padding-top:26px;">${button(`${d.siteUrl}/#tools`, 'Start designing &rarr;')}</div>
+      <div style="padding-top:26px;">${button(`${d.siteUrl}/tools`, 'Start designing &rarr;')}</div>
     </td></tr>
     <tr><td class="px" style="padding:30px 40px 6px;">
       <div style="font:500 11px/1.4 ${MONO}; letter-spacing:.14em; text-transform:uppercase; color:${C.ink3}; padding-bottom:10px;">What your plan includes</div>
@@ -69,7 +69,7 @@ export function subWelcomeEmail(d: SubMailData) {
   const text = [
     `Welcome${first(d) ? `, ${first(d)}` : ''}.`, ``, `Your ${d.planName} plan is active.`, ``, `What it includes:`, ...features(d).map((f) => `- ${f}`), ``,
     d.price ? `Price: ${d.price} a month` : '', d.renews ? `Renews: ${date(d.renews)}` : '', ``,
-    `Start designing: ${d.siteUrl}/#tools`, `Your plan: ${d.siteUrl}/account#plan`, ``, `How is it working for you? ${d.feedbackUrl()}`, ``, `MD Creations Labs · ${d.siteUrl}`,
+    `Start designing: ${d.siteUrl}/tools`, `Your plan: ${d.siteUrl}/account#plan`, ``, `How is it working for you? ${d.feedbackUrl()}`, ``, `MD Creations Labs · ${d.siteUrl}`,
   ].join('\n');
   return { subject, html: frame({ preheader: `Your ${d.planName} plan is active: design and download as much as you like.`, body, foot, siteUrl: d.siteUrl }), text };
 }

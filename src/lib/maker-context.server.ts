@@ -1,6 +1,7 @@
 import 'server-only';
 import { redirect } from 'next/navigation';
-import { getCurrency, getTool } from '@/lib/catalog.server';
+import { getCurrency, getTool, type CatalogTool } from '@/lib/catalog.server';
+import type { Currency } from '@/lib/money';
 import { getViewer } from '@/lib/auth.server';
 import { supabaseConfigured } from '@/lib/env';
 import { entitlement, getPlans } from '@/lib/plans.server';
@@ -16,8 +17,6 @@ export async function makerContext(slug: string) {
   const live = tool?.status === 'live', admin = viewer?.role === 'admin';
   if (!live && !admin) redirect(`/tools/${slug}`);
   const amount = tool?.prices[currency] ?? null;
-  // printed and posted: India only for now, so only for visitors paying in rupees
-  const printMinor = currency === 'INR' ? tool?.printPrices.INR ?? null : null;
   const ent = viewer ? await entitlement(viewer.id, slug).catch(() => null) : null;
   const reviewed = viewer ? ((await supabaseAdmin().from('testimonials').select('id', { count: 'exact', head: true }).eq('user_id', viewer.id).eq('source', 'site')).count ?? 0) > 0 : false;
   const plans = (await getPlans()).map((p) => ({
@@ -27,11 +26,22 @@ export async function makerContext(slug: string) {
   return {
     tool, live, admin, viewer, currency,
     buy: {
-      currency, amountMinor: amount, signedIn: Boolean(viewer),
+      currency, amountMinor: amount, signedIn: Boolean(viewer), free: Boolean(tool?.free),
       payConfigured: supabaseConfigured() && Boolean(process.env.RAZORPAY_KEY_ID) && live,
       plan: ent?.covers ? { name: ent.plan.name, remaining: ent.remaining, limit: ent.plan.daily_limit } : null,
       plans, otherPlan: Boolean(ent && !ent.covers), viewerName: viewer?.name ?? '', reviewed, preview: !live && admin,
-      print: printMinor != null && tool && supabaseConfigured() && (admin || (live && Boolean(process.env.RAZORPAY_KEY_ID))) ? { priceMinor: printMinor, toolName: tool.name } : null,
+      print: printOffer(tool, currency, admin),
     },
   };
+}
+
+/**
+ * "Order it printed" under a maker: when the tool has a printed price (Admin → Tools and prices), for visitors paying
+ * in rupees (India only for now), once payments are set up. Admins always see it, to test.
+ */
+export function printOffer(tool: CatalogTool | null, currency: Currency, admin: boolean) {
+  const printMinor = currency === 'INR' ? tool?.printPrices.INR ?? null : null;
+  if (printMinor == null || !tool || !supabaseConfigured()) return null;
+  if (!admin && !(tool.status === 'live' && process.env.RAZORPAY_KEY_ID)) return null;
+  return { priceMinor: printMinor, toolName: tool.name };
 }

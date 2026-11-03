@@ -39,5 +39,9 @@ export const tool: Tool | null = {
 export const seo: ToolSeo | null = {
   title: 'Photo Relief Maker – Photo to Embossed Plaque STL',
   description: 'Make a 3D printable embossed plaque from a photo: bas-relief on a rectangle, circle, oval, heart or arch, with a frame and hanging hole.',
-  keywords: ['photo relief stl', 'photo to bas relief', 'embossed plaque 3d print', 'image to relief stl', 'photo plaque generator', 'logo relief stl'],
+  keywords: [
+    'photo relief stl', 'photo plaque stl', 'relief plaque generator',
+    'photo to bas relief', 'image to relief stl', 'heightmap to stl', 'embossed plaque 3d print', 'photo plaque generator', 'memorial plaque stl',
+    'logo relief stl', 'logo to stl', '3d printed photo plaque', 'relief generator online',
+  ],
 };

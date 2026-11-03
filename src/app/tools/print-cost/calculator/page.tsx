@@ -11,7 +11,7 @@ export const metadata: Metadata = pageMeta({
   absoluteTitle: true,
   description: 'Work out the real cost of a 3D print and the price to charge: filament, electricity, printer wear, failed prints, labour, margin, fees and GST. Free.',
   path: '/tools/print-cost/calculator',
-  keywords: ['3d print cost calculator', '3d printing price calculator', 'filament cost calculator', '3d print pricing', 'printer depreciation calculator', '3d printing cost india', 'how much to charge for 3d printing'],
+  keywords: ['3d print cost calculator', '3d printing price calculator', 'filament cost calculator', '3d print pricing', 'printer depreciation calculator', '3d printing cost india', 'how much to charge for 3d printing', 'filament price per gram', '3d print quote calculator'],
 });
 
 export default async function PrintCostPage() {
