@@ -1801,6 +1801,19 @@ tr.adm-unread td {
 	color: color-mix(in srgb, var(--paper) 62%, transparent);
 }
 
+.way.dark li a,
+.way.dark a.note {
+	color: var(--paper);
+	text-decoration: underline;
+	text-decoration-color: color-mix(in srgb, var(--paper) 40%, transparent);
+	text-underline-offset: 3px;
+}
+
+.way.dark a.note:hover,
+.way.dark li a:hover {
+	text-decoration-color: var(--paper);
+}
+
 @media (max-width: 760px) {
 	.ways-grid {
 		grid-template-columns: minmax(0, 1fr);
@@ -7235,4 +7248,107 @@ a.pill {
 
 @media (max-width: 760px) {
 	.istl-notes { grid-template-columns: 1fr; gap: 28px; }
+}
+
+/* ------------------------------------------------------------------ all tools: a compact hero, the cards above the fold */
+.tools-hero {
+	display: grid;
+	grid-template-columns: minmax(0, 1.25fr) minmax(280px, 1fr);
+	gap: 24px 56px;
+	align-items: end;
+	padding-block: clamp(28px, 4vw, 48px) clamp(24px, 3vw, 36px);
+}
+
+.tools-hero h1 {
+	font: 500 clamp(36px, 4.6vw, 58px)/1.04 var(--serif);
+	letter-spacing: -.01em;
+	margin-top: 12px;
+}
+
+.tools-hero .lede {
+	margin-top: 12px;
+	max-width: 56ch;
+	color: var(--ink-2);
+	font-size: 17px;
+}
+
+.tools-jump {
+	display: grid;
+	gap: 8px;
+}
+
+.tools-jump a {
+	display: grid;
+	grid-template-columns: 44px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 14px;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: var(--paper-3);
+	color: var(--ink);
+	text-decoration: none;
+	transition: border-color .15s, transform .15s;
+}
+
+.tools-jump a:hover {
+	border-color: var(--olive-2, #6b7148);
+	transform: translateY(-1px);
+}
+
+.tools-jump b {
+	font: 500 28px/1 var(--serif);
+	text-align: center;
+	display: grid;
+	place-items: center;
+	color: var(--olive-ink, inherit);
+}
+
+.tools-jump span {
+	display: grid;
+	font-size: 15px;
+	font-weight: 500;
+}
+
+.tools-jump small {
+	font-size: 12.5px;
+	font-weight: 400;
+	color: var(--ink-3, #777);
+}
+
+.tools-jump i {
+	font-style: normal;
+	color: var(--ink-3, #777);
+}
+
+.section.tools-sec {
+	scroll-margin-top: 72px;
+	padding-block: clamp(32px, 4vw, 56px) clamp(48px, 6vw, 80px);
+}
+
+.tools-sec-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px 32px;
+	margin-bottom: 24px;
+}
+
+.tools-sec-head h2 {
+	font: 500 clamp(28px, 3.2vw, 40px)/1.05 var(--serif);
+}
+
+.tools-sec-head p {
+	color: var(--ink-2);
+	max-width: 58ch;
+}
+
+@media (max-width: 820px) {
+	.tools-hero { grid-template-columns: minmax(0, 1fr); }
+	.tools-jump { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+	.tools-jump a { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; gap: 4px; padding: 10px 6px; }
+	.tools-jump b { font-size: 24px; height: 26px; display: grid; place-items: center; }
+	.tools-jump span { font-size: 13.5px; }
+	.tools-jump i, .tools-jump small { display: none; }
 }

@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { pageMeta } from '@/lib/seo';
-import { getTool } from '@/lib/catalog.server';
+import { getCurrency, getTool } from '@/lib/catalog.server';
+import { printOffer } from '@/lib/maker-context.server';
 import { getViewer } from '@/lib/auth.server';
 import { KitPage } from '@/components/kit/kit-page';
 import { ImageStlMaker } from '@/components/image-stl/image-stl-maker';
@@ -17,12 +18,12 @@ export const metadata: Metadata = pageMeta({
 });
 
 export default async function ImageToStlPage() {
-  const [tool, viewer] = await Promise.all([getTool('image-to-stl'), getViewer()]);
+  const [tool, viewer, currency] = await Promise.all([getTool('image-to-stl'), getViewer(), getCurrency()]);
   if (tool?.status !== 'live' && viewer?.role !== 'admin') redirect('/tools/image-to-stl');
   return (
     <KitPage slug="image-to-stl" name="Image to STL Converter" title="Convert an image to STL"
       note="Free, no account. Upload a PNG, JPG or SVG and download a printable STL. Everything is made in your browser; your picture is never uploaded.">
-      <ImageStlMaker />
+      <ImageStlMaker print={printOffer(tool, currency, viewer?.role === 'admin')} signedIn={Boolean(viewer)} />
       <section className="istl-notes">
         <div>
           <h2>Which mode should I use?</h2>

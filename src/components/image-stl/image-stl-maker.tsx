@@ -1,6 +1,8 @@
 'use client';
-import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { MeshView } from '@/components/kit/mesh-view';
+import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { MeshView, type MeshSnap } from '@/components/kit/mesh-view';
+import { PrintOrder } from '@/components/print-order';
+import { usePackedModel } from '@/lib/browser-file.client';
 import { Check, Group, Range, Select, Seg } from '@/components/kit/controls';
 import { blur, buildRaised, buildRelief, grayOf, guessRead, pictureMask, raisedGrid, reliefGrid } from '@/lib/image-stl/build.js';
 import { adjust } from '@/lib/mesh/image-grid';
@@ -47,7 +49,8 @@ function loadPic(src: string, name: string) {
   });
 }
 
-export function ImageStlMaker() {
+export function ImageStlMaker({ print = null, signedIn = false }: { print?: { priceMinor: number; toolName: string } | null; signedIn?: boolean }) {
+  const snap = useRef<MeshSnap | null>(null);
   const [pic, setPic] = useState<Pic | null>(null), [err, setErr] = useState('');
   const [mode, setMode] = useState<Mode>('raised');
   const [read, setRead] = useState<Read>('auto'), [level, setLevel] = useState(128), [tol, setTol] = useState(60);
@@ -122,7 +125,8 @@ export function ImageStlMaker() {
     return { kind: 'relief' as const, G, gray, keep };
   }, [pic, src, mode, width, aspect, how, level, tol, pitch, bright, contrast, soft, cut]);
 
-  const settings = useDeferredValue({ grid, height, mirror, base, baseT, border, corner, hole, thicken, speck, depth, rBase, raise });
+  const live = useMemo(() => ({ grid, height, mirror, base, baseT, border, corner, hole, thicken, speck, depth, rBase, raise }), [grid, height, mirror, base, baseT, border, corner, hole, thicken, speck, depth, rBase, raise]);
+  const settings = useDeferredValue(live);
   const result = useMemo(() => {
     const s = settings, g = s.grid; if (!g) return null;
     try {
@@ -157,8 +161,30 @@ export function ImageStlMaker() {
     ctx.putImageData(im, 0, 0);
   }, [grid, view, mode, topCol, mirror, raise]);
 
-  const busy = settings.grid !== grid || settings.height !== height || settings.base !== base;
+  const busy = settings !== live;
   const fileName = (pic?.name || 'image').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'image';
+
+  // "Order it printed": the shop prints from the finished model (two colours as a 3MF), sent with the order
+  const twoColour = Boolean(result?.ok && result.kind === 'raised' && result.base.length);
+  const makeModel = useMemo(() => {
+    if (!result?.ok) return null;
+    const r = result;
+    if (twoColour) return () => coloured3mf([{ name: 'Base', tris: r.base, color: baseCol }, { name: 'Raised', tris: r.top, color: topCol }], { title: pic?.name || 'Image to STL' });
+    return () => { const all = new Float32Array(r.base.length + r.top.length); all.set(r.base); all.set(r.top, r.base.length); return stlBinary(all, 'Image to STL'); };
+  }, [result, twoColour, baseCol, topCol, pic]);
+  const packed = usePackedModel(print ? makeModel : null);
+  const getDesign = useCallback(() => {
+    if (!result?.ok || !packed.file) return null;
+    const notes = [
+      `Mode: ${mode === 'raised' ? 'raised shape' : 'heightmap relief'}`,
+      `Size: ${result.size.map((v) => v.toFixed(1)).join(' x ')} mm`,
+      ...(mode === 'raised' ? [`Base: ${base}${base !== 'none' ? `, ${baseT} mm thick, ${border} mm border` : ''}`, `Raised height: ${height} mm`, ...(twoColour ? [`Colour change at ${result.topZ.toFixed(1)} mm`] : []), ...(hole ? [`Keychain hole: ${hole} mm`] : [])]
+        : [`Relief depth: ${depth} mm on a ${rBase} mm base`, `Higher parts: ${raise}`]),
+      ...(mirror ? ['Mirrored'] : []),
+    ];
+    const parts = twoColour ? [{ name: 'Base', color: baseCol }, { name: 'Raised shape', color: topCol }] : [{ name: 'Model', color: baseCol }];
+    return { design: { name: (pic?.name || 'Image to STL').slice(0, 40), format: twoColour ? '3mf' : 'stl', file: packed.file, parts, notes }, preview: snap.current?.jpeg() ?? '' };
+  }, [result, packed.file, mode, base, baseT, border, height, twoColour, hole, depth, rBase, raise, mirror, baseCol, topCol, pic]);
 
   function save(data: Uint8Array, name: string, type: string) {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data as BlobPart], { type })); a.download = name; a.click();
@@ -264,7 +290,7 @@ export function ImageStlMaker() {
           <span className="muted">{view === 'flat' ? (raised ? 'The coloured parts are raised.' : 'Darker here means higher.') : 'Drag to turn, scroll or pinch to zoom.'}</span>
         </div>
         <div className="kit-stage">
-          {view === '3d' ? <MeshView parts={parts} fitKey={`${mode}-${base}-${width}-${pic?.img.src}`} height={520} /> : <canvas ref={flat} className="flat" style={{ maxHeight: 520, maxWidth: '100%' }} />}
+          {view === '3d' ? <MeshView parts={parts} fitKey={`${mode}-${base}-${width}-${pic?.img.src}`} height={520} snapRef={snap} /> : <canvas ref={flat} className="flat" style={{ maxHeight: 520, maxWidth: '100%' }} />}
           {busy && <span className="kit-busy">Updating…</span>}
         </div>
         <div className="kit-foot">
@@ -286,6 +312,8 @@ export function ImageStlMaker() {
             <button type="button" className="btn buybtn" disabled={!result?.ok || busy} onClick={downloadStl}>Download STL <span className="arrow">↓</span></button>
             {raised && base !== 'none' && <button type="button" className="btn ghost" style={{ marginTop: 8 }} disabled={!result?.ok || busy} onClick={download3mf}>Two-colour 3MF</button>}
             <p className="hint">Free, no account needed.</p>
+            {print && <PrintOrder tool="image-to-stl" toolName={print.toolName} next="/tools/image-to-stl/make" ready={Boolean(result?.ok && packed.file) && !busy} priceMinor={print.priceMinor} signedIn={signedIn} getDesign={getDesign} />}
+            {print && packed.tooBig && <p className="hint">This model is too detailed to send with a printed order. Choose a smaller size or Draft detail.</p>}
           </div>
         </div>
       </div>

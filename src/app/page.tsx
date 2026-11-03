@@ -10,6 +10,7 @@ import { SocialBand } from '@/components/social-band';
 import { Reviews } from '@/components/reviews';
 import { JsonLd, TOOL_SEO, pageMeta } from '@/lib/seo';
 import { CANONICAL_URL as SITE_URL } from '@/lib/env';
+import { liveProducts } from '@/lib/stl/shop.server';
 
 export const metadata = pageMeta({
   title: 'MD Creations Labs – Shadow Lamp Maker & 3D Printing Tools',
@@ -20,7 +21,12 @@ export const metadata = pageMeta({
 });
 
 export default async function Home() {
-  const [tools, currency] = await Promise.all([getCatalog(), getCurrency()]);
+  const [tools, currency, products] = await Promise.all([getCatalog(), getCurrency(), liveProducts().catch(() => [])]);
+  // "We print it and ship it": the live tools and shop models that can be ordered printed (India, shipping included)
+  const printTools = tools.filter((t) => t.status === 'live' && t.makePath && t.printPrices.INR != null);
+  const printModels = products.filter((p) => p.print_price_inr != null);
+  const printFrom = Math.min(...printTools.map((t) => t.printPrices.INR as number), ...printModels.map((p) => p.print_price_inr as number));
+  const printOpen = printTools.length > 0 || printModels.length > 0;
   const slides: Slide[] = FEATURED.flatMap(({ slug, badge }) => {
     const t = tools.find((x) => x.slug === slug); if (!t) return [];
     const live = t.status === 'live', p = t.prices[currency];
@@ -60,15 +66,18 @@ export default async function Home() {
               <div className="actions"><Link href="#tools" className="btn">Pick a tool <span className="arrow">→</span></Link></div>
             </div>
             <div className="way dark">
-              <p className="num">Way 2 · No printer needed <span className="soon">Coming soon</span></p>
+              <p className="num">Way 2 · No printer needed{printOpen ? <span className="soon">Now open in India</span> : null}</p>
               <h3>We print it and ship it</h3>
-              <p>Customise any design, place your order, and we print it in our workshop and deliver it to your address.</p>
+              <p>Design it in any of our tools and choose “Order it printed” instead of downloading. We print it in our workshop and post it to your door.{Number.isFinite(printFrom) ? ` From ${formatMoney(printFrom, 'INR')}, shipping included.` : ''}</p>
               <ul>
-                <li>Your design, your colours, printed by us</li>
-                <li>Checked and packed by hand</li>
-                <li>Delivered across India</li>
+                <li>{printTools.length ? <>Order from {printTools.slice(0, 4).map((t) => t.name.replace(/ (Maker|Generator|Converter)$/, '')).join(', ')}{printTools.length > 4 ? ' and more' : ''}</> : 'Any design you make in our tools'}</li>
+                <li>Your design and your colours, printed, checked and packed by hand</li>
+                <li>Shipping included, delivered across India with updates by email</li>
               </ul>
-              <div className="actions"><span className="btn light" aria-disabled="true">Ordering opens soon</span><span className="note">Design now, order when it opens.</span></div>
+              <div className="actions">
+                <Link href="/tools" className="btn light">Choose a tool <span className="arrow">→</span></Link>
+                {printModels.length ? <Link href="/stl-files" className="note">Or order a printed model from the STL shop →</Link> : <span className="note">India only for now.</span>}
+              </div>
             </div>
           </div>
         </div>
