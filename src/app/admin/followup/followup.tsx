@@ -49,7 +49,7 @@ function FollowUpDialog({ kind, id, onClose }: { kind: FollowKind; id: string; o
   });
 
   return (
-    <dialog ref={ref} className="adm-dlg" onClose={onClose} onClick={(e) => { if (e.target === ref.current && !pending) ref.current?.close(); }} aria-labelledby="fu-h">
+    <dialog ref={ref} className="adm-dlg" onClose={onClose} aria-labelledby="fu-h">
       <div className="adm-dlg-in">
         <header className="adm-dlg-head">
           <div>

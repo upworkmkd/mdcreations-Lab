@@ -9,6 +9,8 @@ import { entitlement, getPlans } from '@/lib/plans.server';
 import { formatMoney } from '@/lib/money';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getGuides } from '@/lib/guides.server';
+import { youtubeId } from '@/lib/youtube';
+import { VideoButton } from '@/components/video/youtube';
 
 export const metadata: Metadata = pageMeta({
   title: 'Make a Shadow Lamp Online – Free Preview, Download STL Files',
@@ -33,6 +35,7 @@ export default async function MakePage({ searchParams }: PageProps<'/tools/shado
   const payConfigured = supabaseConfigured() && Boolean(process.env.RAZORPAY_KEY_ID) && tool?.status === 'live';
   // printed and posted: India only for now, so only for visitors paying in rupees
   const printMinor = currency === 'INR' && (payConfigured || viewer?.role === 'admin') ? tool?.printPrices.INR ?? null : null;
+  const videoId = youtubeId(guides.shadowVideo);
   return (
     <div className="wrap">
       <JsonLd data={makerLd('shadow-lamp', 'Shadow Lamp Maker', '/tools/shadow-lamp/make')} />
@@ -41,7 +44,10 @@ export default async function MakePage({ searchParams }: PageProps<'/tools/shado
           <nav className="crumbs" aria-label="Breadcrumb"><Link href="/tools">Tools</Link><span>/</span><Link href="/tools/shadow-lamp">Shadow Lamp Maker</Link></nav>
           <h1 className="serif" style={{ font: '500 clamp(36px, 4.6vw, 56px)/1.02 var(--serif)', marginTop: 12 }}>Make a shadow lamp</h1>
         </div>
-        <p className="muted" style={{ maxWidth: '46ch', fontSize: 15 }}>Everything on this page runs in your browser and is free to try. The printable files are built when you buy.</p>
+        <div style={{ maxWidth: '46ch', display: 'grid', gap: 10, justifyItems: 'start' }}>
+          <p className="muted" style={{ fontSize: 15 }}>Everything on this page runs in your browser and is free to try. The printable files are built when you buy.</p>
+          {videoId && <VideoButton id={videoId} title="How to make a shadow lamp" label="Watch the 2-minute tutorial" where="shadow-maker" />}
+        </div>
       </div>
       <Maker currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} example={example} plan={plan} plans={plans} otherPlan={Boolean(ent && !ent.covers)} viewerName={viewer?.name ?? ''} reviewed={reviewed} printMinor={printMinor} free={Boolean(tool?.free)} guideVideo={guides.shadowVideo || null} />
     </div>

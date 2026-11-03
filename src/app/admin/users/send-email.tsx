@@ -56,7 +56,7 @@ function Dialog({ userId, email, name, confirmed, signer, siteUrl, onClose }: { 
   const blocked = unknown.length > 0 || strayButton;
 
   return (
-    <dialog ref={ref} className="adm-dlg" onClose={onClose} onClick={(e) => { if (e.target === ref.current && !pending) ref.current?.close(); }} aria-labelledby="se-h">
+    <dialog ref={ref} className="adm-dlg" onClose={onClose} aria-labelledby="se-h">
       <div className="adm-dlg-in adm-se">
         <header className="adm-dlg-head">
           <div>

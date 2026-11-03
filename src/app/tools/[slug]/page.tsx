@@ -13,6 +13,9 @@ import { Reviews } from '@/components/reviews';
 import { LICENSE_POINTS } from '@/lib/license';
 import { JsonLd, pageMeta, TOOL_SEO } from '@/lib/seo';
 import { CANONICAL_URL as SITE_URL } from '@/lib/env';
+import { getGuides } from '@/lib/guides.server';
+import { KNOWN_VIDEOS, youtubeId, ytThumb, ytWatch } from '@/lib/youtube';
+import { YouTubeEmbed } from '@/components/video/youtube';
 
 export function generateStaticParams() {
   return TOOLS.map((t) => ({ slug: t.slug }));
@@ -32,6 +35,9 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
   if (!tool) notFound();
   const live = tool.status === 'live';
   const price = tool.prices[currency];
+  // the tutorial video (shadow lamp for now), with its details for Google's video results
+  const videoId = live && tool.slug === 'shadow-lamp' ? youtubeId((await getGuides()).shadowVideo) : null;
+  const video = videoId ? KNOWN_VIDEOS[videoId] : null;
 
   const url = `${SITE_URL}/tools/${tool.slug}`;
   const ld = {
@@ -49,6 +55,12 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
         { '@type': 'ListItem', position: 2, name: 'Tools', item: `${SITE_URL}/tools` },
         { '@type': 'ListItem', position: 3, name: tool.name, item: url },
       ] },
+      ...(videoId ? [{
+        '@type': 'VideoObject', name: video?.title ?? `How to use the ${tool.name}`, description: video?.description ?? tool.lede,
+        thumbnailUrl: ytThumb(videoId), embedUrl: `https://www.youtube.com/embed/${videoId}`, contentUrl: ytWatch(videoId),
+        ...(video ? { uploadDate: video.uploadDate, duration: video.duration } : {}),
+        publisher: { '@id': `${SITE_URL}/#org` },
+      }] : []),
       ...(tool.faq.length ? [{ '@type': 'FAQPage', mainEntity: tool.faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }] : []),
     ],
   };
@@ -95,6 +107,30 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
               </div>
             </div>
           </section>
+          {videoId && (
+            <section className="section" id="video">
+              <div className="wrap tool-video">
+                <YouTubeEmbed id={videoId} title={video?.title ?? `How to use the ${tool.name}`} where="tool-page" />
+                <div>
+                  <p className="eyebrow">Video tutorial · 2:35</p>
+                  <h2>Watch how to make a shadow lamp</h2>
+                  <p>Which pictures make a sharp shadow, how to remove a background or turn a drawing into an SVG, and what every setting does, up to downloading the STL files.</p>
+                  <ol>{([
+                    ['0:00', 'Introduction'],
+                    ['0:14', 'Which pictures work best'],
+                    ['0:26', 'Remove the background'],
+                    ['0:39', 'Turn a drawing into an SVG'],
+                    ['0:58', 'How to read your picture'],
+                    ['1:11', 'Darkness, smoothing and swap'],
+                    ['1:33', 'Size, position and loose pieces'],
+                    ['1:59', 'Check it in 3D and lit'],
+                    ['2:10', 'Cover plate and the STL files']
+                  ] as const).map(([t, n]) => { const [m, sec] = t.split(':').map(Number); return <li key={t}><a href={`${ytWatch(videoId)}&t=${m * 60 + sec}s`} target="_blank" rel="noopener"><span className="mono">{t}</span> {n}</a></li>; })}</ol>
+                  {tool.makePath && <p><Link href={tool.makePath} className="btn small">Make yours now <span className="arrow">→</span></Link></p>}
+                </div>
+              </div>
+            </section>
+          )}
           {tool.slug === 'shadow-lamp' && (
             <section className="section" id="gallery">
               <div className="wrap">

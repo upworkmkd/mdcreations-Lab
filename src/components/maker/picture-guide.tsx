@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { track } from '@/components/tracker';
+import { YouTubeEmbed } from '@/components/video/youtube';
+import { youtubeId } from '@/lib/youtube';
 
 /* "Which pictures work best?" next to the shadow lamp uploader: real examples, each picture next to the shadow the
  * maker makes from it (captured from this tool), marked as working or not, with tips and the tutorial video. */
@@ -29,10 +31,11 @@ export function PictureGuide({ videoUrl }: { videoUrl?: string | null }) {
 }
 
 function GuideDialog({ videoUrl, onClose }: { videoUrl?: string | null; onClose(): void }) {
+  const videoId = youtubeId(videoUrl);
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => { const d = ref.current; if (d && !d.open) d.showModal(); }, []);
   return (
-    <dialog ref={ref} className="pg" onClose={onClose} onClick={(e) => { if (e.target === ref.current) ref.current?.close(); }} aria-labelledby="pg-h">
+    <dialog ref={ref} className="pg" onClose={onClose} aria-labelledby="pg-h">
       <div className="pg-in">
         <header className="pg-head">
           <div>
@@ -43,11 +46,11 @@ function GuideDialog({ videoUrl, onClose }: { videoUrl?: string | null; onClose(
           <button type="button" className="pg-x" onClick={() => ref.current?.close()} aria-label="Close">×</button>
         </header>
 
-        {videoUrl && (
-          <a className="pg-video" href={videoUrl} target="_blank" rel="noopener" onClick={() => track('guide_video', 'Shadow lamp tutorial')}>
-            <span className="pg-play" aria-hidden>▶</span>
-            <span><b>Watch the video: how to make a great shadow lamp</b><small>Removing a background, making an SVG, and what every setting does</small></span>
-          </a>
+        {videoId && (
+          <div className="pg-yt">
+            <p className="pg-yt-h"><b>Watch: how to make a great shadow lamp</b><small>Removing a background, making an SVG, and what every setting does (2:35)</small></p>
+            <YouTubeEmbed id={videoId} title="How to make a shadow lamp" where="picture-guide" />
+          </div>
         )}
 
         <div className="pg-grid">

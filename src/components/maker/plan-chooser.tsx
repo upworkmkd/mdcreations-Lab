@@ -15,7 +15,7 @@ export function PlanChooser({ open, onClose, onChoose, single, plans, otherPlan 
   }, [open]);
 
   return (
-    <dialog ref={ref} className="chooser" onClose={onClose} onClick={(e) => { if (e.target === ref.current) onClose(); }} aria-labelledby="chooser-h">
+    <dialog ref={ref} className="chooser" onClose={onClose} aria-labelledby="chooser-h">
       <div className="chooser-in">
         <header>
           <h2 id="chooser-h">How would you like to download?</h2>

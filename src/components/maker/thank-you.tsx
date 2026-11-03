@@ -12,7 +12,7 @@ export function ThankYou({ open, onClose, fileId, name, askReview, blurb = 'Your
   }, [open]);
   const first = name.split(' ')[0];
   return (
-    <dialog ref={ref} className="thanks" onClose={onClose} onClick={(e) => { if (e.target === ref.current) onClose(); }} aria-labelledby="thanks-h">
+    <dialog ref={ref} className="thanks" onClose={onClose} aria-labelledby="thanks-h">
       <div className="thanks-in">
         <button type="button" className="x" onClick={onClose} aria-label="Close">✕</button>
         <div className="thanks-top">
