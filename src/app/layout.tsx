@@ -4,6 +4,9 @@ import { Analytics } from '@vercel/analytics/next';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteChrome } from '@/components/site-chrome';
+import { AdminCurrencyBadge } from '@/components/admin-currency';
+import { FeedbackPopup } from '@/components/feedback-popup';
+import { TOOLS } from '@/lib/tools';
 import { Tracker } from '@/components/tracker';
 import { CANONICAL_URL as SITE_URL } from '@/lib/env';
 import { JsonLd, organizationLd } from '@/lib/seo';
@@ -22,7 +25,7 @@ const mono = localFont({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: 'MD Creations Labs – Shadow Lamp Maker & 3D Printing Tools', template: '%s | MD Creations Labs' },
-  description: 'Online tools that turn your pictures into print-ready 3D files. Make a custom shadow lamp from any picture and download the STL files.',
+  description: 'Online 3D printing tools: turn pictures into shadow lamps, lithophanes, name keychains, rangoli stencils, photo reliefs and vases. Download print-ready STL files.',
   applicationName: 'MD Creations Labs',
   authors: [{ name: 'MD Creations' }],
   creator: 'MD Creations',
@@ -41,6 +44,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <SiteChrome><SiteHeader /></SiteChrome>
         <main id="main">{children}</main>
         <SiteChrome><SiteFooter /></SiteChrome>
+        <SiteChrome><FeedbackPopup tools={TOOLS.filter((t) => t.status !== 'hidden').map((t) => [t.slug, t.name] as [string, string])} /></SiteChrome>
+        <AdminCurrencyBadge />
         <Tracker />
         <Analytics />
       </body>

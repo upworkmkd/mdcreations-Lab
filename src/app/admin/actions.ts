@@ -14,15 +14,27 @@ export async function saveTool(_: SaveState, form: FormData): Promise<SaveState>
   const slug = String(form.get('slug') || ''), status = String(form.get('status') || '');
   if (!slug || !['live', 'coming_soon', 'hidden'].includes(status)) return { error: 'Bad input.' };
   const db = supabaseAdmin();
-  const t = await db.from('tools').update({ status, updated_at: new Date().toISOString() }).eq('slug', slug);
-  if (t.error) return { error: t.error.message };
-  for (const c of CURRENCIES) {
+  const free = form.get('free') === 'on';
+  const t = await db.from('tools').update({ status, free, updated_at: new Date().toISOString() }).eq('slug', slug);
+  if (t.error) return { error: /free/.test(t.error.message) ? 'Not saved: run the free tools SQL migration (20261102000000_free_tools.sql) in Supabase first.' : t.error.message };
+  // a free tool keeps its download prices on file (greyed out), so unticking Free brings them back
+  for (const c of free ? [] : CURRENCIES) {
     const raw = String(form.get(`price_${c}`) ?? '').trim();
     if (raw === '') { await db.from('tool_prices').delete().eq('tool_slug', slug).eq('currency', c); continue; }
     const major = Number(raw);
     if (!Number.isFinite(major) || major < 0 || major > 1_000_000) return { error: `Price in ${c} is not a number.` };
     const p = await db.from('tool_prices').upsert({ tool_slug: slug, currency: c, amount_minor: Math.round(major * 100), updated_at: new Date().toISOString() });
     if (p.error) return { error: p.error.message };
+  }
+  // the printed price (shipping included); only sent for tools that can be printed
+  for (const c of CURRENCIES) {
+    if (!form.has(`print_${c}`)) continue;
+    const raw = String(form.get(`print_${c}`) ?? '').trim();
+    if (raw === '') { await db.from('tool_print_prices').delete().eq('tool_slug', slug).eq('currency', c); continue; }
+    const major = Number(raw);
+    if (!Number.isFinite(major) || major < 1 || major > 1_000_000) return { error: `Printed price in ${c} must be at least 1 (Razorpay's minimum).` };
+    const p = await db.from('tool_print_prices').upsert({ tool_slug: slug, currency: c, amount_minor: Math.round(major * 100), updated_at: new Date().toISOString() });
+    if (p.error) return { error: `${p.error.message}. Did you run the printed orders SQL migration?` };
   }
   clearCatalogCache();
   revalidatePath('/', 'layout');
@@ -49,9 +61,40 @@ export async function setReview(form: FormData) {
   await requireAdmin();
   const id = String(form.get('id') || ''), to = String(form.get('to') || '');
   const db = supabaseAdmin();
-  if (to === 'delete') await db.from('testimonials').delete().eq('id', id);
-  else if (['published', 'hidden', 'pending'].includes(to)) await db.from('testimonials').update({ status: to }).eq('id', id);
+  if (to === 'delete') {
+    // the photos' files go too (their rows go with the review)
+    const { data: ph } = await db.from('review_photos').select('storage_path').eq('testimonial_id', id);
+    if (ph?.length) await db.storage.from('review-photos').remove(ph.map((p) => p.storage_path));
+    await db.from('testimonials').delete().eq('id', id);
+  } else if (['published', 'hidden', 'pending'].includes(to)) {
+    await db.from('testimonials').update({ status: to }).eq('id', id);
+    // publishing a review also approves the photos that came with it (hide any one of them separately)
+    if (to === 'published') await db.from('review_photos').update({ status: 'published' }).eq('testimonial_id', id).eq('status', 'pending');
+  }
   revalidatePath('/', 'layout');
+}
+
+/** One photo on a review: show it, hide it, or delete it. */
+export async function setReviewPhoto(form: FormData) {
+  await requireAdmin();
+  const id = String(form.get('id') || ''), to = String(form.get('to') || '');
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return;
+  const db = supabaseAdmin();
+  if (to === 'delete') {
+    const { data: p } = await db.from('review_photos').select('storage_path').eq('id', id).maybeSingle();
+    if (p) await db.storage.from('review-photos').remove([p.storage_path]);
+    await db.from('review_photos').delete().eq('id', id);
+  } else if (['published', 'hidden', 'pending'].includes(to)) await db.from('review_photos').update({ status: to }).eq('id', id);
+  revalidatePath('/', 'layout');
+}
+
+/* ------------------------------------------------------------------ feedback */
+/** Bound per row in the feedback table: setFeedback.bind(null, id, 'read'). */
+export async function setFeedback(id: string, to: string) {
+  await requireAdmin();
+  if (!/^[0-9a-f-]{36}$/i.test(id) || !['new', 'read', 'archived'].includes(to)) return;
+  await supabaseAdmin().from('feedback').update({ status: to }).eq('id', id);
+  revalidatePath('/admin', 'layout');
 }
 
 /* ------------------------------------------------------------------ plans */
@@ -94,7 +137,7 @@ export async function savePlan(_: SaveState, form: FormData): Promise<SaveState>
 
 /* ------------------------------------------------------------------ deleting records */
 export type DeleteState = { message: string; error?: boolean } | null;
-const KINDS = ['anon', 'visitors', 'events', 'users', 'designs', 'orders', 'payments', 'downloads', 'subscriptions', 'reviews'] as const;
+const KINDS = ['anon', 'visitors', 'events', 'users', 'designs', 'orders', 'payments', 'downloads', 'subscriptions', 'reviews', 'feedback'] as const;
 type Kind = (typeof KINDS)[number];
 
 async function removeStoredFiles(db: ReturnType<typeof supabaseAdmin>, filter: { orderIds?: string[]; userIds?: string[] }) {
@@ -102,7 +145,8 @@ async function removeStoredFiles(db: ReturnType<typeof supabaseAdmin>, filter: {
   if (filter.orderIds) q = q.in('order_id', filter.orderIds);
   if (filter.userIds) q = q.in('user_id', filter.userIds);
   const { data } = await q;
-  const paths = (data ?? []).map((f) => f.storage_path).filter(Boolean);
+  // product zips (products/…) are shared by every buyer of that product: never removed with one customer's files
+  const paths = (data ?? []).map((f) => f.storage_path).filter((x) => x && !x.startsWith('products/'));
   for (let i = 0; i < paths.length; i += 100) await db.storage.from(FILES_BUCKET).remove(paths.slice(i, i + 100));
 }
 
@@ -124,6 +168,7 @@ export async function deleteRecords(_: DeleteState, form: FormData): Promise<Del
       case 'payments': { const r = await db.from('payments').delete({ count: 'exact' }).in('id', ids); if (r.error) throw r.error; done = r.count ?? 0; break; }
       case 'downloads': { const r = await db.from('downloads').delete({ count: 'exact' }).in('id', ids.map(Number)); if (r.error) throw r.error; done = r.count ?? 0; break; }
       case 'reviews': { const r = await db.from('testimonials').delete({ count: 'exact' }).in('id', ids); if (r.error) throw r.error; done = r.count ?? 0; break; }
+      case 'feedback': { const r = await db.from('feedback').delete({ count: 'exact' }).in('id', ids); if (r.error) throw r.error; done = r.count ?? 0; break; }
       case 'orders': {
         await removeStoredFiles(db, { orderIds: ids });
         const r = await db.from('orders').delete({ count: 'exact' }).in('id', ids);   // files, payments and downloads go with them

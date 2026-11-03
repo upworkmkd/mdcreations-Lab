@@ -1,13 +1,20 @@
+import { itemOf } from '@/lib/stl/product';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { UUID_RE } from '@/lib/consent';
 import { toolBySlug } from '@/lib/tools';
 import { Card, Empty, Filters, PageHead, Pager, Pill, Stat, ago, money, num, one, pageNum, place, str, when } from '../../ui';
-import { NOISE, Timeline, type Ev, type Sess } from '../../timeline';
+import { ERRORS, NOISE, Timeline, type Ev, type Sess } from '../../timeline';
 import { BulkForm, DeleteOne } from '../../bulk';
 import { setTracking } from '../../actions';
 import { hasAccess } from '@/lib/plans.server';
+import { emailHistory } from '@/lib/followup.server';
+import { EmailHistory } from '../../followup/history';
+import { SendEmailButton } from '../send-email';
+import { confirmUserEmail } from '../email-actions';
+import { getViewer } from '@/lib/auth.server';
+import { SITE_URL } from '@/lib/env';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'User' };
@@ -23,11 +30,12 @@ export default async function User({ params, searchParams }: { params: Promise<{
   if (!u) notFound();
   let evq = db.from('visitor_events').select('*', { count: 'exact' }).eq('user_id', id);
   if (f === 'key') evq = evq.not('type', 'in', `(${NOISE.join(',')})`);
+  if (f === 'err') evq = evq.in('type', ERRORS);
   const [auth, visitors, designs, orders, payments, files, downloads, ev, subs] = await Promise.all([
     db.auth.admin.getUserById(id),
     db.from('visitors').select('*').eq('user_id', id).order('last_seen', { ascending: false }),
     db.from('designs').select('id, name, preview, tool_slug, created_at').eq('user_id', id).order('created_at', { ascending: false }).limit(60),
-    db.from('orders').select('id, tool_slug, currency, amount_minor, status, provider, provider_order_id, created_at, paid_at, error, designs(name)').eq('user_id', id).order('created_at', { ascending: false }),
+    db.from('orders').select('id, tool_slug, currency, amount_minor, status, provider, provider_order_id, created_at, paid_at, error, designs(name), stl_products(title)').eq('user_id', id).order('created_at', { ascending: false }),
     db.from('payments').select('*').eq('user_id', id).order('created_at', { ascending: false }),
     db.from('files').select('id, name, size_bytes, created_at').eq('user_id', id).order('created_at', { ascending: false }),
     db.from('downloads').select('id, file_id, created_at, files(name)').eq('user_id', id).order('created_at', { ascending: false }).limit(100),
@@ -35,6 +43,8 @@ export default async function User({ params, searchParams }: { params: Promise<{
     db.from('subscriptions').select('*').eq('user_id', id).order('created_at', { ascending: false }),
   ]);
   const au = auth.data?.user;
+  const me = await getViewer();
+  const mails = await emailHistory({ userId: id, email: u.email, limit: 100 });
   const sids = [...new Set((ev.data ?? []).map((e) => e.session_id).filter(Boolean))] as string[];
   const { data: sess } = sids.length ? await db.from('visitor_sessions').select('*').in('id', sids) : { data: [] };
   const spent: Record<string, number> = {};
@@ -46,6 +56,7 @@ export default async function User({ params, searchParams }: { params: Promise<{
     <>
       <PageHead title={u.full_name || u.email} sub={<>{u.email} · joined {when(u.created_at)}{u.role === 'admin' ? ' · admin' : ''}</>}>
         <Link href="/admin/users" className="btn small ghost">← All users</Link>
+        {u.email && <SendEmailButton userId={u.id} email={u.email} name={u.full_name ?? ''} confirmed={Boolean(au?.email_confirmed_at)} signer={me?.name ?? ''} siteUrl={SITE_URL} />}
         <form action={setTracking}>
           <input type="hidden" name="id" value={u.id} /><input type="hidden" name="on" value={u.track === false ? '1' : '0'} />
           <button className="btn small ghost" title={u.track === false ? 'Start recording this account again' : 'Stop recording this account and remove what was recorded'}>{u.track === false ? 'Tracking off · turn on' : 'Stop tracking'}</button>
@@ -87,7 +98,12 @@ export default async function User({ params, searchParams }: { params: Promise<{
             <div><dt>Name</dt><dd>{u.full_name || '—'}</dd></div>
             <div><dt>Role</dt><dd>{u.role}</dd></div>
             <div><dt>Signed up</dt><dd>{when(u.created_at)}</dd></div>
-            <div><dt>Email confirmed</dt><dd>{when(au?.email_confirmed_at)}</dd></div>
+            <div><dt>Email confirmed</dt><dd>{au?.email_confirmed_at ? when(au.email_confirmed_at) : (
+              <span className="adm-inline" style={{ alignItems: 'center' }}>
+                <span style={{ color: 'var(--bad)' }}>not yet</span>
+                <form action={confirmUserEmail}><input type="hidden" name="id" value={u.id} /><button className="linkish" title="Mark the email as confirmed without an email, for someone whose emails do not arrive">Confirm by hand</button></form>
+              </span>
+            )}</dd></div>
             <div><dt>Last sign-in</dt><dd>{when(au?.last_sign_in_at)}</dd></div>
             <div><dt>Sign-in method</dt><dd>{au?.app_metadata?.provider ?? '—'}</dd></div>
           </dl>
@@ -112,7 +128,7 @@ export default async function User({ params, searchParams }: { params: Promise<{
               {(orders.data ?? []).map((o) => (
                 <tr key={o.id}>
                   <td>{when(o.created_at)}<div className="id">{o.provider_order_id ?? o.provider}</div></td>
-                  <td>{one(o.designs as { name: string } | { name: string }[] | null)?.name ?? '—'}</td>
+                  <td>{itemOf(o).name ?? '—'}</td>
                   <td><Pill s={o.status} />{o.error && <div className="id" style={{ color: 'var(--bad)' }}>{o.error}</div>}</td>
                   <td className="num">{money(o.amount_minor, o.currency)}</td>
                 </tr>
@@ -135,7 +151,12 @@ export default async function User({ params, searchParams }: { params: Promise<{
         </Card>
       </div>
 
-      <Card title="Activity timeline" action={<Filters base={`/admin/users/${id}`} current={f} options={[['', 'Everything'], ['key', 'Pages and key actions']]} />}>
+      <Card title={`Emails to this customer (${mails.length})`}>
+        <p className="id" style={{ marginBottom: 10 }}>Account emails, receipts, order updates and follow-ups, newest first. Use “Send email” at the top to send one.</p>
+        <EmailHistory rows={mails} />
+      </Card>
+
+      <Card title="Activity timeline" action={<Filters base={`/admin/users/${id}`} current={f} options={[['', 'Everything'], ['key', 'Pages and key actions'], ['err', 'Errors']]} />}>
         {u.track === false && <p className="adm-alert" style={{ marginBottom: 14 }}>Tracking is off for this account: nothing it does is recorded.</p>}
         <BulkForm kind="events" noun="event"><Timeline events={(ev.data ?? []) as Ev[]} sessions={(sess ?? []) as Sess[]} selectable /></BulkForm>
         <Pager page={page} size={SIZE} total={ev.count ?? 0} base={`/admin/users/${id}`} params={{ f }} />

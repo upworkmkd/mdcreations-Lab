@@ -41,11 +41,12 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
         '@type': 'WebApplication', name: tool.name, url, description: TOOL_SEO[tool.slug]?.description ?? tool.lede,
         applicationCategory: 'DesignApplication', operatingSystem: 'Any (web browser)', image: `${SITE_URL}${tool.image}`,
         publisher: { '@id': `${SITE_URL}/#org` },
-        ...(live ? { offers: Object.entries(tool.prices).map(([c, a]) => ({ '@type': 'Offer', price: ((a as number) / 100).toFixed(2), priceCurrency: c, availability: 'https://schema.org/InStock', url: `${SITE_URL}${tool.makePath ?? `/tools/${tool.slug}`}` })) } : {}),
+        ...(live && tool.free ? { offers: { '@type': 'Offer', price: '0', priceCurrency: currency } } : {}),
+        ...(live && !tool.free ? { offers: Object.entries(tool.prices).map(([c, a]) => ({ '@type': 'Offer', price: ((a as number) / 100).toFixed(2), priceCurrency: c, availability: 'https://schema.org/InStock', url: `${SITE_URL}${tool.makePath ?? `/tools/${tool.slug}`}` })) } : {}),
       },
       { '@type': 'BreadcrumbList', itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Labs', item: SITE_URL },
-        { '@type': 'ListItem', position: 2, name: 'Tools', item: `${SITE_URL}/#tools` },
+        { '@type': 'ListItem', position: 2, name: 'Tools', item: `${SITE_URL}/tools` },
         { '@type': 'ListItem', position: 3, name: tool.name, item: url },
       ] },
       ...(tool.faq.length ? [{ '@type': 'FAQPage', mainEntity: tool.faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }] : []),
@@ -56,14 +57,15 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
     <>
       <JsonLd data={ld} />
       <div className="wrap page-title">
-        <nav className="crumbs" aria-label="Breadcrumb"><Link href="/#tools">Tools</Link><span>/</span><span>{tool.index}</span></nav>
+        <nav className="crumbs" aria-label="Breadcrumb"><Link href="/tools">Tools</Link><span>/</span><span>{tool.index}</span></nav>
         <h1>{tool.name}</h1>
         <p className="lede">{tool.lede}</p>
         <div className="actions">
           {live && tool.makePath ? (
             <>
-              <Link href={tool.makePath} className="btn">Open the maker <span className="arrow">→</span></Link>
-              {price != null && <span className="mono muted" style={{ fontSize: 14 }}>Free to try · {formatMoney(price, currency)} to download a design</span>}
+              <Link href={tool.makePath} className="btn">{tool.noAccount ? 'Open the tool' : 'Open the maker'} <span className="arrow">→</span></Link>
+              {tool.free ? <span className="mono muted" style={{ fontSize: 14 }}>{tool.noAccount ? 'Free · no account needed' : 'Free · sign in to download your files'}</span>
+                : price != null && <span className="mono muted" style={{ fontSize: 14 }}>Free to try · {formatMoney(price, currency)} to download a design</span>}
             </>
           ) : (
             <>
@@ -117,22 +119,33 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
           <section className="section">
             <div className="wrap split">
               <div>
-                <p className="eyebrow">The lamp</p>
+                <p className="eyebrow">{tool.specsTitle ?? 'At a glance'}</p>
                 <table className="specs" style={{ marginTop: 18 }}>
                   <tbody>{tool.specs.map(([k, v]) => <tr key={k}><th scope="row">{k}</th><td>{v}</td></tr>)}</tbody>
                 </table>
               </div>
+              {tool.free ? (
+              <div className="price-card">
+                <p className="eyebrow">Free tool</p>
+                <div className="amount">Free</div>
+                <p className="per">{tool.noAccount ? 'no account, no payment · works in your browser' : 'no payment · sign in to save and download your files'}</p>
+                <ul>{tool.youGet.map((x) => <li key={x}>{x}</li>)}</ul>
+                {tool.makePath && <Link href={tool.makePath} className="btn">{tool.noAccount ? 'Open the tool' : 'Open the maker'} <span className="arrow">→</span></Link>}
+                <p className="per" style={{ marginTop: 14 }}>Want more? <Link href="/pricing">Our paid makers</Link> turn pictures into lamps, sculptures and more.</p>
+              </div>
+              ) : (
               <div className="price-card">
                 <p className="eyebrow">One design, one price</p>
                 <div className="amount">{price != null ? formatMoney(price, currency) : '—'}</div>
                 <p className="per">per design · {currency === 'INR' ? 'incl. GST where applicable' : 'paid by card'} · download again any time</p>
                 <ul>{tool.youGet.map((x) => <li key={x}>{x}</li>)}</ul>
                 {tool.makePath && <Link href={tool.makePath} className="btn">Start designing <span className="arrow">→</span></Link>}
-                <p className="per" style={{ marginTop: 14 }}>Making lamps often? <Link href="/pricing">A monthly plan</Link> includes up to 10 designs a day, for every tool.</p>
+                <p className="per" style={{ marginTop: 14 }}>Making these often? <Link href="/pricing">A monthly plan</Link> includes up to 10 designs a day, for every tool.</p>
               </div>
+              )}
             </div>
           </section>
-          <section className="section band">
+          {tool.files !== false && <section className="section band">
             <div className="wrap split license-band">
               <div>
                 <p className="eyebrow" style={{ color: 'var(--light)' }}>Commercial license included</p>
@@ -142,7 +155,7 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
               </div>
               <ul className="checks">{LICENSE_POINTS.map((p) => <li key={p}>{p}</li>)}</ul>
             </div>
-          </section>
+          </section>}
           {tool.faq.length > 0 && (
             <section className="section">
               <div className="wrap split">

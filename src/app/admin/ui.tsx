@@ -129,7 +129,7 @@ export function Filters({ base, current, options, name = 'f' }: { base: string; 
   return (
     <nav className="adm-filters" aria-label="Filter">
       {options.map(([v, label]) => (
-        <Link key={v} href={v ? `${base}?${name}=${v}` : base} className={(current ?? '') === v ? 'on' : ''}>{label}</Link>
+        <Link key={v} href={v ? `${base}${base.includes('?') ? '&' : '?'}${name}=${v}` : base} className={(current ?? '') === v ? 'on' : ''}>{label}</Link>
       ))}
     </nav>
   );

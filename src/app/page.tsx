@@ -1,68 +1,111 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { ToolCard, splitTools } from '@/components/tool-card';
+import { FEATURED } from '@/lib/featured';
 import { getCatalog, getCurrency } from '@/lib/catalog.server';
 import { formatMoney } from '@/lib/money';
 import { HeroSlider, type Slide } from '@/components/hero-slider';
 import { LAMP_GALLERY, KIND_LABEL } from '@/lib/gallery';
 import { SocialBand } from '@/components/social-band';
 import { Reviews } from '@/components/reviews';
-import { pageMeta } from '@/lib/seo';
+import { JsonLd, TOOL_SEO, pageMeta } from '@/lib/seo';
+import { CANONICAL_URL as SITE_URL } from '@/lib/env';
+import { liveProducts } from '@/lib/stl/shop.server';
 
 export const metadata = pageMeta({
   title: 'MD Creations Labs – Shadow Lamp Maker & 3D Printing Tools',
   absoluteTitle: true,
-  description: 'Make a custom 3D printed shadow lamp from any picture, preview the shadow on your wall and download print-ready STL files. More tools for makers coming: statue maker, layered sculptures and STL repair.',
+  description: 'Design 3D prints in your browser: custom shadow lamps, Diwali rangoli stencils, photo lithophanes, name keychains and more. Download print-ready STL files.',
   path: '/',
-  keywords: ['shadow lamp maker', '3D printing tools', 'custom shadow lamp STL', 'photo to STL', 'MD Creations'],
+  keywords: ['3D printing tools', 'online STL generator', 'STL maker online', 'image to STL converter', 'PNG to STL', 'SVG to STL', 'photo to STL', 'image to STL', 'shadow lamp maker', 'custom shadow lamp STL', 'lithophane maker', 'name keychain STL', '3D printed rangoli stencil', 'cookie cutter STL generator', 'photo relief STL', 'filament painting', 'HueForge alternative', 'vase mode STL generator', 'QR code to STL', '3D print cost calculator', 'STL files India', 'MD Creations Labs'],
 });
 
-const DELIVERABLES: Record<string, { file: string; lines: [string, string?][] }> = {
-  'shadow-lamp': { file: 'your-design_shadow_lamp.zip', lines: [['1 top.stl'], ['2 right.stl'], ['3 left.stl'], ['4 bottom.stl'], ['plate.stl'], ['plate picture.stl', 'inlay'], ['Lamp base.stl'], ['Battery cover.stl'], ['shadow preview.jpg'], ['README.txt', 'how-to']] },
-  statue: { file: 'your-design_statue.zip', lines: [['statue.stl', 'watertight'], ['statue_hollow.stl', 'resin'], ['base.stl'], ['README.txt']] },
-  'layered-sculpture': { file: 'your-design_layered_sculpture.zip', lines: [['L01_frame.stl'], ['L02 … L07 colour layers.stl', 'one per colour'], ['L08_back.stl'], ['preview.jpg'], ['README.txt', 'assembly guide'], ['LICENSE.txt', 'commercial']] },
-  'stl-repair': { file: 'your-model_repaired.zip', lines: [['repaired.stl'], ['report.html', 'every fix'], ['before-after.png']] },
-};
-
 export default async function Home() {
-  const [tools, currency] = await Promise.all([getCatalog(), getCurrency()]);
-  const slides: Slide[] = tools.map((t) => {
+  const [tools, currency, products] = await Promise.all([getCatalog(), getCurrency(), liveProducts().catch(() => [])]);
+  // "We print it and ship it": the live tools and shop models that can be ordered printed (India, shipping included)
+  const printTools = tools.filter((t) => t.status === 'live' && t.makePath && t.printPrices.INR != null);
+  const printModels = products.filter((p) => p.print_price_inr != null);
+  const printFrom = Math.min(...printTools.map((t) => t.printPrices.INR as number), ...printModels.map((p) => p.print_price_inr as number));
+  const printOpen = printTools.length > 0 || printModels.length > 0;
+  const slides: Slide[] = FEATURED.flatMap(({ slug, badge }) => {
+    const t = tools.find((x) => x.slug === slug); if (!t) return [];
     const live = t.status === 'live', p = t.prices[currency];
-    return {
-      slug: t.slug, index: t.index, name: t.name, live, price: live && p != null ? formatMoney(p, currency) : null,
+    return [{
+      slug: t.slug, index: t.index, name: t.name, badge, live, price: live && !t.free && p != null ? formatMoney(p, currency) : null,
       title: t.slide.title, lede: t.slide.lede, image: t.image,
       primary: live && t.makePath ? { href: t.makePath, label: 'Start designing' } : { href: `/tools/${t.slug}`, label: 'See what is coming' },
-      secondary: live ? { href: `/tools/${t.slug}`, label: 'How it works' } : { href: '/#tools', label: 'All tools' },
-    };
+      secondary: live ? { href: `/tools/${t.slug}`, label: 'How it works' } : { href: '/tools', label: 'All tools' },
+    }];
   });
+  // live tools first, then the ones that are coming; the free tools get their own row
+  const { design, free } = splitTools(tools);
+  const liveCount = tools.filter((t) => t.status === 'live').length;
 
   return (
     <>
+      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'ItemList', name: '3D printing tools by MD Creations Labs', itemListElement: tools.filter((t) => t.status === 'live').map((t, n) => ({ '@type': 'ListItem', position: n + 1, name: t.name, url: `${SITE_URL}/tools/${t.slug}`, description: TOOL_SEO[t.slug]?.description ?? t.lede })) }} />
       <HeroSlider slides={slides} />
+
+      <section className="section ways">
+        <div className="wrap">
+          <div className="ways-head">
+            <p className="eyebrow">Labs · {liveCount} {liveCount === 1 ? 'tool' : 'tools'} live, more every month</p>
+            <h2>Design it in your browser.<br /><em>Print it yourself, or let us print it for you.</em></h2>
+            <p className="lede">Shape your shadow lamp, rangoli stencil, lithophane or name sign with a live 3D preview. Then take the print-ready files to your own printer, or place an order and we print it in our workshop and ship it to your door.</p>
+          </div>
+          <div className="ways-grid">
+            <div className="way">
+              <p className="num">Way 1 · For makers</p>
+              <h3>Print it on your printer</h3>
+              <p>Download the files for your design and print them at home or in your shop.</p>
+              <ul>
+                <li>Print-ready STL and two-colour 3MF files</li>
+                <li>Print notes with layer heights and colour changes</li>
+                <li>Commercial license: sell what you print</li>
+              </ul>
+              <div className="actions"><Link href="#tools" className="btn">Pick a tool <span className="arrow">→</span></Link></div>
+            </div>
+            <div className="way dark">
+              <p className="num">Way 2 · No printer needed{printOpen ? <span className="soon">Now open in India</span> : null}</p>
+              <h3>We print it and ship it</h3>
+              <p>Design it in any of our tools and choose “Order it printed” instead of downloading. We print it in our workshop and post it to your door.{Number.isFinite(printFrom) ? ` From ${formatMoney(printFrom, 'INR')}, shipping included.` : ''}</p>
+              <ul>
+                <li>{printTools.length ? <>Order from {printTools.slice(0, 4).map((t) => t.name.replace(/ (Maker|Generator|Converter)$/, '')).join(', ')}{printTools.length > 4 ? ' and more' : ''}</> : 'Any design you make in our tools'}</li>
+                <li>Your design and your colours, printed, checked and packed by hand</li>
+                <li>Shipping included, delivered across India with updates by email</li>
+              </ul>
+              <div className="actions">
+                <Link href="/tools" className="btn light">Choose a tool <span className="arrow">→</span></Link>
+                {printModels.length ? <Link href="/stl-files" className="note">Or order a printed model from the STL shop →</Link> : <span className="note">India only for now.</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="section" id="tools">
         <div className="wrap">
-          <div className="section-head">
-            <h2>The workbench</h2>
-            <p>Small, careful tools that turn pictures and models into files your 3D printer understands. Each tool has its own page. Trying them is free; you pay only when you download the files for a design.</p>
+          <div className="center-head">
+            <p className="eyebrow">The workbench</p>
+            <h2>Design tools</h2>
+            <p>Pick a tool and shape your design with a live preview. A tool for every idea, from gifts to Diwali decor.</p>
           </div>
-          <ul className="catalog">
-            {tools.map((t) => {
-              const price = t.prices[currency], live = t.status === 'live';
-              return (
-                <li key={t.slug} className={live ? 'live' : 'soon'}>
-                  <Link className="row" href={`/tools/${t.slug}`}>
-                    <span className="thumb"><Image src={t.image} alt="" fill sizes="120px" /></span>
-                    <span className="name"><span className="idx">{t.index}</span>{t.name}</span>
-                    <span className="desc">{t.short}</span>
-                    <span className={`status ${live ? 'live' : ''}`}>{live ? (price != null ? `Live · ${formatMoney(price, currency)}` : 'Live') : 'Coming soon'}</span>
-                    <span className="go" aria-hidden>→</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <ul className={`toolgrid${design.length < 4 ? ' few' : ''}`}>{design.map((t) => <ToolCard key={t.slug} t={t} currency={currency} />)}</ul>
         </div>
       </section>
+
+      {free.length > 0 && (
+        <section className="section soft" id="free-tools">
+          <div className="wrap">
+            <div className="center-head">
+              <p className="eyebrow">Nothing to pay</p>
+              <h2>Free tools</h2>
+              <p>Handy tools for the jobs around printing. Nothing to install and nothing to pay.</p>
+            </div>
+            <ul className={`toolgrid${free.length < 4 ? ' few' : ''}`}>{free.map((t) => <ToolCard key={t.slug} t={t} currency={currency} />)}</ul>
+          </div>
+        </section>
+      )}
 
       <section className="section band">
         <div className="wrap">
@@ -72,7 +115,7 @@ export default async function Home() {
           </div>
           <div className="steps3">
             {[
-              ['Bring a picture or a model', 'A photo, a drawing, a logo, a scan or an STL. It stays in your browser while you work.'],
+              ['Bring a picture or a model', 'A photo, a drawing, a logo, a scan or an STL. A copy is kept for 10 days to improve the tools, unless you untick the box under the upload.'],
               ['Shape it, free', 'Size, place and tune it with a live preview of the finished piece. Try as many versions as you like.'],
               ['Pay once, keep it', 'Buy the design you like and the print-ready files are built for you. They stay in your account to download again.'],
             ].map(([h, p], i) => (
@@ -103,26 +146,6 @@ export default async function Home() {
           <div style={{ marginTop: 28, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link href="/tools/shadow-lamp/make" className="btn">Make one from your picture <span className="arrow">→</span></Link>
             <Link href="/tools/shadow-lamp#gallery" className="btn ghost">See all designs</Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="wrap">
-          <div className="section-head">
-            <h2>Every download is ready for the slicer.</h2>
-            <p>One zip per design, named after it, with every part and a short note on how to print and put it together.</p>
-          </div>
-          <div className="deliver">
-            {tools.map((t) => {
-              const d = DELIVERABLES[t.slug]; if (!d) return null;
-              return (
-                <div key={t.slug} className="card">
-                  <div className="top"><b>{t.name}</b><span className={`status ${t.status === 'live' ? 'live' : ''}`}>{t.status === 'live' ? 'Live' : 'Soon'}</span></div>
-                  <pre className="manifest small"><span className="dir">{d.file}</span>{'\n'}{d.lines.map(([a, b]) => `  ${a}${b ? `  ` : ''}`).map((l, i) => <span key={i}>{l}{d.lines[i][1] ? <span className="dim">· {d.lines[i][1]}</span> : null}{'\n'}</span>)}</pre>
-                </div>
-              );
-            })}
           </div>
         </div>
       </section>

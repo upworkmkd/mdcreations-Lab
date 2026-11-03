@@ -18,6 +18,10 @@ export default async function Users({ searchParams }: { searchParams: Promise<Re
     const { data: b } = await db.from('orders').select('user_id').in('status', ['paid', 'fulfilled']).limit(5000);
     query = query.in('id', [...new Set((b ?? []).map((x) => x.user_id))].concat('00000000-0000-0000-0000-000000000000'));
   }
+  // whose email is not confirmed yet (one call lists up to 1,000 accounts)
+  const { data: au } = await db.auth.admin.listUsers({ perPage: 1000 });
+  const unconfirmed = new Set((au?.users ?? []).filter((x) => !x.email_confirmed_at).map((x) => x.id));
+  if (f === 'unconfirmed') query = query.in('id', [...unconfirmed].concat('00000000-0000-0000-0000-000000000000'));
   const { data, count } = await query.order('created_at', { ascending: false }).range((page - 1) * SIZE, page * SIZE - 1);
   const ids = (data ?? []).map((u) => u.id);
   const [designs, orders, visitors, downloads] = ids.length ? await Promise.all([
@@ -41,7 +45,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<Re
           <input name="q" defaultValue={q} placeholder="Search name or email" className="input" aria-label="Search users" />
         </form>
       </PageHead>
-      <Filters base="/admin/users" current={f} options={[['', 'All'], ['buyers', 'Customers who paid'], ['admin', 'Admins']]} />
+      <Filters base="/admin/users" current={f} options={[['', 'All'], ['buyers', 'Customers who paid'], ['unconfirmed', 'Email not confirmed'], ['admin', 'Admins']]} />
       <Card flush>
         <BulkForm kind="users" noun="user" warn="Their account, designs, orders, files and plans are removed, and any live plan is cancelled in Razorpay.">
 <div className="tbl-wrap"><table className="tbl adm-tbl">
@@ -52,7 +56,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<Re
               return (
                 <tr key={u.id}>
                   <td className="sel"><Sel id={u.id} /></td>
-                  <td><Link href={`/admin/users/${u.id}`} className="adm-who"><b>{u.full_name || u.email}</b></Link>{u.role === 'admin' && <> <span className="pill">admin</span></>}<div className="id">{u.email}</div></td>
+                  <td><Link href={`/admin/users/${u.id}`} className="adm-who"><b>{u.full_name || u.email}</b></Link>{u.role === 'admin' && <> <span className="pill">admin</span></>}{unconfirmed.has(u.id) && <> <span className="pill failed" title="Has not confirmed the email yet. Open the user to send the confirmation again.">not confirmed</span></>}<div className="id">{u.email}</div></td>
                   <td title={when(u.created_at)}>{ago(u.created_at)}</td>
                   <td>{a?.seen ? ago(a.seen) : '—'}<div className="id">{a?.place}</div></td>
                   <td className="num">{num(a?.visits)}</td>

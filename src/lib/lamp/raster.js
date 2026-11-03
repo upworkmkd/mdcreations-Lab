@@ -206,7 +206,7 @@ function strutIsland(R, own, connected, isl, p) {
     const edge = Math.min(i - isl.i0, isl.i1 - i), score = (j - jj) - Math.min(edge, hw * 2) * 0.5;
     if (!best || score < best.score) best = { score, i, j, jj };
   }
-  if (!best) return false;
+  if (!best) return pathStrut(R, own, connected, isl, hw, inD);
   for (let j = best.jj - hw; j <= best.j + hw; j++) for (let i = best.i - hw; i <= best.i + hw; i++) {
     if (!inD(i, j)) continue; const k = j * w + i;
     if (!R.mask[k]) R.strutMask[k] = 1;
@@ -215,6 +215,36 @@ function strutIsland(R, own, connected, isl, p) {
   return true;
 }
 
+// No solid wall straight below the piece (it hangs over a gap or sits in a pocket): tie it on by the shortest way
+// to the part that is already held, in any direction, so no wall ever has a loose piece.
+function pathStrut(R, own, connected, isl, hw, inD) {
+  const { w, h, lab } = R, n = w * h, prev = new Int32Array(n).fill(-2), q = new Int32Array(n);
+  let qh = 0, qt = 0;
+  for (let k = 0; k < n; k++) if (connected[k]) { prev[k] = -1; q[qt++] = k; }
+  if (!qt) return false;
+  let hit = -1;
+  while (qh < qt && hit < 0) {
+    const k = q[qh++], i = k % w, j = (k / w) | 0;
+    for (let d = 0; d < 8; d++) {
+      const ii = i + (d === 0 ? 1 : d === 1 ? -1 : d === 4 || d === 6 ? 1 : d === 5 || d === 7 ? -1 : 0), jj = j + (d === 2 ? 1 : d === 3 ? -1 : d === 4 || d === 5 ? 1 : d === 6 || d === 7 ? -1 : 0);
+      if (!inD(ii, jj)) continue;
+      const kk = jj * w + ii; if (prev[kk] !== -2) continue;
+      prev[kk] = k;
+      if (lab[kk] === isl.l) { hit = kk; break; }
+      q[qt++] = kk;
+    }
+  }
+  if (hit < 0) return false;
+  for (let k = prev[hit]; k >= 0 && !connected[k]; k = prev[k]) {
+    const i = k % w, j = (k / w) | 0;
+    for (let y = j - hw; y <= j + hw; y++) for (let x = i - hw; x <= i + hw; x++) {
+      if (!inD(x, y)) continue; const kk = y * w + x;
+      if (!R.mask[kk]) R.strutMask[kk] = 1;
+      R.mask[kk] = 1; own[kk] = 1;
+    }
+  }
+  return true;
+}
 
 // which panel end meets which: [panel, end] -> [neighbour, neighbour end]; end 0 = low s, 1 = high s
 const CORNERS = { 'top1': ['right', 0], 'top0': ['left', 1], 'bottom1': ['left', 0], 'bottom0': ['right', 1],

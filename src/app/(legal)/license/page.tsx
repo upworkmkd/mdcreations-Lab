@@ -5,6 +5,7 @@ import { LICENSE_NAME, LICENSE_POINTS, LICENSE_SECTIONS, LICENSE_VERSION } from 
 export const metadata: Metadata = {
   title: 'Commercial license',
   description: 'Every file from MD Creations Labs comes with a commercial license: print it, sell the prints, and sell or share the files, changed or not.',
+  keywords: ['commercial license STL files', 'sell 3D prints license', 'royalty free STL', 'STL files for commercial use'],
   alternates: { canonical: '/license' },
 };
 

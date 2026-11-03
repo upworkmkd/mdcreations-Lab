@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Legal } from '@/components/legal';
 import { SUPPORT_EMAIL, SOCIALS } from '@/lib/env';
-export const metadata: Metadata = { title: 'Contact', description: 'Contact MD Creations for help with Labs tools, custom shadow lamps and printed orders.', alternates: { canonical: '/contact' } };
+export const metadata: Metadata = { title: 'Contact', description: 'Contact MD Creations for help with Labs tools, your downloads, custom shadow lamps and printed orders, or to ask about a design you would like us to make.', keywords: ['contact MD Creations', 'MD Creations Labs support', 'custom 3D print order India'], alternates: { canonical: '/contact' } };
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const plan = (await searchParams).plan;
   const planName = plan === 'standard' ? 'Standard' : plan === 'starter' ? 'Starter' : null;

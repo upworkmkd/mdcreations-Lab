@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Legal } from '@/components/legal';
-export const metadata: Metadata = { title: 'Delivery', description: 'How digital downloads from MD Creations Labs are delivered.', alternates: { canonical: '/shipping' } };
+export const metadata: Metadata = { title: 'Delivery', description: 'How downloads from MD Creations Labs are delivered: your STL files are built as soon as payment is confirmed and stay in your account to download again.', keywords: ['MD Creations Labs delivery', 'STL file download'], alternates: { canonical: '/shipping' } };
 export default function Page() {
   return (
     <Legal title="Delivery" updated="8 October 2026">

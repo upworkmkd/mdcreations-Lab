@@ -2,8 +2,19 @@ import Link from 'next/link';
 import { Logo } from '@/components/brand';
 import { SUPPORT_EMAIL, SOCIALS } from '@/lib/env';
 import { CookieSettings } from '@/components/tracker';
+import { FeedbackLink } from '@/components/feedback-popup';
+import { getCatalog } from '@/lib/catalog.server';
+import { FEATURED } from '@/lib/featured';
 
-export function SiteFooter() {
+const MAIN = 6;   // tools listed in the footer; the rest are one click away on /tools
+
+export async function SiteFooter() {
+  const tools = await getCatalog();
+  // the main tools: the featured ones first, then other live design tools, then one free tool
+  const live = tools.filter((t) => t.status === 'live');
+  const picked = [...FEATURED.map((f) => live.find((t) => t.slug === f.slug)), ...live.filter((t) => !t.free)].filter((t, i, a) => t && a.indexOf(t) === i).slice(0, MAIN - 1);
+  const firstFree = live.find((t) => t.free);
+  const main = [...picked, ...(firstFree ? [firstFree] : [])] as typeof tools;
   return (
     <footer className="site-foot">
       <div className="wrap">
@@ -14,15 +25,14 @@ export function SiteFooter() {
         <div>
           <h4>Tools</h4>
           <ul>
-            <li><Link href="/tools/shadow-lamp">Shadow Lamp Maker</Link></li>
-            <li><Link href="/tools/statue">Statue Maker</Link></li>
-            <li><Link href="/tools/layered-sculpture">Layered Sculpture Maker</Link></li>
-            <li><Link href="/tools/stl-repair">STL Repair</Link></li>
+            {main.map((t) => <li key={t.slug}><Link href={`/tools/${t.slug}`}>{t.name}</Link>{t.free ? <span className="foot-free" style={{ whiteSpace: 'nowrap' }}> · free</span> : null}</li>)}
+            <li className="foot-more"><Link href="/tools">All {tools.length} tools →</Link></li>
           </ul>
         </div>
         <div>
           <h4>Help</h4>
           <ul>
+            <li><Link href="/stl-files">STL files</Link></li>
             <li><Link href="/pricing">Pricing and plans</Link></li>
             <li><Link href="/license">Commercial license</Link></li>
             <li><Link href="/account">Your files</Link></li>
@@ -44,6 +54,7 @@ export function SiteFooter() {
             <li><Link href="/privacy">Privacy</Link></li>
             <li><Link href="/shipping">Delivery</Link></li>
             <li><CookieSettings /></li>
+            <li><FeedbackLink /></li>
           </ul>
         </div>
         <div className="base">

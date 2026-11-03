@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { verifyWebhookSignature, type RzpSubscription } from '@/lib/razorpay.server';
 import { fulfilOrder, recordPayment } from '@/lib/fulfil.server';
 import { syncSubscription } from '@/lib/plans.server';
+import { subscriptionEmailsLater } from '@/lib/subscription-mail.server';
 
 export const maxDuration = 60;
 
@@ -31,6 +32,7 @@ export async function POST(req: Request) {
     const s = evt.payload?.subscription?.entity;
     if (!s) return NextResponse.json({ ok: true });
     const row = await syncSubscription(s);
+    if (row && (row.status === 'active' || row.status === 'authenticated')) subscriptionEmailsLater(row.id);   // the welcome email, once
     const pay = evt.payload?.payment?.entity;
     if (row && pay && evt.event === 'subscription.charged') {
       await db.from('payments').upsert({
@@ -48,8 +50,14 @@ export async function POST(req: Request) {
   if (!order) return NextResponse.json({ ok: true });   // e.g. a plan renewal: handled by subscription.charged
   try {
     if (order.status === 'created') await recordPayment(order, pay.id);
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });   // Razorpay retries later
+  }
+  try {
     if (order.status !== 'fulfilled') await fulfilOrder(order.id);
   } catch (e) {
+    // a printed order whose files failed to build is still paid; the shop rebuilds it from the admin
+    if (order.kind === 'print') return NextResponse.json({ ok: true });
     // Answer 500 so Razorpay retries later.
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }

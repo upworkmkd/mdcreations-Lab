@@ -3,7 +3,7 @@
 export type PictureMask = { w: number; h: number; sigma: number; mask: string };
 export type View = { cx: number; cy: number; mmPerPx: number; mirror: boolean };
 export type WallOpts = { Vmax: number; minSolid: number; apex: number; struts: boolean; backing: boolean; cornerWrap: boolean; ribs: boolean; leftCutouts: boolean };
-export type PlateOpts = { style: 'solid' | 'outline'; lineW: number; gap: number };
+export type PlateOpts = { style: 'solid' | 'outline'; lineW: number; gap: number; combined: boolean; plateColor: string; artColor: string };
 
 export type LampDesign = {
   v: 1;
@@ -15,7 +15,8 @@ export type LampDesign = {
 };
 
 export const WALL_DEFAULTS: WallOpts = { Vmax: 67.5, minSolid: 0.35, apex: 75, struts: true, backing: false, cornerWrap: true, ribs: true, leftCutouts: true };
-export const PLATE_DEFAULTS: PlateOpts = { style: 'solid', lineW: 1.6, gap: 0.15 };
+export const PLATE_DEFAULTS: PlateOpts = { style: 'solid', lineW: 1.6, gap: 0.15, combined: false, plateColor: '#3a3d2c', artColor: '#e9c78f' };
+const hex = (v: unknown, fallback: string) => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v : fallback);
 
 const MAX_SIDE = 1400;
 const MAX_MASK_CHARS = 3_000_000;
@@ -64,7 +65,7 @@ export function parseDesign(raw: unknown): LampDesign {
     plate = {
       own,
       view: view(p.view, own ?? shadowPic),
-      opts: { style: po.style === 'outline' ? 'outline' : 'solid', lineW: num(po.lineW, 1, 3, 1.6), gap: num(po.gap, 0.05, 0.3, 0.15) },
+      opts: { style: po.style === 'outline' ? 'outline' : 'solid', lineW: num(po.lineW, 1, 3, 1.6), gap: num(po.gap, 0.05, 0.3, 0.15), combined: bool(po.combined, false), plateColor: hex(po.plateColor, PLATE_DEFAULTS.plateColor), artColor: hex(po.artColor, PLATE_DEFAULTS.artColor) },
     };
   }
   const name = (typeof r.name === 'string' ? r.name : '').replace(/[^A-Za-z0-9 _-]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40) || 'Design';

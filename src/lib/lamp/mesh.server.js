@@ -467,3 +467,102 @@ export function generatePlate(sampler, opts) {
   for (const r of rec) { wallTris(pt, r.outer, zf, zt, true); for (const hh of r.holes) wallTris(pt, hh, zf, zt, true); }
   return { params: q, plateTris: new Float32Array(pt), inlayTris, pieces: inlay.length, areaMm2: A.areaMm2 };
 }
+
+/* ---------- cover plate in one piece, picture raised on top (for two colours by filament change) ---------- */
+export function generateRaisedPlate(sampler, opts, raise = 0.8) {
+  const A = plateArt(sampler, opts), { q, R, def, pp, art } = A;
+  const polys = maskPolygons(R, art, def, pp, q.simplify), zb = q.floor + q.depth, zt = zb + raise, hx = q.W / 2, hy = q.H / 2;
+  const rect = [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]], circ = circle(0, 0, q.hole / 2, 72);
+  // which picture pieces sit inside a hole of another piece
+  const holes = []; for (const r of polys) for (const hh of r.holes) holes.push({ loop: hh, a: Math.abs(area(hh)), kids: [] });
+  const roots = [];
+  for (const r of polys) {
+    let parent = null;
+    for (const hh of holes) if (inside(r.raw[0], hh.loop) && r.a < hh.a && (!parent || hh.a < parent.a)) parent = hh;
+    (parent ? parent.kids : roots).push(r.outer);
+  }
+  let holeHost = null;
+  for (const hh of holes) if (inside(circ[0], hh.loop) && (!holeHost || hh.a < holeHost.a)) holeHost = hh;
+  const t = [];
+  capTris(t, [rect, circ], 0, false);                                                  // underside
+  wallTris(t, rect, 0, zb, false); wallTris(t, circ, 0, zb, false);                    // outside and the post hole
+  capTris(t, [rect].concat(holeHost ? [] : [circ], roots), zb, true);                  // plate top, around the picture
+  for (const hh of holes) capTris(t, [hh.loop].concat(hh === holeHost ? [circ] : [], hh.kids), zb, true);   // plate showing inside the picture
+  for (const r of polys) {                                                             // the raised picture
+    capTris(t, [r.outer].concat(r.holes), zt, true);
+    wallTris(t, r.outer, zb, zt, false); for (const hh of r.holes) wallTris(t, hh, zb, zt, false);
+  }
+  return { params: q, tris: new Float32Array(t), plateT: zb, raise, pieces: polys.length };
+}
+
+/* ---------- cover plate, picture inlaid flush in its top layers (two parts, one per colour) ---------- */
+// The plate is the full thickness everywhere; the picture fills a pocket in its top `inlay` mm, so the face is flat and
+// the picture looks drawn on. The two parts share their touching faces exactly, so a slicer prints them as one plate
+// with the picture layers in the second filament.
+export function generateInlaidPlate(sampler, opts, inlay = 0.6) {
+  const A = plateArt(sampler, opts), { q, R, def, pp, art } = A;
+  const polys = maskPolygons(R, art, def, pp, q.simplify), zt = q.floor + q.depth, zf = zt - inlay, hx = q.W / 2, hy = q.H / 2;
+  const rect = [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]], circ = circle(0, 0, q.hole / 2, 72);
+  const holes = []; for (const r of polys) for (const hh of r.holes) holes.push({ loop: hh, a: Math.abs(area(hh)), kids: [] });
+  const roots = [];
+  for (const r of polys) {
+    let parent = null;
+    for (const hh of holes) if (inside(r.raw[0], hh.loop) && r.a < hh.a && (!parent || hh.a < parent.a)) parent = hh;
+    (parent ? parent.kids : roots).push(r.outer);
+  }
+  let holeHost = null;
+  for (const hh of holes) if (inside(circ[0], hh.loop) && (!holeHost || hh.a < holeHost.a)) holeHost = hh;
+  const b = [];
+  capTris(b, [rect, circ], 0, false);                                                  // underside
+  wallTris(b, rect, 0, zt, false); wallTris(b, circ, 0, zt, false);                    // outside and the post hole
+  capTris(b, [rect].concat(holeHost ? [] : [circ], roots), zt, true);                  // top face around the picture
+  for (const hh of holes) capTris(b, [hh.loop].concat(hh === holeHost ? [circ] : [], hh.kids), zt, true);
+  for (const r of polys) {                                                             // the pocket for the picture
+    capTris(b, [r.outer].concat(r.holes), zf, true);
+    wallTris(b, r.outer, zf, zt, true); for (const hh of r.holes) wallTris(b, hh, zf, zt, true);
+  }
+  const a = [];
+  for (const r of polys) {                                                             // the picture that fills it
+    capTris(a, [r.outer].concat(r.holes), zt, true); capTris(a, [r.outer].concat(r.holes), zf, false);
+    wallTris(a, r.outer, zf, zt, false); for (const hh of r.holes) wallTris(a, hh, zf, zt, false);
+  }
+  return { params: q, bodyTris: new Float32Array(b), artTris: new Float32Array(a), plateT: zt, inlay, pieces: polys.length };
+}
+
+/* ---------- LED post ---------- */
+// The tube that holds the LED up at the light point. Its spigot fills the socket in the middle of the base
+// (bore 10.15 mm from the floor at z = 3 up to z = 18.5). The socket has a 3.2 mm wire slot at its foot (z 3 to 6,
+// facing -y), and the spigot has a matching notch, so the LED wires run down the 5.3 mm bore and out through both.
+// A collar rests on the socket; the stem passes through the 10.8 mm hole in the cover plate. A 5 mm LED sits on top
+// with its rim on the tube.
+export function ledPost(params) {
+  const p = Object.assign({ ledge: 10, apex: 75 }, params || {});
+  const top = p.ledge + p.apex - 3, b = 2.65, o = 4.95, zn = 6.4, n = 96;
+  // profile in (r, z), the same points all the way round; notched segments lift the foot to zn
+  const P = [[b, 3], [o, 3], [o, zn], [o, 18.5], [7.6, 18.5], [7.6, 20.5], [4.9, 20.5], [4.9, top], [b, top], [b, zn]];
+  const NOTCH = Math.asin(1.9 / o);                       // half-angle of the notch (about 3.8 mm wide at the outside)
+  const segNotched = (i) => { const a = ((i + 0.5) / n) * 2 * Math.PI - 1.5 * Math.PI; return Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < NOTCH; };
+  const prof = (notched) => (notched ? [P[9], P[2], P[2], ...P.slice(3, 9), P[9]] : P);
+  const pt = (i, q) => { const a = (i % n) / n * 2 * Math.PI; return [q[0] * Math.cos(a), q[0] * Math.sin(a), q[1]]; };
+  const out = [];
+  const same = (a, c) => Math.abs(a[0] - c[0]) < 1e-9 && Math.abs(a[1] - c[1]) < 1e-9 && Math.abs(a[2] - c[2]) < 1e-9;
+  const tri = (a, c, d) => { if (same(a, c) || same(c, d) || same(a, d)) return; out.push(...a, ...c, ...d); };
+  for (let i = 0; i < n; i++) {
+    const pr = prof(segNotched(i));
+    for (let k = 0; k < pr.length; k++) {
+      const q0 = pr[k], q1 = pr[(k + 1) % pr.length];
+      const a = pt(i, q0), c = pt(i, q1), d = pt(i + 1, q1), e = pt(i + 1, q0);
+      tri(a, c, d); tri(a, d, e);
+    }
+    // where the notch starts or ends, close its side with a flat wall
+    const nx = segNotched((i + 1) % n);
+    if (nx !== segNotched(i)) {
+      const w = [pt(i + 1, P[9]), pt(i + 1, P[0]), pt(i + 1, P[1]), pt(i + 1, P[2])];
+      if (nx) { tri(w[0], w[1], w[2]); tri(w[0], w[2], w[3]); } else { tri(w[0], w[2], w[1]); tri(w[0], w[3], w[2]); }
+    }
+  }
+  const t = new Float32Array(out);
+  let v = 0; for (let i = 0; i < t.length; i += 9) v += t[i] * (t[i + 4] * t[i + 8] - t[i + 5] * t[i + 7]) - t[i + 1] * (t[i + 3] * t[i + 8] - t[i + 5] * t[i + 6]) + t[i + 2] * (t[i + 3] * t[i + 7] - t[i + 4] * t[i + 6]);
+  if (v < 0) for (let i = 0; i < t.length; i += 9) for (let k = 0; k < 3; k++) { const s2 = t[i + 3 + k]; t[i + 3 + k] = t[i + 6 + k]; t[i + 6 + k] = s2; }
+  return { tris: t, height: top - 3, top };
+}

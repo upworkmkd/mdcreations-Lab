@@ -1,37 +1,50 @@
 import type { Metadata } from 'next';
 import { CANONICAL_URL as SITE_URL, SOCIALS, SUPPORT_EMAIL } from '@/lib/env';
+import { EXTRA_SEO, EXTRA_TOOLS } from '@/lib/tools-extra';
 
 export const SITE_NAME = 'MD Creations Labs';
 const DEFAULT_IMAGE = '/images/hero-shadow-lamp.jpg';
 
 /** Search titles and descriptions per tool: what people actually type into Google. */
 export const TOOL_SEO: Record<string, { title: string; description: string; keywords: string[] }> = {
+  ...EXTRA_SEO,
   'shadow-lamp': {
     title: 'Shadow Lamp Maker – Turn Any Picture into a 3D Printable Shadow Lamp (STL)',
     description: 'Make a custom shadow lamp from your own picture. Upload a silhouette or photo, preview the exact shadow on the wall, and download print-ready STL files: walls, base and an inlaid cover plate.',
-    keywords: ['shadow lamp maker', 'shadow lamp STL', 'custom shadow lamp', '3D printed shadow lamp', 'photo to shadow lamp', 'shadow lamp generator', 'wall shadow lamp', 'silhouette lamp STL', 'shadow projection lamp', '3D print lamp file'],
+    keywords: [
+    'shadow lamp maker', 'shadow lamp STL', 'custom shadow lamp', '3D printed shadow lamp', 'photo to shadow lamp', 'picture to shadow lamp',
+    'shadow lamp generator', 'wall shadow lamp', 'silhouette lamp STL', 'shadow projection lamp', 'shadow box lamp', 'god shadow lamp',
+    'mahadev shadow lamp', 'personalised shadow lamp gift', '3D print lamp file', 'shadow lamp India',
+  ],
   },
   statue: {
-    title: 'Statue Maker – Turn Photos into a 3D Printable Statue or Bust (STL)',
+    title: 'Statue Maker – Photos to a 3D Printable Statue STL',
     description: 'Coming soon: turn a set of photos into a solid, watertight 3D printable statue, bust or figurine with a flat base, sized for your printer.',
     keywords: ['photo to statue', 'photo to 3D model', '3D printable bust', 'statue STL maker', 'figurine from photo'],
   },
   'layered-sculpture': {
-    title: 'Layered Sculpture Maker – Turn a Picture into Layered 3D Print Wall Art (STL)',
+    title: 'Layered Sculpture Maker – Picture to Layered Art STL',
     description: 'Upload any picture and turn it into layered colour wall art for your 3D printer: one STL per colour, a frame, alignment pins and a live 3D preview. Commercial license included.',
     keywords: ['layered sculpture STL', 'layered wall art 3D print', 'picture to layered STL', 'multi colour layer art', 'shadow box 3D print generator'],
   },
   'stl-repair': {
-    title: 'STL Repair – Fix Holes, Flipped Normals and Non-Manifold Meshes Online',
+    title: 'STL Repair Online – Fix Holes and Non-Manifold Meshes',
     description: 'Coming soon: find and fix the mesh errors that make slicers complain. Close holes, fix flipped faces and remove duplicate shells, with a report of every fix.',
     keywords: ['STL repair', 'fix STL file online', 'repair non manifold mesh', 'STL hole fix', 'watertight STL'],
   },
 };
 
-export function pageMeta({ title, description, path, image = DEFAULT_IMAGE, keywords, noindex, absoluteTitle }: {
+const TOOL_IMAGES: Record<string, string> = {
+  'shadow-lamp': '/images/hero-shadow-lamp.jpg', statue: '/images/hero-statue.jpg', 'layered-sculpture': '/images/hero-layered.jpg', 'stl-repair': '/images/hero-stl-repair.jpg',
+  ...Object.fromEntries(EXTRA_TOOLS.map((t) => [t.slug, t.image])),
+};
+
+export function pageMeta({ title, description, path, image, keywords, noindex, absoluteTitle }: {
   title: string; description: string; path: string; image?: string; keywords?: string[]; noindex?: boolean; absoluteTitle?: boolean;
 }): Metadata {
   const url = `${SITE_URL}${path}`;
+  // a tool's pages share with the tool's own picture unless told otherwise
+  image ??= TOOL_IMAGES[path.match(/^\/tools\/([a-z0-9-]+)/)?.[1] ?? ''] ?? DEFAULT_IMAGE;
   return {
     title: absoluteTitle ? { absolute: title } : title,
     description,
@@ -48,7 +61,10 @@ export const NOINDEX: Metadata = { robots: { index: false, follow: false } };
 export const organizationLd = () => ({
   '@context': 'https://schema.org',
   '@graph': [
-    { '@type': 'Organization', '@id': `${SITE_URL}/#org`, name: 'MD Creations', url: SITE_URL, logo: `${SITE_URL}/brand/logo-1024.png`,
+    { '@type': 'Organization', '@id': `${SITE_URL}/#org`, name: 'MD Creations', alternateName: 'MD Creations Labs', url: SITE_URL, logo: `${SITE_URL}/brand/logo-1024.png`,
+      description: 'A 3D printing studio in India that makes online tools for turning pictures and text into print-ready STL files, and sells its own 3D printable designs.',
+      areaServed: 'Worldwide', address: { '@type': 'PostalAddress', addressCountry: 'IN' },
+      knowsAbout: ['3D printing', 'STL files', 'shadow lamps', 'lithophanes', 'name keychains', 'rangoli stencils', 'filament painting', 'vase mode printing'],
       email: SUPPORT_EMAIL, sameAs: SOCIALS.map((s) => s.url) },
     { '@type': 'WebSite', '@id': `${SITE_URL}/#site`, name: SITE_NAME, url: SITE_URL, publisher: { '@id': `${SITE_URL}/#org` }, inLanguage: 'en' },
   ],
@@ -56,4 +72,22 @@ export const organizationLd = () => ({
 
 export function JsonLd({ data }: { data: object }) {
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, '\\u003c') }} />;
+}
+
+/** Structured data for a maker page (the workbench itself): what it is, that it runs in the browser, and where it sits. */
+export function makerLd(slug: string, name: string, path: string) {
+  const url = `${SITE_URL}${path}`, seo = TOOL_SEO[slug];
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      { '@type': 'WebApplication', name, url, description: seo?.description, applicationCategory: 'DesignApplication', operatingSystem: 'Any (web browser)',
+        browserRequirements: 'Requires JavaScript and WebGL', isAccessibleForFree: true, publisher: { '@id': `${SITE_URL}/#org` },
+        ...(seo?.keywords?.length ? { keywords: seo.keywords.join(', ') } : {}) },
+      { '@type': 'BreadcrumbList', itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Labs', item: SITE_URL },
+        { '@type': 'ListItem', position: 2, name, item: `${SITE_URL}/tools/${slug}` },
+        { '@type': 'ListItem', position: 3, name: 'Make', item: url },
+      ] },
+    ],
+  };
 }
