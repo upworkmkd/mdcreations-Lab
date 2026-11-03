@@ -3,6 +3,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { MeshView, type MeshSnap } from '@/components/kit/mesh-view';
 import { Group, Range, Select, Seg, Text, Check } from '@/components/kit/controls';
 import { Workbench, type KitBuy } from '@/components/kit/workbench';
+import { WhatYouGet, STANDARD_FILES } from '@/components/kit/what-you-get';
 import { PX, buildName } from '@/lib/name/build.js';
 import { SCRIPTS } from '@/lib/name/fonts';
 import type { NameMode, NameParams } from '@/lib/name/design';
@@ -56,6 +57,11 @@ export function NameMaker(buy: KitBuy) {
       bar={<span className="muted">Drag to turn, scroll to zoom. Letters are drawn in your browser, in any language your keyboard can type.</span>}
       stage={<MeshView parts={parts} fitKey={`${dp.p.mode}-${dp.mask?.w}-${dp.mask?.h}`} snapRef={snap} />}
       stats={model ? <><span>Size <b>{model.size[0].toFixed(0)} × {model.size[1].toFixed(0)} mm</b></span><span>Height <b>{model.size[2].toFixed(1)} mm</b></span>{p.letterT > 0 && <span>Colour change at <b>{p.baseT.toFixed(1)} mm</b></span>}{tooThin && <span style={{ color: '#8a3b12' }}>Small letters: thicken them a little so they print cleanly.</span>}</> : <span>Type a name to begin.</span>}
+      getting={model ? <WhatYouGet meta={`${model.size[0].toFixed(0)} × ${model.size[1].toFixed(0)} × ${model.size[2].toFixed(1)} mm`} parts={[
+        { title: p.mode === 'keychain' ? 'Keychain' : p.mode === 'topper' ? 'Cake topper' : 'Sign plate', text: p.mode === 'keychain' ? `The backing with the ${p.hole} mm key ring hole, ${p.baseT} mm thick.` : p.mode === 'topper' ? `Your word with two ${p.stake} mm stakes, ${p.baseT} mm thick.` : `The plate, ${p.baseT} mm thick${p.holes && p.backing === 'plate' ? ', with two mounting holes' : ''}.`, tris: model.base, color: baseCol, tag: 'your design' },
+        ...(p.letterT > 0 ? [{ title: 'Raised letters', text: `Your text, ${p.letterT} mm high, printed in the second colour on top.`, tris: model.letters, color: topCol }] : []),
+      ]} files={[...(p.letterT > 0 ? [{ title: 'Two-colour 3MF', text: 'Opens in Bambu Studio and OrcaSlicer with your two colours set.' }] : []), ...STANDARD_FILES]}
+      needs={p.mode === 'keychain' ? [{ title: 'A key ring', text: `A split ring or chain through the ${p.hole} mm hole.` }] : p.mode === 'topper' ? [{ title: 'Food film or food-safe filament', text: 'Wrap the stakes before they go into the cake.' }] : p.holes && p.backing === 'plate' ? [{ title: '2 small screws or tape', text: 'To fix the sign through its holes, or double-sided tape.' }] : []} /> : null}
       youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>{p.letterT > 0 ? 'A two-colour 3MF (opens in Bambu Studio and OrcaSlicer with your colours) plus two STL files (backing and raised letters)' : 'One STL file'}{p.mode === 'keychain' ? ' with the key ring hole' : p.mode === 'topper' ? ' with cake stakes' : ''}, a preview, print notes and a commercial license to sell what you print.</p></>}
       side={<>
         <Group title="What to make">

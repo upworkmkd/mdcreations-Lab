@@ -2,6 +2,7 @@
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { MeshView, type MeshSnap } from '@/components/kit/mesh-view';
 import { PrintOrder } from '@/components/print-order';
+import { WhatYouGet } from '@/components/kit/what-you-get';
 import { usePackedModel } from '@/lib/browser-file.client';
 import { Check, Group, Range, Select, Seg } from '@/components/kit/controls';
 import { blur, buildRaised, buildRelief, grayOf, guessRead, pictureMask, raisedGrid, reliefGrid } from '@/lib/image-stl/build.js';
@@ -60,7 +61,7 @@ export function ImageStlMaker({ print = null, signedIn = false }: { print?: { pr
   const [depth, setDepth] = useState(3), [rBase, setRBase] = useState(1.2), [raise, setRaise] = useState<'dark' | 'light'>('dark');
   const [soft, setSoft] = useState(0.3), [contrast, setContrast] = useState(0.1), [bright, setBright] = useState(0), [cut, setCut] = useState(false), [pitch, setPitch] = useState(0.3);
   const [baseCol, setBaseCol] = useState('#f4f1e8'), [topCol, setTopCol] = useState('#161616');
-  const [view, setView] = useState<'3d' | 'flat'>('3d');
+  const [view, setView] = useState<'3d' | 'flat' | 'get'>('3d');
   const flat = useRef<HTMLCanvasElement>(null), fileId = useId();
 
   async function take(src: string, name: string, m?: Mode) {
@@ -286,11 +287,17 @@ export function ImageStlMaker({ print = null, signedIn = false }: { print?: { pr
 
       <div className="kit-main">
         <div className="kit-bar">
-          <div className="kit-tabs" role="group" aria-label="View"><button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')}>3D</button><button type="button" aria-pressed={view === 'flat'} onClick={() => setView('flat')}>Flat</button></div>
-          <span className="muted">{view === 'flat' ? (raised ? 'The coloured parts are raised.' : 'Darker here means higher.') : 'Drag to turn, scroll or pinch to zoom.'}</span>
+          <div className="kit-tabs" role="group" aria-label="View"><button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')}>3D</button><button type="button" aria-pressed={view === 'flat'} onClick={() => setView('flat')}>Flat</button><button type="button" aria-pressed={view === 'get'} onClick={() => setView('get')}>What you get</button></div>
+          <span className="muted">{view === 'get' ? '' : view === 'flat' ? (raised ? 'The coloured parts are raised.' : 'Darker here means higher.') : 'Drag to turn, scroll or pinch to zoom.'}</span>
         </div>
         <div className="kit-stage">
-          {view === '3d' ? <MeshView parts={parts} fitKey={`${mode}-${base}-${width}-${pic?.img.src}`} height={520} snapRef={snap} /> : <canvas ref={flat} className="flat" style={{ maxHeight: 520, maxWidth: '100%' }} />}
+          {view === '3d' ? <MeshView parts={parts} fitKey={`${mode}-${base}-${width}-${pic?.img.src}`} height={520} snapRef={snap} /> : view === 'flat' ? <canvas ref={flat} className="flat" style={{ maxHeight: 520, maxWidth: '100%' }} /> : null}
+          {view === 'get' && result?.ok && <div style={{ position: 'absolute', inset: 0, overflow: 'auto', background: 'var(--paper-3)' }}><WhatYouGet title="Everything in your download" meta={`${result.size[0].toFixed(0)} × ${result.size[1].toFixed(0)} × ${result.size[2].toFixed(1)} mm`}
+            parts={result.kind === 'relief' ? [{ title: 'Heightmap relief', text: `Your picture as a ${depth} mm deep relief on a ${rBase} mm base${cut ? ', cut to its shape' : ''}.`, tris: result.top, color: baseCol, tag: 'your picture' }]
+              : [...(result.base.length ? [{ title: ({ plate: 'Rounded plate', outline: 'Outline base', circle: 'Round coaster', none: 'Base' } as Record<string, string>)[base], text: `${baseT} mm thick, ${border} mm round the shape${hole ? `, with a ${hole} mm keychain hole` : ''}.`, tris: result.base, color: baseCol }] : []),
+                { title: 'Raised shape', text: `Your picture, ${height} mm high${result.base.length ? `, starting at ${result.topZ.toFixed(1)} mm (the colour change)` : ''}${result.pieces > 1 ? `, in ${result.pieces} pieces` : ''}.`, tris: result.top, color: base === 'none' ? baseCol : topCol, tag: 'your picture' }]}
+            files={[{ title: 'STL', text: 'Everything as one file, for any slicer.' }, ...(raised && base !== 'none' ? [{ title: 'Two-colour 3MF', text: 'Base and shape in your two colours, for Bambu Studio and OrcaSlicer.' }] : [])]}
+            needs={hole ? [{ title: 'A key ring', text: `Through the ${hole} mm hole.` }] : []} /></div>}
           {busy && <span className="kit-busy">Updating…</span>}
         </div>
         <div className="kit-foot">

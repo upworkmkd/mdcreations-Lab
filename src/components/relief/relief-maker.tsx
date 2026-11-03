@@ -3,6 +3,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { MeshView, type MeshSnap } from '@/components/kit/mesh-view';
 import { Group, PicturePick, Range, Select, Seg, Text } from '@/components/kit/controls';
 import { Workbench, type KitBuy } from '@/components/kit/workbench';
+import { WhatYouGet, STANDARD_FILES } from '@/components/kit/what-you-get';
 import { RATIOS, buildRelief, gridFor } from '@/lib/relief/build.js';
 import type { Plaque, ReliefParams } from '@/lib/relief/design';
 import { adjust, grayGrid, loadImage, type Framing } from '@/lib/mesh/image-grid';
@@ -68,6 +69,8 @@ export function ReliefMaker(buy: KitBuy) {
       bar={<><span className="muted">Finish (preview only):</span><div className="kit-swatches">{FINISH.map(([c, l]) => <button key={c} type="button" aria-label={l} title={l} aria-pressed={finish === c} style={{ background: c }} onClick={() => setFinish(c)} />)}</div></>}
       stage={<MeshView parts={parts} fitKey={`${dp.p.shape}-${dp.p.width}-${dp.p.ratio}-${dp.p.ratio === 'custom' ? dp.p.height : ''}`} snapRef={snap} />}
       stats={model ? <><span>Size <b>{model.size[0].toFixed(0)} × {model.size[1].toFixed(0)} × {model.size[2].toFixed(1)} mm</b></span><span>Relief <b>{p.relief} mm</b></span><span>Detail <b>{G.pitch} mm</b></span></> : <span>Upload a photo to begin.</span>}
+      getting={model ? <WhatYouGet meta={`${model.size[0].toFixed(0)} × ${model.size[1].toFixed(0)} × ${model.size[2].toFixed(1)} mm`} parts={[{ title: 'Relief plaque', text: `Your picture raised ${p.relief} mm on a ${p.base} mm base${p.frame ? `, with a ${p.frame} mm frame` : ''}${p.hole ? ' and a hanging hole' : ''}. Print it flat, picture up.`, tris: model.tris, color: finish, tag: 'your photo' }]}
+      files={STANDARD_FILES} needs={p.hole ? [{ title: 'A nail or hook', text: `To hang it by the ${p.hole} mm hole.` }] : []} /> : null}
       youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>The plaque STL with your picture in relief, a preview, print tips and a commercial license. We keep a copy of your photo for 10 days to improve the tool, unless you untick the box under the upload. Your files are built from a brightness grid when you download.</p></>}
       side={<>
         <Group title="Photo">

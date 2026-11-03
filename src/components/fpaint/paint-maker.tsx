@@ -3,6 +3,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { MeshView, type MeshSnap } from '@/components/kit/mesh-view';
 import { Group, PicturePick, Range, Select, Text } from '@/components/kit/controls';
 import { Workbench, type KitBuy } from '@/components/kit/workbench';
+import { WhatYouGet, STANDARD_FILES } from '@/components/kit/what-you-get';
 import { RATIOS, buildPainting, gridFor, layerCount, layerTop, simulate, spread, swapGuide } from '@/lib/fpaint/build.js';
 import type { Filament, PaintParams } from '@/lib/fpaint/design';
 import { adjust, grayGrid, type Framing } from '@/lib/mesh/image-grid';
@@ -94,6 +95,10 @@ export function PaintMaker(buy: KitBuy) {
       </>}
       stage={<>{view === '3d' && <MeshView parts={parts} fitKey={`${dp.p.width}-${dp.p.ratio}`} snapRef={snap} />}<canvas ref={cv} className="flat" hidden={view !== 'paint'} /></>}
       stats={<><span>Size <b>{p.width} × {(p.width / (RATIOS as Record<string, number>)[p.ratio]).toFixed(0)} mm</b></span><span>Height <b>{layerTop(p, n1).toFixed(2)} mm</b></span><span>Layers <b>{n1}</b></span><span>Swaps <b>{colours.length - 1}</b></span></>}
+      getting={<WhatYouGet parts={[{ title: 'Filament painting', text: `Your picture as one flat print, ${p.width} mm wide. The colours come from swapping filament at the layers in the guide.`, tris: model?.tris ?? null, color: '#e9e4d6', tag: 'your picture' }]}
+      files={[{ title: 'COLOUR_SWAPS.txt', text: `The exact layer for each of your ${colours.length} filament changes.` }, ...STANDARD_FILES]}
+      needs={[{ title: `${colours.length} filaments`, text: 'In the colours you chose, light to dark. Matte PLA works best.' }]}
+      note={model ? null : 'Switch to the 3D view to see a picture of the part.'} />}
       youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>One STL, a colour-swap guide with the exact layer for every filament change, slicer settings, a preview and a commercial license.</p></>}
       side={<>
         <Group title="Picture">

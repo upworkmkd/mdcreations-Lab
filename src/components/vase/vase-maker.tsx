@@ -3,6 +3,7 @@ import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
 import { MeshView, type MeshSnap } from '@/components/kit/mesh-view';
 import { Group, Range, Select, Seg, Text } from '@/components/kit/controls';
 import { Workbench, type KitBuy } from '@/components/kit/workbench';
+import { WhatYouGet, STANDARD_FILES } from '@/components/kit/what-you-get';
 import { buildVase } from '@/lib/vase/build.js';
 import type { VaseMode, VaseParams } from '@/lib/vase/design';
 
@@ -37,6 +38,8 @@ export function VaseMaker(buy: KitBuy) {
       bar={<><span className="muted">Colour (preview only):</span><div className="kit-swatches">{['#d36fa0', '#f4f1e8', '#2e7d4f', '#1f5fa8', '#c9a227', '#e67e22', '#161616', '#8fb8c9'].map((c) => <button key={c} type="button" aria-label={c} aria-pressed={colour === c} style={{ background: c }} onClick={() => setColour(c)} />)}</div></>}
       stage={<MeshView parts={parts} fitKey={`${dp.mode}-${dp.height}-${Math.round(Math.max(dp.r0, dp.r1, dp.r2, dp.r3) / 10)}`} snapRef={snap} />}
       stats={<><span>Size <b>{(2 * maxR).toFixed(0)} × {p.height} mm</b></span><span>Mode <b>{p.mode === 'spiral' ? 'vase mode (spiral)' : p.mode === 'shade' ? 'lamp shade' : p.mode}</b></span>{p.mode !== 'spiral' && <span>Wall <b>{p.wall} mm</b></span>}</>}
+      getting={<WhatYouGet meta={`${model.size[0].toFixed(0)} × ${model.size[2]?.toFixed(0) ?? ''} mm`} parts={model.parts.map((q) => ({ title: (q as { label?: string }).label ?? q.file, text: q.file === 'shade' ? 'The shade with its fitting ring for the lamp holder.' : p.mode === 'spiral' ? 'A solid shape: print it in vase mode for a single smooth wall.' : `${p.wall} mm walls and a ${p.floor} mm floor.`, tris: q.tris, color: colour, tag: 'your design' }))}
+      files={STANDARD_FILES} needs={p.mode === 'shade' ? [{ title: 'A lamp holder and LED bulb', text: p.fitting !== 'none' ? `An ${p.hole >= 40 ? 'E27' : 'E14'} holder through the ${p.hole} mm ring, with an LED bulb (they stay cool).` : 'A battery tea light or LED puck under the shade.' }] : []} />}
       youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>The STL{p.mode === 'shade' && p.fitting !== 'none' ? ' with a fitting ring for the lamp holder' : ''}, print settings for {p.mode === 'spiral' ? 'vase mode' : 'normal printing'}, a preview and a commercial license to sell what you print.</p></>}
       side={<>
         <Group title="Start from">

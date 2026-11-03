@@ -17,7 +17,7 @@ const G = { baseX: 60, baseY: 75, T: 3, ledge: 10, plateZ: 22 };
 const WALL_COLOUR = '#424532';
 
 /** One wall as a solid, in its own frame: s along the wall, v up from the ledge, t into the lamp (0 = outer face). */
-function panelTris(p: LampPanel) {
+export function panelTris(p: LampPanel) {
   const r = p.allRes, cols = Math.round(p.Lo / r), bandRows = Math.round(p.V0 / r), rows = bandRows + p.all.h;
   const m = new Uint8Array(cols * rows);
   const b0 = Math.round((p.Lo - p.Lb) / 2 / r), b1 = cols - b0;
@@ -30,7 +30,7 @@ function panelTris(p: LampPanel) {
   return tris;
 }
 
-function toLamp(id: string, tris: Float32Array) {
+export function toLamp(id: string, tris: Float32Array) {
   const o = new Float32Array(tris.length);
   for (let i = 0; i < tris.length; i += 3) {
     const s = tris[i], v = tris[i + 1], t = tris[i + 2], z = G.ledge + v;

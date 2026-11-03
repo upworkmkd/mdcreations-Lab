@@ -125,3 +125,5 @@
 .pg-tips ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--ink-2); font-size: 15px; }
 .pg-tips b { color: var(--ink); }
 @media (max-width: 560px) { .pg-in { padding: 22px 16px 24px; } .pg-grid { grid-template-columns: 1fr; } }
+.maker .wyg-lamp { aspect-ratio: 1 / 1; overflow: auto; background: var(--paper-3); border: 1px solid var(--line); }
+.maker .wyg-lamp .wyg-grid { grid-template-columns: minmax(0, 1fr); }

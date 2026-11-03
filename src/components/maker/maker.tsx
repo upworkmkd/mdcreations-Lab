@@ -12,6 +12,7 @@ import { startPlan } from '@/lib/subscribe.client';
 import { PlanChooser, type ChooserPlan, type Choice } from './plan-chooser';
 import { ThankYou } from './thank-you';
 import { LampView, type LampData } from './lamp-view';
+import { LampParts } from './lamp-parts';
 import './maker.css';
 import { KeepPicture } from '@/components/keep-picture';
 import { PictureGuide } from './picture-guide';
@@ -46,7 +47,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
   const [thanks, setThanks] = useState<string | null>(null);   // file id while the thank-you window is open
   const [askedReview, setAskedReview] = useState(reviewed);
   const [plan, setPlan] = useState<MakerPlan | null>(plan0 ?? null);
-  const [view, setView] = useState<'shadow' | '3d' | 'wall'>('shadow');
+  const [view, setView] = useState<'shadow' | '3d' | 'wall' | 'get'>('shadow');
   const [lamp, setLamp] = useState<LampData | null>(null);
   const [chooser, setChooser] = useState(false);
   const choice = useRef<Choice>('single');
@@ -156,8 +157,10 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
             <button type="button" aria-pressed={view === 'shadow'} onClick={() => setView('shadow')}>Shadow</button>
             <button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')}>3D lamp</button>
             <button type="button" aria-pressed={view === 'wall'} onClick={() => setView('wall')}>On the wall, lit</button>
+            <button type="button" aria-pressed={view === 'get'} onClick={() => { setView('get'); track('what_you_get', 'shadow-lamp'); }}>What you get</button>
           </div>
-          {view !== 'shadow' && <div className="lampbox">
+          {view === 'get' && <div className="lampbox wyg-lamp"><LampParts data={lamp} /></div>}
+          {(view === '3d' || view === 'wall') && <div className="lampbox">
             <LampView data={lamp} mode={view} />
             <span className="lamphint">{view === '3d' ? 'The assembled lamp: walls, base, cover plate and LED post. Drag to turn, scroll to zoom.' : 'At night with the LED on: the shadow is cast by the actual walls. Drag to look around, scroll to zoom.'}</span>
           </div>}
