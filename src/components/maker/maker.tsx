@@ -18,7 +18,7 @@ import './maker.css';
 import { KeepPicture } from '@/components/keep-picture';
 import { PictureGuide } from './picture-guide';
 
-type Studio = { designPayload(): unknown; previewJpeg(): string; destroy(): void; loadExample(src: string, name: string): void };
+type Studio = { designPayload(): unknown; previewJpeg(): string; destroy(): void; loadExample(src: string, name: string, nudge?: { x: number; y: number }, plateSrc?: string): void };
 type Phase = { kind: 'idle' } | { kind: 'working'; text: string } | { kind: 'done'; fileId: string } | { kind: 'error'; text: string; orderId?: string };
 
 type RzpResponse = { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string };
@@ -65,7 +65,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
 
   useEffect(() => {
     if (!root.current) return;
-    const s = mountStudio(root.current, { onReady: setReady, onResult: setLamp, onRejected: (f: File, why: string) => track('upload_rejected', why.slice(0, 120), { type: f.type, ext: f.name.split('.').pop()?.toLowerCase(), kb: Math.round(f.size / 1024) }), sample: `/examples/${first.id}.png`, sampleName: first.name }) as Studio;
+    const s = mountStudio(root.current, { onReady: setReady, onResult: setLamp, onRejected: (f: File, why: string) => track('upload_rejected', why.slice(0, 120), { type: f.type, ext: f.name.split('.').pop()?.toLowerCase(), kb: Math.round(f.size / 1024) }), sample: `/examples/${first.id}.png`, sampleName: first.name, sampleNudge: (first as { nudge?: { x: number; y: number } }).nudge, samplePlate: (first as { plate?: boolean }).plate ? `/examples/${first.id}-plate.png` : undefined }) as Studio;
     studio.current = s;
     (window as unknown as { __lamp?: Studio }).__lamp = s;   // handy for support and tests
     return () => { s.destroy(); studio.current = null; };
@@ -196,7 +196,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
               <span className="hint">Or start from an example</span>
               <div className="examples">
                 {EXAMPLES.filter((e) => SHOWN_EXAMPLES.includes(e.id) || e.id === first.id).map((e) => (
-                  <button key={e.id} type="button" aria-pressed={picked === e.id} onClick={() => { setPicked(e.id); studio.current?.loadExample(`/examples/${e.id}.png`, e.name); }}>
+                  <button key={e.id} type="button" aria-pressed={picked === e.id} onClick={() => { setPicked(e.id); studio.current?.loadExample(`/examples/${e.id}.png`, e.name, (e as { nudge?: { x: number; y: number } }).nudge, (e as { plate?: boolean }).plate ? `/examples/${e.id}-plate.png` : undefined); }}>
                     <img src={`/examples/${e.id}.png`} alt="" />{e.name}
                   </button>
                 ))}
