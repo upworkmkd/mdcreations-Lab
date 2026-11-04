@@ -7406,3 +7406,10 @@ a.pill {
 	.wyg-card { grid-template-columns: 72px minmax(0, 1fr); }
 	.wyg-list li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
 }
+
+/* the free sample lamp download */
+.sample-link { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; align-items: center; margin-top: 12px; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 8px; background: #fff; color: var(--ink); text-decoration: none; }
+.sample-link:hover { border-color: var(--olive-2); border-style: solid; }
+.sample-link b { display: block; font-size: 14.5px; font-weight: 600; }
+.sample-link small { display: block; font-size: 12.5px; color: var(--ink-3); line-height: 1.4; margin-top: 2px; }
+.sample-ic { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--olive-ink); color: var(--paper); font-size: 17px; }

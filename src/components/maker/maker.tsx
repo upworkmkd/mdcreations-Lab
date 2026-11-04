@@ -6,13 +6,14 @@ import { mountStudio } from './studio.js';
 import { AuthDialog } from '@/components/auth-dialog';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import { formatMoney, type Currency } from '@/lib/money';
-import { EXAMPLES } from '@/lib/gallery';
+import { DEFAULT_EXAMPLE, EXAMPLES, SHOWN_EXAMPLES } from '@/lib/gallery';
 import { track } from '@/components/tracker';
 import { startPlan } from '@/lib/subscribe.client';
 import { PlanChooser, type ChooserPlan, type Choice } from './plan-chooser';
 import { ThankYou } from './thank-you';
 import { LampView, type LampData } from './lamp-view';
 import { LampParts } from './lamp-parts';
+import { SampleLink } from './sample-link';
 import './maker.css';
 import { KeepPicture } from '@/components/keep-picture';
 import { PictureGuide } from './picture-guide';
@@ -51,7 +52,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
   const [lamp, setLamp] = useState<LampData | null>(null);
   const [chooser, setChooser] = useState(false);
   const choice = useRef<Choice>('single');
-  const first = EXAMPLES.find((e) => e.id === example) ?? EXAMPLES.find((e) => e.id === 'elephant')!;
+  const first = EXAMPLES.find((e) => e.id === example) ?? EXAMPLES.find((e) => e.id === DEFAULT_EXAMPLE)!;
   const [picked, setPicked] = useState<string | null>(first.id);
   const root = useRef<HTMLDivElement>(null), studio = useRef<Studio | null>(null);
   const [ready, setReady] = useState(false);
@@ -194,7 +195,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
             <div className="field">
               <span className="hint">Or start from an example</span>
               <div className="examples">
-                {EXAMPLES.map((e) => (
+                {EXAMPLES.filter((e) => SHOWN_EXAMPLES.includes(e.id) || e.id === first.id).map((e) => (
                   <button key={e.id} type="button" aria-pressed={picked === e.id} onClick={() => { setPicked(e.id); studio.current?.loadExample(`/examples/${e.id}.png`, e.name); }}>
                     <img src={`/examples/${e.id}.png`} alt="" />{e.name}
                   </button>
@@ -290,6 +291,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
               <input type="text" id="name" className="input" defaultValue={first.name} maxLength={40} autoComplete="off" />
             </div>
             <label className="check"><input type="checkbox" id="withBase" defaultChecked /> Include the base and battery cover</label>
+            <SampleLink where="maker" />
 
             {phase.kind === 'done' ? (
               <div className="done">
