@@ -114,10 +114,19 @@ export function mountStudio(root, hooks) {
   const plate = { own: null, view: { cx: 0, cy: 0, mmPerPx: 1, mirror: false }, fitMm: 1, dirty: true };
   let wallFresh = false, wallsDirty = true, alive = true;
 
-  function loadImage(src, name, example) {
+  // nudge: { x, y } as a share of the picture, applied after the automatic fit (examples placed by hand)
+  // plateSrc: an example can bring its own cover-plate picture (the shadow picture may be adjusted for the lamp)
+  function loadImage(src, name, example, nudge, plateSrc) {
     decode(src, (p) => {
       if (!alive) return;
-      state.img = p.img; state.w = p.w; state.h = p.h; state.otsu = p.otsu; state.isExample = !!example;
+      state.img = p.img; state.w = p.w; state.h = p.h; state.otsu = p.otsu; state.isExample = !!example; state.nudge = nudge || null;
+      if (plate.own && plate.own.fromExample) { plate.own = null; $('plateFile').value = ''; syncPlateUi(); }
+      if (plateSrc) decode(plateSrc, (q) => {
+        if (!alive) return;
+        plate.own = { img: q.img, w: q.w, h: q.h, otsu: q.otsu, name, fromExample: true };
+        $('pMode').value = q.plateMode; $('pLevel').value = levelFor(q.plateMode, q.otsu); $('pInvert').checked = false;
+        readPlate(); syncPlateUi(); plateFit(false);
+      }, () => {});
       $('fname').textContent = name;
       $('name').value = name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9 _-]+/g, ' ').trim().slice(0, 40) || 'Design';
       $('mode').value = p.mode; $('invert').checked = false;
@@ -224,6 +233,7 @@ export function mountStudio(root, hooks) {
     const reachX = L.bx * L.reach * 0.96 / Math.max((bbox.x1 - bbox.x0 + 1) / 2, 1), reachY = L.by * L.reach * 0.96 / Math.max((bbox.y1 - bbox.y0 + 1) / 2, 1);
     const fitAll = Math.min(reachX, reachY), nice = 1100 / Math.max(bbox.y1 - bbox.y0 + 1, (bbox.x1 - bbox.x0 + 1) * 0.9);
     state.view.cx = cx; state.view.cy = cy; state.view.mmPerPx = Math.min(fitAll, nice);
+    if (state.nudge) { state.view.cx += state.nudge.x * w; state.view.cy += state.nudge.y * h; }
     syncSize(); schedule(); drawQuick();
   }
   function clampView() { const v = state.view; v.cx = Math.max(-state.w, Math.min(2 * state.w, v.cx)); v.cy = Math.max(-state.h, Math.min(2 * state.h, v.cy)); }
@@ -477,11 +487,11 @@ export function mountStudio(root, hooks) {
   on(box, 'wheel', (e) => { if (!state.bbox) return; e.preventDefault(); state.view.mmPerPx *= Math.exp(-e.deltaY * 0.0012); syncSize(); drawQuick(); schedule(); }, { passive: false });
 
   out(); syncPlateUi(); paintWall(null, null); drawLampAndGuides();
-  loadImage(hooks.sample, hooks.sampleName || 'Example', true);
+  loadImage(hooks.sample, hooks.sampleName || 'Example', true, hooks.sampleNudge, hooks.samplePlate);
 
   return {
     designPayload, previewJpeg,
-    loadExample(src, name) { loadImage(src, name, true); },
+    loadExample(src, name, nudge, plateSrc) { loadImage(src, name, true, nudge, plateSrc); },
     destroy() { alive = false; ac.abort(); clearTimeout(timer); clearTimeout(maskTimer); clearTimeout(pTimer); if (worker) worker.terminate(); },
     _state: state,
   };

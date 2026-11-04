@@ -16,6 +16,7 @@ import { CANONICAL_URL as SITE_URL } from '@/lib/env';
 import { getGuides } from '@/lib/guides.server';
 import { KNOWN_VIDEOS, youtubeId, ytThumb, ytWatch } from '@/lib/youtube';
 import { YouTubeEmbed } from '@/components/video/youtube';
+import { SampleLink } from '@/components/maker/sample-link';
 
 export function generateStaticParams() {
   return TOOLS.map((t) => ({ slug: t.slug }));
@@ -176,6 +177,7 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
                 <p className="per">per design · {currency === 'INR' ? 'incl. GST where applicable' : 'paid by card'} · download again any time</p>
                 <ul>{tool.youGet.map((x) => <li key={x}>{x}</li>)}</ul>
                 {tool.makePath && <Link href={tool.makePath} className="btn">Start designing <span className="arrow">→</span></Link>}
+                {tool.slug === 'shadow-lamp' && <SampleLink where="tool-page" />}
                 <p className="per" style={{ marginTop: 14 }}>Making these often? <Link href="/pricing">A monthly plan</Link> includes up to 10 designs a day, for every tool.</p>
               </div>
               )}

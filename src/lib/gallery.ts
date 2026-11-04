@@ -21,10 +21,18 @@ export const LAMP_GALLERY: GalleryItem[] = [
 ];
 
 export const EXAMPLES = [
+  // hanuman: placed a touch higher (the lamp sits on the dhoti, no loose pieces); its shadow picture has the lamp's
+  // always-dark block filled in, so the cover plate uses the untouched picture (plate: true -> /examples/<id>-plate.png)
+  { id: 'hanuman', name: 'Hanuman ji', nudge: { x: 0, y: 0.02 }, plate: true },
+  { id: 'howling-wolf', name: 'Howling wolf' },
   { id: 'tree', name: 'Tree' }, { id: 'owl', name: 'Owl' }, { id: 'temple', name: 'Temple' }, { id: 'cat', name: 'Cat & moon' },
   { id: 'elephant', name: 'Elephant' }, { id: 'lotus', name: 'Lotus' }, { id: 'mountains', name: 'Mountains' }, { id: 'stag', name: 'Stag' },
   { id: 'mahadev', name: 'Mahadev' },
 ];
+
+/** The example the maker opens with, and the examples it offers as buttons. Links like ?example=owl still open any of them. */
+export const DEFAULT_EXAMPLE = 'hanuman';
+export const SHOWN_EXAMPLES: string[] = ['hanuman'];
 
 export const KIND_LABEL: Record<GalleryItem['kind'], string> = {
   shadow: 'Shadow worked out by the maker',
