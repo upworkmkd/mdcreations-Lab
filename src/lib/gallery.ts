@@ -21,6 +21,7 @@ export const LAMP_GALLERY: GalleryItem[] = [
 ];
 
 export const EXAMPLES = [
+  { id: 'hanuman', name: 'Hanuman ji' },
   { id: 'howling-wolf', name: 'Howling wolf' },
   { id: 'tree', name: 'Tree' }, { id: 'owl', name: 'Owl' }, { id: 'temple', name: 'Temple' }, { id: 'cat', name: 'Cat & moon' },
   { id: 'elephant', name: 'Elephant' }, { id: 'lotus', name: 'Lotus' }, { id: 'mountains', name: 'Mountains' }, { id: 'stag', name: 'Stag' },
@@ -28,8 +29,8 @@ export const EXAMPLES = [
 ];
 
 /** The example the maker opens with, and the examples it offers as buttons. Links like ?example=owl still open any of them. */
-export const DEFAULT_EXAMPLE = 'howling-wolf';
-export const SHOWN_EXAMPLES: string[] = ['howling-wolf'];
+export const DEFAULT_EXAMPLE = 'hanuman';
+export const SHOWN_EXAMPLES: string[] = ['hanuman'];
 
 export const KIND_LABEL: Record<GalleryItem['kind'], string> = {
   shadow: 'Shadow worked out by the maker',
