@@ -45,3 +45,6 @@ public/lamp-worker.js
 
 # local archives
 *.zip
+
+# the free sample lamp is meant to be published
+!public/samples/*.zip
