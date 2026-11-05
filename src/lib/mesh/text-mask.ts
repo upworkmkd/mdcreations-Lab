@@ -25,31 +25,36 @@ export function loadGoogleFont(family: string, weight = 700, sample = 'Aa') {
  * Draws `lines` of text so the tallest line is `heightMm` tall (ascender to descender of the ink),
  * at `pxPerMm` pixels per millimetre, and returns the tight mask (row 0 = top).
  */
-export function textMask(lines: string[], { family, weight = 700, heightMm, pxPerMm = 8, lineGap = 0.25, align = 'center', italic = false }: {
+export function textMask(lines: string[], { family, weight = 700, heightMm, pxPerMm = 8, lineGap = 0.25, align = 'center', italic = false, letterSpacing = 0, outlineMm = 0 }: {
   family: string; weight?: number; heightMm: number; pxPerMm?: number; lineGap?: number; align?: 'left' | 'center' | 'right'; italic?: boolean;
+  letterSpacing?: number;   // extra space between letters, as a share of the letter height (browsers without support ignore it)
+  outlineMm?: number;       // > 0: only the outline of the letters, this thick (hollow letters)
 }): TextMask | null {
   const L = lines.map((s) => s.trim()).filter(Boolean);
   if (!L.length) return null;
   const probe = document.createElement('canvas').getContext('2d')!;
   const fontAt = (px: number) => `${italic ? 'italic ' : ''}${weight} ${px}px "${family}", sans-serif`;
-  probe.font = fontAt(100);
+  const spacing = (g: CanvasRenderingContext2D, px: number) => { if ('letterSpacing' in g) (g as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = `${(letterSpacing * px).toFixed(2)}px`; };
+  probe.font = fontAt(100); spacing(probe, 100);
   const m0 = L.map((s) => probe.measureText(s));
   const inkH = Math.max(...m0.map((m) => m.actualBoundingBoxAscent + m.actualBoundingBoxDescent)) || 100;
   const px = (100 * heightMm * pxPerMm) / inkH;
-  probe.font = fontAt(px);
+  probe.font = fontAt(px); spacing(probe, px);
   const ms = L.map((s) => probe.measureText(s));
   const rows = ms.map((m) => ({ asc: Math.ceil(m.actualBoundingBoxAscent), desc: Math.ceil(m.actualBoundingBoxDescent), l: Math.ceil(m.actualBoundingBoxLeft), r: Math.ceil(m.actualBoundingBoxRight) }));
-  const pad = 4, gap = Math.round(heightMm * pxPerMm * lineGap);
+  const ow = Math.max(0, outlineMm * pxPerMm), pad = 4 + Math.ceil(ow / 2), gap = Math.round(heightMm * pxPerMm * lineGap);
   const w = Math.max(...rows.map((r) => r.l + r.r)) + pad * 2;
   const h = rows.reduce((s, r) => s + r.asc + r.desc, 0) + gap * (rows.length - 1) + pad * 2;
   if (w * h > 16e6) return null;
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d', { willReadFrequently: true })!;
-  g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = fontAt(px); g.textBaseline = 'alphabetic';
+  g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.strokeStyle = '#fff'; g.font = fontAt(px); g.textBaseline = 'alphabetic'; spacing(g, px);
+  g.lineWidth = ow; g.lineJoin = 'round';
   let y = pad;
   rows.forEach((r, i) => {
     const lw = r.l + r.r, x0 = align === 'left' ? pad : align === 'right' ? w - pad - lw : (w - lw) / 2;
-    g.fillText(L[i], x0 + r.l, y + r.asc); y += r.asc + r.desc + gap;
+    if (ow > 0) g.strokeText(L[i], x0 + r.l, y + r.asc); else g.fillText(L[i], x0 + r.l, y + r.asc);
+    y += r.asc + r.desc + gap;
   });
   const d = g.getImageData(0, 0, w, h).data, mask = new Uint8Array(w * h);
   for (let i = 0; i < w * h; i++) mask[i] = d[i * 4] > 127 ? 1 : 0;
