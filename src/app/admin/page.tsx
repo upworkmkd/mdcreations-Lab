@@ -10,6 +10,12 @@ import { purgeOldTracking } from '@/lib/retention.server';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Overview' };
 
+/** Midnight on the 1st of this month, India time. */
+function startOfMonthIndia() {
+  const IST = 5.5 * 3600e3, ist = new Date(Date.now() + IST);
+  return Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), 1) - IST;
+}
+
 type Stats = {
   totals: Record<string, number>;
   daily: { day: string; visitors: number; pageviews: number }[];
@@ -35,9 +41,19 @@ export default async function Overview({ searchParams }: { searchParams: Promise
     db.from('visitor_events').select('*').in('type', ['signup', 'email_confirmed', 'signin', 'design_saved', 'checkout', 'payment', 'download', 'payment_cancelled', 'purchase_error', 'subscribed', 'subscription_cancel', 'plan_build']).order('created_at', { ascending: false }).limit(15),
     db.rpc('admin_anon_stats', { p_days: days }),
   ]);
+  // money taken for monthly plans: first payments and renewals
+  const { data: planPays } = await db.from('payments').select('currency, amount_minor, created_at').not('subscription_id', 'is', null).in('status', ['captured', 'authorized']);
   const s = stats.data as Stats | null;
   const revenue: Record<string, number> = {};
   for (const r of paid.data ?? []) revenue[r.currency] = (revenue[r.currency] ?? 0) + r.amount_minor;
+  const planRev: Record<string, number> = {}, planMonth: Record<string, number> = {};
+  const monthStart = startOfMonthIndia();
+  for (const r of planPays ?? []) {
+    planRev[r.currency] = (planRev[r.currency] ?? 0) + r.amount_minor;
+    if (new Date(r.created_at).getTime() >= monthStart) planMonth[r.currency] = (planMonth[r.currency] ?? 0) + r.amount_minor;
+  }
+  const both: Record<string, number> = { ...revenue };
+  for (const [c, n] of Object.entries(planRev)) both[c] = (both[c] ?? 0) + n;
   const [who, names] = await Promise.all([emails((orders.data ?? []).map((o) => o.user_id)), visitorNames((feed.data ?? []).map((e) => e.visitor_id))]);
   const t = s?.totals ?? {};
 
@@ -56,8 +72,10 @@ export default async function Overview({ searchParams }: { searchParams: Promise
         <Stat label="Anonymous visits" value={num((anonStats.data as { totals?: Record<string, number> } | null)?.totals?.visits)} note={`${num((anonStats.data as { totals?: Record<string, number> } | null)?.totals?.views)} page views, no cookies`} href="/admin/anonymous" />
         <Stat label="Page views" value={num(t.pageviews)} note={`${num(t.sessions)} visits · avg ${duration(t.avg_session_s ?? 0)}`} />
         <Stat label="Sign-ups" value={num(t.signups)} note={`${num(users.count)} accounts in all`} href="/admin/users" />
-        <Stat label="Revenue" value={revenue.INR ? formatMoney(revenue.INR, 'INR') : '₹0'} note={revenue.USD ? `+ ${formatMoney(revenue.USD, 'USD')}` : `${num((paid.data ?? []).length)} paid orders`} href="/admin/orders" />
-        <Stat label="Active plans" value={num((subs.data ?? []).filter((x) => hasAccess(x)).length)} note={(() => { const m: Record<string, number> = {}; for (const x of subs.data ?? []) if (hasAccess(x) && !x.cancel_at_period_end && x.status !== 'cancelled') m[x.currency] = (m[x.currency] ?? 0) + x.amount_minor; return Object.keys(m).length ? `${Object.entries(m).map(([c, n]) => money(n, c)).join(' + ')} a month` : 'no subscribers yet'; })()} href="/admin/subscriptions" />
+        <Stat label="Total revenue" value={both.INR ? formatMoney(both.INR, 'INR') : '₹0'} note={both.USD ? `+ ${formatMoney(both.USD, 'USD')} · orders + plans` : 'orders + plans'} href="/admin/payments" />
+        <Stat label="Order revenue" value={revenue.INR ? formatMoney(revenue.INR, 'INR') : '₹0'} note={revenue.USD ? `+ ${formatMoney(revenue.USD, 'USD')}` : `${num((paid.data ?? []).length)} paid orders`} href="/admin/orders" />
+        <Stat label="Subscription revenue" value={planRev.INR ? formatMoney(planRev.INR, 'INR') : '₹0'} note={`${planRev.USD ? `+ ${formatMoney(planRev.USD, 'USD')} · ` : ''}${Object.keys(planMonth).length ? `${Object.entries(planMonth).map(([c, n]) => money(n, c)).join(' + ')} this month` : 'nothing this month yet'} · ${num((planPays ?? []).length)} payments`} href="/admin/subscriptions" />
+        <Stat label="Subscribers" value={num((subs.data ?? []).filter((x) => hasAccess(x)).length)} note={(() => { const m: Record<string, number> = {}; for (const x of subs.data ?? []) if (hasAccess(x) && !x.cancel_at_period_end && x.status !== 'cancelled') m[x.currency] = (m[x.currency] ?? 0) + x.amount_minor; return Object.keys(m).length ? `${Object.entries(m).map(([c, n]) => money(n, c)).join(' + ')} a month` : 'no subscribers yet'; })()} href="/admin/users?f=subscribers" />
         <Stat label="Designs saved" value={num(designs.count)} href="/admin/designs" />
         <Stat label="Files built · downloads" value={`${num(files.count)} · ${num(downloads.count)}`} href="/admin/downloads" />
       </div>

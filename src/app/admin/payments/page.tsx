@@ -18,7 +18,7 @@ export default async function Payments({ searchParams }: { searchParams: Promise
       <Card flush>
         <BulkForm kind="payments" noun="payment record" warn="Only our record is removed; nothing changes in Razorpay.">
 <div className="tbl-wrap"><table className="tbl adm-tbl">
-          <thead><tr><th className="sel" /><th>When</th><th>Customer</th><th>Payment</th><th>Method</th><th>Status</th><th className="num">Amount</th><th /></tr></thead>
+          <thead><tr><th className="sel" /><th>When</th><th>Customer</th><th>Payment</th><th>For</th><th>Method</th><th>Status</th><th className="num">Amount</th><th /></tr></thead>
           <tbody>
             {(data ?? []).map((p) => (
               <tr key={p.id}>
@@ -26,13 +26,14 @@ export default async function Payments({ searchParams }: { searchParams: Promise
                 <td>{when(p.created_at)}</td>
                 <td><Link href={`/admin/users/${p.user_id}`}>{who.get(p.user_id)?.email ?? p.user_id.slice(0, 8)}</Link></td>
                 <td className="id">{p.provider_payment_id}</td>
+                <td>{p.subscription_id ? <Link href="/admin/subscriptions"><span className="pill live">plan</span></Link> : p.order_id ? <Link href={`/admin/orders/${p.order_id}`}>order</Link> : '—'}</td>
                 <td>{p.method ?? '—'}</td>
                 <td><Pill s={p.status} /></td>
                 <td className="num">{money(p.amount_minor, p.currency)}</td>
                 <td className="act"><RowDelete id={p.id} /></td>
               </tr>
             ))}
-            {!data?.length && <tr><td colSpan={8} className="muted">No payments yet.</td></tr>}
+            {!data?.length && <tr><td colSpan={9} className="muted">No payments yet.</td></tr>}
           </tbody>
         </table></div>
         </BulkForm>
