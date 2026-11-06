@@ -8,6 +8,7 @@ import { BASES, BASE_LABEL, BASE_LEN, RATIOS, baseOf, buildLitho, gridFor } from
 import type { LithoParams, LithoShape } from '@/lib/litho/design';
 import { adjust, grayGrid, loadImage, type Framing } from '@/lib/mesh/image-grid';
 import { bytesToB64 } from '@/lib/mesh/b64.js';
+import { grayUrl, num, restoreFrom, savedPicture, str, useRestoredPicture, type SavedDesign } from '@/lib/saved-design';
 
 const SHAPES: [LithoShape, string][] = [['flat', 'Flat panel'], ['curved', 'Curved panel'], ['cylinder', 'Cylinder lamp'], ['heart', 'Heart'], ['moon', 'Moon lamp']];
 const DEMO = '/images/hero-layered.jpg';
@@ -49,20 +50,37 @@ function coarse(gray: Uint8Array, G: { w: number; h: number; pitch: number }, cl
   return { gray: out, G: { ...G, w, h, pitch: closedU ? (G.w * G.pitch) / w : G.pitch * k } };
 }
 
-export function LithoMaker(buy: KitBuy) {
+type Adj = { brightness: number; contrast: number; gamma: number };
+type Settings = { name: string; p: LithoParams; fr: Framing; adj: Adj; picture: string | null };
+
+/** Older designs: the settings, and the saved brightness grid as the picture (already framed and adjusted). */
+function fromParams(q: Record<string, unknown>): Partial<Settings> {
+  const w = num(q.w, 0), h = num(q.h, 0);
+  return { name: str(q.name, 'Lithophane'), p: q.p as LithoParams, fr: { zoom: 1, x: 0, y: 0, fit: 'cover' }, adj: { brightness: 0, contrast: 0, gamma: 1 },
+    picture: typeof q.gray === 'string' && w && h ? grayUrl(q.gray, w, h) : null };
+}
+
+function thumbOf(im: Pic) {
+  const c = document.createElement('canvas'); c.width = 240; c.height = Math.round((240 * im.height) / im.width); c.getContext('2d')!.drawImage(im, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.8);
+}
+
+export function LithoMaker({ saved, ...buy }: KitBuy & { saved?: SavedDesign | null }) {
+  const [init] = useState(() => restoreFrom<Settings>(saved, fromParams));
   const [img, setImg] = useState<Pic | null>(null);
   const [thumb, setThumb] = useState<string | null>(null);
-  const [name, setName] = useState('Lithophane');
-  const [p, setP] = useState<LithoParams>({ shape: 'flat', width: 120, ratio: '4:3', diameter: 80, height: 100, angle: 120, minT: 0.8, maxT: 3, border: 3, detail: 'standard', stand: true, base: 'slot', baseLen: BASE_LEN.slot });
-  const [fr, setFr] = useState<Framing>({ zoom: 1, x: 0, y: 0, fit: 'cover' });
-  const [adj, setAdj] = useState({ brightness: 0, contrast: 0.1, gamma: 1 });
+  const [name, setName] = useState(init?.name ?? 'Lithophane');
+  const [p, setP] = useState<LithoParams>(() => ({ shape: 'flat', width: 120, ratio: '4:3', diameter: 80, height: 100, angle: 120, minT: 0.8, maxT: 3, border: 3, detail: 'standard', stand: true, base: 'slot', baseLen: BASE_LEN.slot, ...(init?.p ?? {}) }));
+  const [fr, setFr] = useState<Framing>(init?.fr ?? { zoom: 1, x: 0, y: 0, fit: 'cover' });
+  const [adj, setAdj] = useState<Adj>(init?.adj ?? { brightness: 0, contrast: 0.1, gamma: 1 });
+  const userPic = useRef(false);   // the saved or uploaded picture, not the demo
+  useRestoredPicture(init?.picture, (im) => { userPic.current = true; setImg(im); setThumb(thumbOf(im)); });
   const [view, setView] = useState<'3d' | 'lit'>('3d');
   const snap = useRef<MeshSnap | null>(null), lit = useRef<HTMLCanvasElement>(null);
   const set = <K extends keyof LithoParams>(k: K, v: LithoParams[K]) => setP((o) => ({ ...o, [k]: v }));
   const setShape = (shape: LithoShape) => setP((o) => { const b = (BASES as Record<string, string[]>)[shape][0]; return { ...o, shape, base: b, stand: b !== 'none', baseLen: (BASE_LEN as Record<string, number>)[b] ?? o.baseLen }; });
   const setBase = (b: string) => setP((o) => ({ ...o, base: b, stand: b !== 'none', baseLen: (BASE_LEN as Record<string, number>)[b] ?? o.baseLen }));
 
-  useEffect(() => { let ok = true; loadImage(DEMO).then((im) => { if (ok) setImg((cur) => cur ?? im); }).catch(() => {}); return () => { ok = false; }; }, []);
+  useEffect(() => { if (init?.picture) return; let ok = true; loadImage(DEMO).then((im) => { if (ok) setImg((cur) => cur ?? im); }).catch(() => {}); return () => { ok = false; }; }, [init]);
 
   // the full grid is what gets sent and printed; the 3D preview uses a lighter copy of it
   const G = useMemo(() => gridFor(p), [p]);
@@ -97,15 +115,14 @@ export function LithoMaker(buy: KitBuy) {
 
   const parts = useMemo(() => (model ? model.parts.map((q) => ({ tris: q.tris, color: q.file.includes('base') || q.file === 'stand' ? '#8f8a7a' : '#f3ecd9', offset: q.offset })) : []), [model]);
   const onImage = (im: HTMLImageElement, n: string) => {
-    setImg(im); setName(n.slice(0, 40) || 'Lithophane'); setFr((o) => ({ zoom: 1, x: 0, y: 0, fit: o.fit }));
-    const c = document.createElement('canvas'); c.width = 240; c.height = Math.round((240 * im.height) / im.width);
-    c.getContext('2d')!.drawImage(im, 0, 0, c.width, c.height); setThumb(c.toDataURL('image/jpeg', 0.8));
+    userPic.current = true; setImg(im); setName(n.slice(0, 40) || 'Lithophane'); setFr((o) => ({ zoom: 1, x: 0, y: 0, fit: o.fit })); setThumb(thumbOf(im));
   };
 
   const getDesign = useCallback(() => {
     if (!gray) return null;
-    return { design: { name, p, w: G.w, h: G.h, gray: bytesToB64(gray) }, preview: snap.current?.jpeg() ?? '' };
-  }, [gray, name, p, G]);
+    return { design: { name, p, w: G.w, h: G.h, gray: bytesToB64(gray) }, preview: snap.current?.jpeg() ?? '',
+      settings: { name, p, fr, adj, picture: userPic.current ? savedPicture(img) : null } satisfies Settings };
+  }, [gray, name, p, G, fr, adj, img]);
 
   const round = p.shape === 'cylinder' || p.shape === 'moon';
 

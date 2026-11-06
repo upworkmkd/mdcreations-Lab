@@ -9,6 +9,7 @@ import type { StudioBase, StudioColour, StudioTemplate } from '@/lib/studio/desi
 import { encodeRle } from '@/lib/layers/rle.js';
 import { loadGoogleFont } from '@/lib/mesh/text-mask';
 import { track } from '@/components/tracker';
+import { num, restoreFrom, rleBytes, str, type SavedDesign } from '@/lib/saved-design';
 import { TextPanel } from './text-panel';
 import { type Board, type Item, type Shape, type Sym, type TextStyle, compose, forgetGlyphs, corners, drawLocal, fillItem, hits, itemMatrix, newId, symMatrices } from './scene';
 
@@ -58,25 +59,59 @@ type Drag =
   | { kind: 'rotate'; id: number; r0: number; a0: number }
   | { kind: 'pixel'; erase: boolean };
 
-export function StudioMaker(buy: KitBuy) {
-  const [template, setTemplate] = useState<StudioTemplate>('sign');
+/* "Edit design": the board as it was, objects and all. Filled areas carry their pixels, kept run-length encoded. */
+type Bitmap = Extract<Item, { t: 'bitmap' }>;
+type SavedItem = Exclude<Item, Bitmap> | (Omit<Bitmap, 'm'> & { m: string });
+type Settings = { name: string; template: StudioTemplate; board: Board; items: SavedItem[]; pixels: string | null; colours: StudioColour[]; base: StudioBase; hole: number; sym: Sym; ts: TextStyle };
+const itemsOut = (l: Item[]): SavedItem[] => l.map((it) => (it.t === 'bitmap' ? { ...it, m: encodeRle(it.m) } : it) as SavedItem);
+const itemsIn = (l: SavedItem[] | undefined): Item[] => (l ?? []).flatMap((it) => {
+  try { return [(it.t === 'bitmap' ? { ...it, id: newId(), m: rleBytes(it.m, it.mw * it.mh) } : { ...it, id: newId() }) as Item]; } catch { return []; }
+});
+
+/**
+ * Older designs kept only the finished colour grid: pixel art comes back as its squares, anything else as one filled
+ * area per colour (they can be moved, recoloured or drawn over, but text is no longer text).
+ */
+function fromParams(q: Record<string, unknown>): Partial<Settings> & { pixelsBytes?: Uint8Array } {
+  const w = num(q.w, 0), h = num(q.h, 0), pxmm = num(q.pxmm, 4), template = str(q.template, 'sign') as StudioTemplate;
+  if (!w || !h || typeof q.labels !== 'string') return {};
+  const labels = rleBytes(q.labels, w * h), board: Board = { W: w / pxmm, H: h / pxmm, pxmm, w, h };
+  const colours = Array.isArray(q.colours) ? q.colours as StudioColour[] : undefined;
+  const out: Partial<Settings> = { name: str(q.name, 'My design'), template, board, colours, base: q.base as StudioBase, hole: num(q.hole, 0) };
+  if (q.square || template === 'pixel') return { ...out, pixels: encodeRle(labels) };
+  const items: SavedItem[] = [];
+  for (let c = 1; c <= (colours?.length ?? 4); c++) {
+    const m = new Uint8Array(w * h); let any = false;
+    for (let i = 0; i < w * h; i++) if (labels[i] === c) { m[i] = 1; any = true; }
+    if (any) items.push({ id: 0, t: 'bitmap', m: encodeRle(m), mw: w, mh: h, pxmm, colour: c, x: board.W / 2, y: board.H / 2, s: 1, r: 0, sym: 'none' } as SavedItem);
+  }
+  return { ...out, items };
+}
+
+export function StudioMaker({ saved, ...buy }: KitBuy & { saved?: SavedDesign | null }) {
+  const [init] = useState(() => restoreFrom<Settings>(saved, fromParams));
+  const t0Init = init?.template && SETUP[init.template] ? init.template : 'sign';
+  const [template, setTemplate] = useState<StudioTemplate>(t0Init);
   const [pending, setPending] = useState<StudioTemplate | null>(null);
-  const [board, setBoard] = useState<Board>(() => boardOf(SETUP.sign.W, SETUP.sign.H, SETUP.sign.pxmm));
-  const [items, setItems] = useState<Item[]>([]);
-  const [pixels, setPixels] = useState<Uint8Array>(() => new Uint8Array(0));
+  const [board, setBoard] = useState<Board>(() => (init?.board ? boardOf(init.board.W, init.board.H, init.board.pxmm) : boardOf(SETUP.sign.W, SETUP.sign.H, SETUP.sign.pxmm)));
+  const [items, setItems] = useState<Item[]>(() => itemsIn(init?.items));
+  const [pixels, setPixels] = useState<Uint8Array>(() => {
+    const b = init?.board; if (!b || !init?.pixels) return new Uint8Array(0);
+    try { return rleBytes(init.pixels, b.w * b.h); } catch { return new Uint8Array(t0Init === 'pixel' ? b.w * b.h : 0); }
+  });
   const [sel, setSel] = useState<number | null>(null);
-  const [colours, setColours] = useState<StudioColour[]>(START_COLOURS.map((c) => ({ color: c, height: SETUP.sign.heights })));
+  const [colours, setColours] = useState<StudioColour[]>(() => init?.colours?.length ? init.colours : START_COLOURS.map((c) => ({ color: c, height: SETUP[t0Init].heights })));
   const [active, setActive] = useState(1);
-  const [base, setBase] = useState<StudioBase>(SETUP.sign.base);
-  const [hole, setHole] = useState(SETUP.sign.hole);
-  const [tool, setTool] = useState<Tool>('text');
+  const [base, setBase] = useState<StudioBase>(init?.base ?? SETUP[t0Init].base);
+  const [hole, setHole] = useState(init?.hole ?? SETUP[t0Init].hole);
+  const [tool, setTool] = useState<Tool>(init ? 'select' : 'text');
   const [size, setSize] = useState(3);
-  const [sym, setSym] = useState<Sym>('none');
-  const [ts, setTs] = useState<TextStyle>(START_TEXT);   // the next text to place
+  const [sym, setSym] = useState<Sym>(init?.sym ?? SETUP[t0Init].sym);
+  const [ts, setTs] = useState<TextStyle>(init?.ts ?? START_TEXT);   // the next text to place
   const lastEdit = useRef<{ id: number; at: number } | null>(null);
   const [sticker, setSticker] = useState('ॐ'), [stickerH, setStickerH] = useState(30);
   const [view, setView] = useState<'draw' | '3d'>('draw');
-  const [name, setName] = useState('My design');
+  const [name, setName] = useState(init?.name ?? 'My design');
   const [fontTick, setFontTick] = useState(0);
   const [hist, setHist] = useState<{ undo: Snapshot[]; redo: Snapshot[] }>({ undo: [], redo: [] });
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -332,8 +367,9 @@ export function StudioMaker(buy: KitBuy) {
     return {
       design: { name, template, w: board.w, h: board.h, pxmm: board.pxmm, labels: encodeRle(labels), colours, base, hole, square: pixel },
       preview: snap.current?.jpeg() || j.toDataURL('image/jpeg', 0.85),
+      settings: { name, template, board, items: itemsOut(items), pixels: pixel ? encodeRle(pixels) : null, colours, base, hole, sym, ts } satisfies Settings,
     };
-  }, [used, board, pixel, name, template, labels, colours, base, hole]);
+  }, [used, board, pixel, name, template, labels, colours, base, hole, items, pixels, sym, ts]);
 
   const setColour = (i: number, c: Partial<StudioColour>) => setColours((o) => o.map((x, k) => (k === i ? { ...x, ...c } : x)));
   const chooseColour = (n: number) => { setActive(n); if (selected && tool === 'select' && selected.colour !== 0) { record(); update(selected.id, { colour: n }); } else if (tool === 'eraser') setTool('brush'); };

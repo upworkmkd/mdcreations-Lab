@@ -1,7 +1,7 @@
 /* The Shadow Lamp Maker's editor: reads the picture, lets the visitor place it, and draws the predicted shadow.
  * Plain DOM code on purpose - it redraws canvases on every pointer move and does not need React for that.
  * mountStudio() wires everything inside `root` and returns an api the React wrapper uses for checkout. */
-import { DEFAULTS, PLATE, edt, gaussBlur, label, maskToBytes } from '../../lib/lamp/raster.js';
+import { DEFAULTS, PLATE, bytesToMask, edt, gaussBlur, label, maskToBytes } from '../../lib/lamp/raster.js';
 import { offerPicture } from '../../lib/keep-picture';
 
 const PW = 704, SPAN = 1760;              // preview pixels and the wall width they cover (mm)
@@ -104,6 +104,46 @@ export function pictureProblem(f) {
   }
   if (f.size > MAX_MB * 1024 * 1024) return `That picture is over ${MAX_MB} MB. Please use a smaller PNG, JPG or SVG.`;
   return '';
+}
+
+/* ---------- "Edit design": the lamp as it was saved ---------- */
+// A snapshot is the picture (and the cover plate's own picture), every setting on the page by its id, and the
+// placement of the shadow and of the plate picture, in the picture's pixels at the size it was saved.
+function imageDataUrl(img, budget) {
+  // the picture as the studio holds it (ImageData), as PNG (it may have see-through parts); smaller if it is too big
+  let c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.getContext('2d').putImageData(img, 0, 0);
+  for (let k = 0; k < 5; k++) {
+    const url = c.toDataURL('image/png'); if (url.length <= budget) return { url, w: c.width, h: c.height };
+    const n = document.createElement('canvas'); n.width = Math.round(c.width * 0.75); n.height = Math.round(c.height * 0.75);
+    const g = n.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(c, 0, 0, n.width, n.height); c = n;
+  }
+  return null;
+}
+function maskPicture(m, w, h) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'), im = g.createImageData(w, h);
+  for (let i = 0; i < w * h; i++) { const v = m[i] ? 0 : 255; im.data[4 * i] = im.data[4 * i + 1] = im.data[4 * i + 2] = v; im.data[4 * i + 3] = 255; }
+  g.putImageData(im, 0, 0);
+  return c.toDataURL('image/png');
+}
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+/** Older designs, saved before editing existed: the same snapshot rebuilt from what the server builds from. */
+export function lampSnapshotFromParams(q) {
+  const sh = q && q.shadow; if (!sh || !sh.mask || !sh.w || !sh.h) return null;
+  const o = q.opts || {}, pl = q.plate, po = (pl && pl.opts) || {};
+  const smooth = Math.round(Math.max(0, Math.min(40, ((sh.sigma || 0.6) - 0.6) * 10 * 700 / Math.max(sh.w, sh.h))));
+  const form = {
+    name: q.name || 'Design', mode: 'art', level: 128, invert: false, gaps: true, smooth, mirror: !!(sh.view && sh.view.mirror),
+    vmax: o.Vmax, thin: o.minSolid, apex: o.apex, loose: o.struts ? 'struts' : o.backing ? 'backing' : 'drop', wrap: !!o.cornerWrap, ribs: !!o.ribs, cuts: !!o.leftCutouts,
+    withBase: q.withBase !== false, plateOn: !!pl,
+  };
+  if (pl) Object.assign(form, { plateStyle: po.style, plateLine: po.lineW, plateGap: po.gap, plateKind: po.combined ? 'combined' : 'separate', plateCol: po.plateColor, artCol: po.artColor, pMode: 'art', pLevel: 128, pInvert: false });
+  for (const k of Object.keys(form)) if (form[k] === undefined) delete form[k];
+  const own = pl && pl.own && pl.own.mask ? { picture: maskPicture(bytesToMask(unb64(pl.own.mask), pl.own.w * pl.own.h), pl.own.w, pl.own.h), name: 'Cover plate picture', w: pl.own.w, h: pl.own.h } : null;
+  return {
+    v: 1, picture: maskPicture(bytesToMask(unb64(sh.mask), sh.w * sh.h), sh.w, sh.h), pictureName: (q.name || 'design') + '.png', w: sh.w, h: sh.h,
+    form, view: sh.view, plate: pl ? { own, view: pl.view } : null,
+  };
 }
 
 export function mountStudio(root, hooks) {
@@ -394,6 +434,56 @@ export function mountStudio(root, hooks) {
     }
   }
 
+  /* ---------- "Edit design" ---------- */
+  function snapshot() {
+    if (!state.img) return null;
+    const form = {};
+    for (const el of root.querySelectorAll('input[id], select[id], textarea[id]')) {
+      if (el.type === 'file') continue;
+      form[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+    }
+    const pic = imageDataUrl(state.img, 1500000); if (!pic) return null;
+    const own = plate.own ? imageDataUrl(plate.own.img, 700000) : null;
+    return {
+      v: 1, picture: pic.url, pictureName: $('fname').textContent || 'picture', w: state.w, h: state.h, form,
+      view: Object.assign({}, state.view),
+      plate: { own: own ? { picture: own.url, name: plate.own.name, w: plate.own.w, h: plate.own.h } : null, view: Object.assign({}, plate.view) },
+    };
+  }
+  function applyForm(form) {
+    for (const [id, v] of Object.entries(form || {})) {
+      const el = root.querySelector('#' + CSS.escape(id)); if (!el || el.type === 'file') continue;
+      if (el.type === 'checkbox') el.checked = !!v; else el.value = String(v);
+    }
+  }
+  // a view saved in another picture size (the picture is kept a little smaller when it is very big)
+  const scaled = (v, k) => ({ cx: v.cx * k, cy: v.cy * k, mmPerPx: v.mmPerPx / k, mirror: !!v.mirror });
+  function restore(snap, fail) {
+    decode(snap.picture, (p) => {
+      if (!alive) return;
+      state.img = p.img; state.w = p.w; state.h = p.h; state.otsu = p.otsu; state.isExample = false; state.nudge = null;
+      plate.own = null;
+      applyForm(snap.form);
+      $('fname').textContent = snap.pictureName || 'Your saved picture';
+      syncMode(false); plateColours();
+      const k = snap.w ? p.w / snap.w : 1;
+      if (snap.view) state.view = scaled(snap.view, k);
+      buildMask(false);
+      const pv = snap.plate && snap.plate.view;
+      const placePlate = (kk) => { if (!pv) return; plateFit(true); plate.view = scaled(pv, kk); syncPlateSize(); plate.dirty = true; drawPlate(); schedule(true); };
+      if (snap.plate && snap.plate.own) {
+        const o = snap.plate.own;
+        decode(o.picture, (q) => {
+          if (!alive) return;
+          plate.own = { img: q.img, w: q.w, h: q.h, otsu: q.otsu, name: o.name || 'Cover plate picture' };
+          applyForm({ pMode: snap.form && snap.form.pMode, pLevel: snap.form && snap.form.pLevel, pInvert: snap.form && snap.form.pInvert });
+          readPlate(); syncPlateUi(); placePlate(o.w ? q.w / o.w : 1);
+        }, () => { syncPlateUi(); placePlate(k); });
+      } else { syncPlateUi(); placePlate(k); }
+      out();
+    }, () => { if (fail) fail(); });
+  }
+
   /* ---------- what checkout needs ---------- */
   function designPayload() {
     const r = state.result; if (!r || state.doneId !== state.jobId || !state.m) return null;
@@ -487,10 +577,12 @@ export function mountStudio(root, hooks) {
   on(box, 'wheel', (e) => { if (!state.bbox) return; e.preventDefault(); state.view.mmPerPx *= Math.exp(-e.deltaY * 0.0012); syncSize(); drawQuick(); schedule(); }, { passive: false });
 
   out(); syncPlateUi(); paintWall(null, null); drawLampAndGuides();
-  loadImage(hooks.sample, hooks.sampleName || 'Example', true, hooks.sampleNudge, hooks.samplePlate);
+  // opened from "Edit design": the saved lamp; otherwise the example
+  const sample = () => loadImage(hooks.sample, hooks.sampleName || 'Example', true, hooks.sampleNudge, hooks.samplePlate);
+  if (hooks.restore) restore(hooks.restore, sample); else sample();
 
   return {
-    designPayload, previewJpeg,
+    designPayload, previewJpeg, snapshot,
     loadExample(src, name, nudge, plateSrc) { loadImage(src, name, true, nudge, plateSrc); },
     destroy() { alive = false; ac.abort(); clearTimeout(timer); clearTimeout(maskTimer); clearTimeout(pTimer); if (worker) worker.terminate(); },
     _state: state,

@@ -23,7 +23,7 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 }
 
 export type BuyBoxProps = {
-  tool: string; next: string; ready: boolean; getDesign: () => { design: unknown; preview: string } | null;
+  tool: string; next: string; ready: boolean; getDesign: () => { design: unknown; preview: string; settings?: unknown } | null;
   currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean;
   plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean; viewerName?: string; reviewed?: boolean;
   doneBlurb?: string; preview?: boolean;   // preview = the tool is not public yet (admins only)
@@ -50,7 +50,7 @@ export function BuyBox({ tool, next, ready, getDesign, currency, amountMinor, si
     if (!d) { setPhase({ kind: 'error', text: 'Still building the layers. Try again in a moment.' }); return; }
     try {
       setPhase({ kind: 'working', text: 'Saving your design…' });
-      const { id: designId } = await post<{ id: string }>('/api/designs', { tool, design: d.design, preview: d.preview });
+      const { id: designId } = await post<{ id: string }>('/api/designs', { tool, design: d.design, preview: d.preview, settings: d.settings });
       setPhase({ kind: 'working', text: 'Starting the payment…' });
       const co = await post<{ free?: boolean; plan?: boolean; remaining?: number | null; fileId?: string; orderId?: string; keyId: string; providerOrderId: string; amount: number; currency: string; description: string; prefill: { name: string; email: string } }>('/api/checkout', { designId });
       if (co.free && co.fileId) { if (co.plan) setLeft(co.remaining ?? null); finish(co.fileId); return; }

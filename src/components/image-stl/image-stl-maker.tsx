@@ -10,6 +10,7 @@ import { adjust } from '@/lib/mesh/image-grid';
 import { stlBinary } from '@/lib/mesh/mesh.js';
 import { coloured3mf } from '@/lib/mesh/threemf.js';
 import { track } from '@/components/tracker';
+import { pictureUrl, restoreFrom, type SavedDesign } from '@/lib/saved-design';
 
 /* The free Image to STL converter: everything happens in the browser, the picture is never uploaded. */
 
@@ -50,17 +51,32 @@ function loadPic(src: string, name: string) {
   });
 }
 
-export function ImageStlMaker({ print = null, signedIn = false }: { print?: { priceMinor: number; toolName: string } | null; signedIn?: boolean }) {
+type Settings = {
+  picture: string | null; pictureName: string; mode: Mode; read: Read; level: number; tol: number; thicken: number; speck: number; width: number; height: number; mirror: boolean;
+  base: Base; baseT: number; border: number; corner: number; hole: number; depth: number; rBase: number; raise: 'dark' | 'light';
+  soft: number; contrast: number; bright: number; cut: boolean; pitch: number; baseCol: string; topCol: string;
+};
+const picUrls = new WeakMap<Pic, string>();
+/** The picture to keep with the settings, drawn at its working size (SVGs may have no size of their own). */
+function picUrl(p: Pic) {
+  let u = picUrls.get(p);
+  if (u == null) { const c = document.createElement('canvas'); c.width = p.w; c.height = p.h; c.getContext('2d')!.drawImage(p.img, 0, 0, p.w, p.h); u = pictureUrl(c); picUrls.set(p, u); }
+  return u || null;
+}
+
+export function ImageStlMaker({ print = null, signedIn = false, saved = null }: { print?: { priceMinor: number; toolName: string } | null; signedIn?: boolean; saved?: SavedDesign | null }) {
   const snap = useRef<MeshSnap | null>(null);
+  // older printed orders kept only the finished model, so there is nothing to bring back for them
+  const [init] = useState(() => restoreFrom<Settings>(saved, () => null));
   const [pic, setPic] = useState<Pic | null>(null), [err, setErr] = useState('');
-  const [mode, setMode] = useState<Mode>('raised');
-  const [read, setRead] = useState<Read>('auto'), [level, setLevel] = useState(128), [tol, setTol] = useState(60);
-  const [thicken, setThicken] = useState(0), [speck, setSpeck] = useState(1);
-  const [width, setWidth] = useState(80), [height, setHeight] = useState(2), [mirror, setMirror] = useState(false);
-  const [base, setBase] = useState<Base>('plate'), [baseT, setBaseT] = useState(2), [border, setBorder] = useState(4), [corner, setCorner] = useState(5), [hole, setHole] = useState(0);
-  const [depth, setDepth] = useState(3), [rBase, setRBase] = useState(1.2), [raise, setRaise] = useState<'dark' | 'light'>('dark');
-  const [soft, setSoft] = useState(0.3), [contrast, setContrast] = useState(0.1), [bright, setBright] = useState(0), [cut, setCut] = useState(false), [pitch, setPitch] = useState(0.3);
-  const [baseCol, setBaseCol] = useState('#f4f1e8'), [topCol, setTopCol] = useState('#161616');
+  const [mode, setMode] = useState<Mode>(init?.mode ?? 'raised');
+  const [read, setRead] = useState<Read>(init?.read ?? 'auto'), [level, setLevel] = useState(init?.level ?? 128), [tol, setTol] = useState(init?.tol ?? 60);
+  const [thicken, setThicken] = useState(init?.thicken ?? 0), [speck, setSpeck] = useState(init?.speck ?? 1);
+  const [width, setWidth] = useState(init?.width ?? 80), [height, setHeight] = useState(init?.height ?? 2), [mirror, setMirror] = useState(init?.mirror ?? false);
+  const [base, setBase] = useState<Base>(init?.base ?? 'plate'), [baseT, setBaseT] = useState(init?.baseT ?? 2), [border, setBorder] = useState(init?.border ?? 4), [corner, setCorner] = useState(init?.corner ?? 5), [hole, setHole] = useState(init?.hole ?? 0);
+  const [depth, setDepth] = useState(init?.depth ?? 3), [rBase, setRBase] = useState(init?.rBase ?? 1.2), [raise, setRaise] = useState<'dark' | 'light'>(init?.raise ?? 'dark');
+  const [soft, setSoft] = useState(init?.soft ?? 0.3), [contrast, setContrast] = useState(init?.contrast ?? 0.1), [bright, setBright] = useState(init?.bright ?? 0), [cut, setCut] = useState(init?.cut ?? false), [pitch, setPitch] = useState(init?.pitch ?? 0.3);
+  const [baseCol, setBaseCol] = useState(init?.baseCol ?? '#f4f1e8'), [topCol, setTopCol] = useState(init?.topCol ?? '#161616');
   const [view, setView] = useState<'3d' | 'flat' | 'get'>('3d');
   const flat = useRef<HTMLCanvasElement>(null), fileId = useId();
 
@@ -81,11 +97,14 @@ export function ImageStlMaker({ print = null, signedIn = false }: { print?: { pr
   const takeRef = useRef(takeFile);
   useEffect(() => { takeRef.current = takeFile; });
   useEffect(() => {
-    let ok = true; loadPic(EXAMPLES[0].src, 'silhouette').then((p) => { if (ok) setPic((cur) => cur ?? p); }).catch(() => {});
+    let ok = true;
+    // the saved picture (opened from "Edit design"), else the first example
+    if (init?.picture) loadPic(init.picture, init.pictureName || 'image').then((p) => { if (ok) { picUrls.set(p, init.picture!); setPic(p); } }).catch(() => {});
+    else loadPic(EXAMPLES[0].src, 'silhouette').then((p) => { if (ok) setPic((cur) => cur ?? p); }).catch(() => {});
     const onPaste = (e: ClipboardEvent) => { const f = [...(e.clipboardData?.files ?? [])].find((x) => x.type.startsWith('image/')); if (f) takeRef.current(f); };
     window.addEventListener('paste', onPaste);
     return () => { ok = false; window.removeEventListener('paste', onPaste); };
-  }, []);
+  }, [init]);
 
   // how to read it: chosen, or guessed from a small copy of the picture
   const guessed = useMemo<Exclude<Read, 'auto'>>(() => {
@@ -184,8 +203,9 @@ export function ImageStlMaker({ print = null, signedIn = false }: { print?: { pr
       ...(mirror ? ['Mirrored'] : []),
     ];
     const parts = twoColour ? [{ name: 'Base', color: baseCol }, { name: 'Raised shape', color: topCol }] : [{ name: 'Model', color: baseCol }];
-    return { design: { name: (pic?.name || 'Image to STL').slice(0, 40), format: twoColour ? '3mf' : 'stl', file: packed.file, parts, notes }, preview: snap.current?.jpeg() ?? '' };
-  }, [result, packed.file, mode, base, baseT, border, height, twoColour, hole, depth, rBase, raise, mirror, baseCol, topCol, pic]);
+    return { design: { name: (pic?.name || 'Image to STL').slice(0, 40), format: twoColour ? '3mf' : 'stl', file: packed.file, parts, notes }, preview: snap.current?.jpeg() ?? '',
+      settings: { picture: pic ? picUrl(pic) : null, pictureName: pic?.name ?? '', mode, read, level, tol, thicken, speck, width, height, mirror, base, baseT, border, corner, hole, depth, rBase, raise, soft, contrast, bright, cut, pitch, baseCol, topCol } satisfies Settings };
+  }, [result, packed.file, mode, base, baseT, border, height, twoColour, hole, depth, rBase, raise, mirror, baseCol, topCol, pic, read, level, tol, thicken, speck, width, corner, soft, contrast, bright, cut, pitch]);
 
   function save(data: Uint8Array, name: string, type: string) {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data as BlobPart], { type })); a.download = name; a.click();

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BuyBox, type BuyBoxProps } from '@/components/buy-box';
 import { track } from '@/components/tracker';
 
@@ -22,6 +22,8 @@ export function Workbench({ side, stage, bar, stats, busy, tool, next, ready, ge
   getting?: React.ReactNode;   // the "What you get" panel
 }) {
   const [tab, setTab] = useState<'preview' | 'get'>('preview');
+  // the design as it would be saved, handy for support and tests (like window.__lamp on the shadow lamp)
+  useEffect(() => { (window as unknown as { __kit?: unknown }).__kit = { tool, getDesign }; }, [tool, getDesign]);
   const showGet = Boolean(getting) && tab === 'get';
   return (
     <div className="kit">

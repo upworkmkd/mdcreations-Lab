@@ -11,6 +11,8 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getGuides } from '@/lib/guides.server';
 import { youtubeId } from '@/lib/youtube';
 import { VideoButton } from '@/components/video/youtube';
+import { loadSavedDesign } from '@/lib/saved-design.server';
+import { EditingBanner } from '@/components/kit/kit-page';
 
 export const metadata: Metadata = pageMeta({
   title: 'Make a Shadow Lamp Online – Free Preview, Download STL Files',
@@ -23,7 +25,7 @@ export const metadata: Metadata = pageMeta({
 export default async function MakePage({ searchParams }: PageProps<'/tools/shadow-lamp/make'>) {
   const sp = await searchParams;
   const example = typeof sp.example === 'string' ? sp.example : undefined;
-  const [tool, currency, viewer, guides] = await Promise.all([getTool('shadow-lamp'), getCurrency(), getViewer(), getGuides()]);
+  const [tool, currency, viewer, guides, saved] = await Promise.all([getTool('shadow-lamp'), getCurrency(), getViewer(), getGuides(), loadSavedDesign('shadow-lamp', sp.design)]);
   const amount = tool?.prices[currency] ?? null;
   const ent = viewer ? await entitlement(viewer.id, 'shadow-lamp').catch(() => null) : null;
   const reviewed = viewer ? ((await supabaseAdmin().from('testimonials').select('id', { count: 'exact', head: true }).eq('user_id', viewer.id).eq('source', 'site')).count ?? 0) > 0 : false;
@@ -49,7 +51,8 @@ export default async function MakePage({ searchParams }: PageProps<'/tools/shado
           {videoId && <VideoButton id={videoId} title="How to make a shadow lamp" label="Watch the 2-minute tutorial" where="shadow-maker" />}
         </div>
       </div>
-      <Maker currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} example={example} plan={plan} plans={plans} otherPlan={Boolean(ent && !ent.covers)} viewerName={viewer?.name ?? ''} reviewed={reviewed} printMinor={printMinor} free={Boolean(tool?.free)} guideVideo={guides.shadowVideo || null} />
+      {saved && <EditingBanner name={saved.name} slug="shadow-lamp" />}
+      <Maker saved={saved} currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} example={example} plan={plan} plans={plans} otherPlan={Boolean(ent && !ent.covers)} viewerName={viewer?.name ?? ''} reviewed={reviewed} printMinor={printMinor} free={Boolean(tool?.free)} guideVideo={guides.shadowVideo || null} />
     </div>
   );
 }
