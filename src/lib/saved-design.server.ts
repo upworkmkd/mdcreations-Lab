@@ -15,7 +15,10 @@ const clean = (s: string | null | undefined) => (s ?? '').toLowerCase().replace(
  */
 async function keptPicture(userId: string, tool: string, before: string, name: string): Promise<KeptPicture | null> {
   const db = supabaseAdmin(), t = new Date(before).getTime();
-  const { data } = await db.from('shared_pictures').select('name, storage_path, created_at').eq('user_id', userId).eq('tool', tool)
+  // pictures uploaded before signing in carry only the visitor (when analytics cookies were accepted)
+  const { data: vis } = await db.from('visitors').select('id').eq('user_id', userId).limit(20);
+  const who = [`user_id.eq.${userId}`, ...(vis ?? []).map((v) => `visitor_id.eq.${v.id}`)].join(',');
+  const { data } = await db.from('shared_pictures').select('name, storage_path, created_at').or(who).eq('tool', tool)
     .lte('created_at', new Date(t + 60_000).toISOString()).gte('created_at', new Date(t - 86400_000).toISOString()).order('created_at', { ascending: false }).limit(10);
   if (!data?.length) return null;
   const want = clean(name), row = data.find((r) => want && clean(r.name) === want) ?? data[0];
