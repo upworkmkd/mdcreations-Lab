@@ -5,7 +5,12 @@ import { loadImage } from '@/lib/mesh/image-grid';
 import { b64ToBytes } from '@/lib/mesh/b64.js';
 
 /** A design from the account, handed to its maker. settings is null for designs saved before editing existed. */
-export type SavedDesign = { id: string; name: string; settings: Record<string, unknown> | null; params: Record<string, unknown> };
+export type SavedDesign = {
+  id: string; name: string; settings: Record<string, unknown> | null; params: Record<string, unknown>;
+  // older designs only: the copy of the uploaded picture kept with the visitor's consent (10 days), if there is one
+  kept?: { picture?: KeptPicture | null; plate?: KeptPicture | null } | null;
+};
+export type KeptPicture = { url: string; name: string };
 
 type Pic = CanvasImageSource & { width: number; height: number };
 

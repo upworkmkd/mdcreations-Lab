@@ -128,7 +128,7 @@ function maskPicture(m, w, h) {
 }
 const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 /** Older designs, saved before editing existed: the same snapshot rebuilt from what the server builds from. */
-export function lampSnapshotFromParams(q) {
+export function lampSnapshotFromParams(q, kept) {
   const sh = q && q.shadow; if (!sh || !sh.mask || !sh.w || !sh.h) return null;
   const o = q.opts || {}, pl = q.plate, po = (pl && pl.opts) || {};
   const smooth = Math.round(Math.max(0, Math.min(40, ((sh.sigma || 0.6) - 0.6) * 10 * 700 / Math.max(sh.w, sh.h))));
@@ -143,7 +143,43 @@ export function lampSnapshotFromParams(q) {
   return {
     v: 1, picture: maskPicture(bytesToMask(unb64(sh.mask), sh.w * sh.h), sh.w, sh.h), pictureName: (q.name || 'design') + '.png', w: sh.w, h: sh.h,
     form, view: sh.view, plate: pl ? { own, view: pl.view } : null,
+    // the uploaded picture, when a copy was kept: used if it reads back into the same shadow (see matchKept)
+    kept: kept && kept.picture ? { url: kept.picture.url, name: kept.picture.name, mask: sh.mask, w: sh.w, h: sh.h, sigma: sh.sigma } : null,
+    keptPlate: kept && kept.plate && pl && pl.own ? { url: kept.plate.url, name: kept.plate.name, mask: pl.own.mask, w: pl.own.w, h: pl.own.h } : null,
   };
+}
+
+/**
+ * Finds how to read a kept picture so it gives the saved black-and-white shadow again: dark parts at some cut-off
+ * (either way round), or a cut-out from a plain background. Returns the settings and how well they match
+ * (shared area / combined area), or null. The kept copy may be smaller than the saved shadow, so that is scaled.
+ */
+function matchKept(p, b64mask, sw, sh, readPicture) {
+  const saved = bytesToMask(unb64(b64mask), sw * sh), { w, h } = p, step = Math.max(1, Math.round(Math.max(w, h) / 400));
+  const idx = []; const ref = [];
+  for (let y = 0; y < h; y += step) for (let x = 0; x < w; x += step) { idx.push(y * w + x); ref.push(saved[Math.min(sh - 1, Math.floor(y * sh / h)) * sw + Math.min(sw - 1, Math.floor(x * sw / w))]); }
+  const iou = (m) => { let both = 0, any = 0; for (let k = 0; k < idx.length; k++) { const a = m[idx[k]], b = ref[k]; if (a && b) both++; if (a || b) any++; } return any ? both / any : 0; };
+  // dark parts: one brightness grid, then every cut-off
+  const d = p.img.data, L = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) { const a = d[4 * i + 3] / 255; L[i] = ((d[4 * i] * 299 + d[4 * i + 1] * 587 + d[4 * i + 2] * 114) / 1000) * a + 255 * (1 - a); }
+  let best = null;
+  const tryArt = (lv) => {
+    for (const inv of [false, true]) {
+      let both = 0, any = 0;
+      for (let k = 0; k < idx.length; k++) { const a = (L[idx[k]] < lv) !== inv, b = ref[k]; if (a && b) both++; if (a || b) any++; }
+      const s = any ? both / any : 0; if (!best || s > best.score) best = { mode: 'art', level: lv, invert: inv, score: s };
+    }
+  };
+  for (let lv = 8; lv < 255; lv += 8) tryArt(lv);
+  const c = best.level; for (let lv = Math.max(1, c - 7); lv <= Math.min(254, c + 7); lv++) tryArt(lv);
+  if (best.score < 0.97) {
+    // a cut-out from a plain background
+    for (let lv = 10; lv <= 120; lv += 10) for (const inv of [false, true]) {
+      const s = iou(readPicture(p.img, w, h, { mode: 'photo', level: lv, invert: inv, gaps: true, smooth: 0 }).m);
+      if (s > best.score) best = { mode: 'photo', level: lv, invert: inv, score: s };
+    }
+  }
+  return best;
 }
 
 export function mountStudio(root, hooks) {
@@ -459,6 +495,29 @@ export function mountStudio(root, hooks) {
   // a view saved in another picture size (the picture is kept a little smaller when it is very big)
   const scaled = (v, k) => ({ cx: v.cx * k, cy: v.cy * k, mmPerPx: v.mmPerPx / k, mirror: !!v.mirror });
   function restore(snap, fail) {
+    // an older lamp with its uploaded picture kept: show that picture if it reads back into the same shadow
+    if (snap.kept) {
+      const kp = snap.kept, rest = Object.assign({}, snap, { kept: null });
+      decode(kp.url, (p) => {
+        if (!alive) return;
+        let fit = null; try { fit = matchKept(p, kp.mask, kp.w, kp.h, readPicture); } catch { fit = null; }
+        if (!fit || fit.score < 0.93) { restore(rest, fail); return; }
+        // the same smoothing in this picture's pixels (the kept copy can be smaller than the saved shadow)
+        const smooth = Math.round(Math.max(0, Math.min(40, ((kp.sigma || 0.6) * (p.w / kp.w) - 0.6) * 7000 / Math.max(p.w, p.h))));
+        restore(Object.assign(rest, { picture: kp.url, pictureName: kp.name, form: Object.assign({}, snap.form, { mode: fit.mode, level: fit.level, invert: fit.invert, smooth }) }), fail);
+      }, () => restore(rest, fail));
+      return;
+    }
+    if (snap.keptPlate && snap.plate && snap.plate.own) {
+      const kp = snap.keptPlate, rest = Object.assign({}, snap, { keptPlate: null });
+      decode(kp.url, (p) => {
+        if (!alive) return;
+        let fit = null; try { fit = matchKept(p, kp.mask, kp.w, kp.h, readPicture); } catch { fit = null; }
+        if (!fit || fit.score < 0.9) { restore(rest, fail); return; }
+        restore(Object.assign(rest, { plate: Object.assign({}, snap.plate, { own: { picture: kp.url, name: kp.name, w: kp.w, h: kp.h } }), form: Object.assign({}, snap.form, { pMode: fit.mode, pLevel: fit.level, pInvert: fit.invert }) }), fail);
+      }, () => restore(rest, fail));
+      return;
+    }
     decode(snap.picture, (p) => {
       if (!alive) return;
       state.img = p.img; state.w = p.w; state.h = p.h; state.otsu = p.otsu; state.isExample = false; state.nudge = null;

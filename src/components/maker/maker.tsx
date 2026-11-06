@@ -71,7 +71,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
     if (!root.current) return;
     // opened from "Edit design": the lamp as saved (older designs are rebuilt from what the server builds from)
     let restore: unknown = null;
-    if (saved) { try { restore = (saved.settings as { lamp?: unknown } | null)?.lamp ?? lampSnapshotFromParams(saved.params); } catch { restore = null; } }
+    if (saved) { try { restore = (saved.settings as { lamp?: unknown } | null)?.lamp ?? lampSnapshotFromParams(saved.params, saved.kept); } catch { restore = null; } }
     const s = mountStudio(root.current, { restore, onReady: setReady, onResult: setLamp, onRejected: (f: File, why: string) => track('upload_rejected', why.slice(0, 120), { type: f.type, ext: f.name.split('.').pop()?.toLowerCase(), kb: Math.round(f.size / 1024) }), sample: `/examples/${first.id}.png`, sampleName: first.name, sampleNudge: (first as { nudge?: { x: number; y: number } }).nudge, samplePlate: (first as { plate?: boolean }).plate ? `/examples/${first.id}-plate.png` : undefined }) as Studio;
     studio.current = s;
     (window as unknown as { __lamp?: Studio }).__lamp = s;   // handy for support and tests
