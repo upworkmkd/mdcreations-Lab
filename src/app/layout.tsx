@@ -8,6 +8,7 @@ import { AdminCurrencyBadge } from '@/components/admin-currency';
 import { FeedbackPopup } from '@/components/feedback-popup';
 import { TOOLS } from '@/lib/tools';
 import { Tracker } from '@/components/tracker';
+import { GoogleAnalytics } from '@/components/google-analytics';
 import { CANONICAL_URL as SITE_URL } from '@/lib/env';
 import { JsonLd, organizationLd } from '@/lib/seo';
 import './globals.css';
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <SiteChrome><FeedbackPopup tools={TOOLS.filter((t) => t.status !== 'hidden').map((t) => [t.slug, t.name] as [string, string])} /></SiteChrome>
         <AdminCurrencyBadge />
         <Tracker />
+        <GoogleAnalytics />
         <Analytics />
       </body>
     </html>

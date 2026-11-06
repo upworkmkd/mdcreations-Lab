@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { CONSENT_COOKIE, NOTRACK_COOKIE, SESSION_COOKIE, SESSION_MINUTES, VISITOR_COOKIE, type Consent } from '@/lib/consent';
+import { gaFromTrack } from '@/lib/ga';
 
 /* ------------------------------------------------------------------ cookies */
 function getCookie(name: string) {
@@ -101,6 +102,7 @@ export function track(type: string, name?: string, props?: Record<string, unknow
     anon(type, type === 'leave' ? (name ?? location.pathname) : location.pathname, type === 'pageview' ? document.title : undefined, props);
   }
   if (state.consent === 'essential') return;
+  try { gaFromTrack(type, name, props); } catch { /* GA is optional */ }   // kept until GA loads (after "Accept all")
   state.queue.push({ type, name, path: location.pathname + location.search, title: document.title, props, ts: new Date().toISOString() });
   if (state.queue.length > 120) state.queue.splice(0, state.queue.length - 120);
   if (state.consent !== 'all') return;                     // waits for the answer to the cookie question

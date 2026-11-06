@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { supabaseConfigured } from '@/lib/env';
 import { CONSENT_COOKIE, NOTRACK_COOKIE, SESSION_COOKIE, UUID_RE, VISITOR_COOKIE } from '@/lib/consent';
+import { gaFromServer } from '@/lib/ga.server';
 
 /** The visitor and visit ids of the browser making this request, when the visitor allowed tracking. */
 export async function trackingIds() {
@@ -18,6 +19,7 @@ export async function trackingIds() {
  * Never throws: tracking must not break a purchase.
  */
 export async function trackServer(type: string, opts: { name?: string; path?: string; userId?: string | null; props?: Record<string, unknown> } = {}) {
+  await gaFromServer(type, opts.name, opts.props);   // the same moment, for Google Analytics (never throws)
   try {
     if (!supabaseConfigured()) return;
     const ids = await trackingIds();
