@@ -124,9 +124,9 @@ export function SaleForm({ percent, example }: { percent: number; example: strin
   const [state, run, pending] = useActionState<FormState, FormData>(saveSale, null);
   return (
     <form action={run} className="adm-set">
-      <label className="lbl">Sale percentage
-        <input name="percent" type="number" min={0} max={90} step={0.5} className="input" defaultValue={percent || ''} placeholder="0" style={{ maxWidth: 140 }} />
-        <small className="muted">Every paid tool shows a “regular” price this much higher, crossed out, next to its real price. Customers are charged the price set in Tools and prices. 0 or empty turns the sale off.{example ? ` Now: ${example}.` : ''}</small>
+      <label className="lbl">Sale discount (%)
+        <input name="percent" type="number" min={0} max={95} step={0.01} className="input" defaultValue={percent || ''} placeholder="0" style={{ maxWidth: 140 }} />
+        <small className="muted">The price set in Tools and prices is the sale price, and this is the discount off a “regular” price shown crossed out next to it: regular = price ÷ (1 − discount ÷ 100). At 80.08, a ₹199 tool shows ₹999. Customers are charged the set price. 0 or empty turns the sale off.{example ? ` Now: ${example}.` : ''}</small>
       </label>
       <div className="adm-inline" style={{ alignItems: 'center' }}>
         <button className="btn small" disabled={pending}>{pending ? 'Saving…' : 'Save'}</button>
