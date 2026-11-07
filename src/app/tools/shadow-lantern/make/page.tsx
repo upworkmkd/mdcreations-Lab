@@ -7,10 +7,10 @@ import { LanternMaker } from '@/components/lantern/lantern-maker';
 export const metadata: Metadata = pageMeta({
   title: '360° Shadow Lantern Maker – Project a Scene Around the Room',
   absoluteTitle: true,
-  description: 'Make a 3D printable lantern that throws a scene all around your room: a starry night, a forest or your own picture. Shell, base and LED post STL files.',
+  description: 'Make a 3D printable lantern that throws a scene all around your room: stars, hearts with your names or your own picture. Rechargeable base, STL files.',
   path: '/tools/shadow-lantern/make',
   image: '/images/hero-shadow-lantern.jpg',
-  keywords: ['360 shadow lamp', 'shadow lantern stl', 'star projector lamp 3d print', 'night light projector stl', 'panorama shadow lamp', 'room projector lamp diy', 'kids night light stl', 'diwali lantern 3d print'],
+  keywords: ['360 shadow lamp', 'shadow lantern stl', 'star projector lamp 3d print', 'night light projector stl', 'panorama shadow lamp', 'room projector lamp diy', 'kids night light stl', 'diwali lantern 3d print', 'name heart lantern', 'rechargeable night light stl'],
 });
 
 export default async function MakeLantern({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

@@ -123,27 +123,97 @@ export function shellMesh(mask, w, h, R, t, Hz, cell, smooth = 0.6) {
 
 /* ------------------------------------------------------------------ the base */
 const ring = (r, n = 96) => Array.from({ length: n }, (_, k) => { const a = (k / n) * Math.PI * 2; return [r * Math.cos(a), r * Math.sin(a)]; });
+
 /**
- * The base: a disc the shell sits on, a low collar inside the shell that keeps it centred, and the LED post: a tube
- * that holds a 5 mm LED at `led` mm (the middle of the picture band), with the wires running down inside it.
+ * Base sizes (mm). The base is a plate the shell stands in (a groove keeps it centred) on an open skirt: the battery,
+ * the charging module and the wires are glued under the plate, inside the skirt, open from below. The skirt has a
+ * hole for the USB Type-C port of the charging module and, if wanted, one for a small rocker switch.
  */
-export function baseMesh(R, t, led, gap = 0.3) {
-  const tb = new Tris(4096), disc = 3, collarH = 5, Rc = R - t - gap, post = 5, hole = 2.9;
-  extrude(tb, [{ outer: ring(R + 4), holes: [ring(hole, 32)] }], 0, disc);
-  extrude(tb, [{ outer: ring(Rc), holes: [ring(Rc - 2)] }], disc - 0.01, disc + collarH);
-  extrude(tb, [{ outer: ring(post, 48), holes: [ring(hole, 32)] }], disc - 0.01, Math.max(disc + collarH, led - 1));
-  // a groove under the disc for the wires to leave the base
-  return tb.done();
+export const BASE = {
+  skirt: 22, plate: 4, groove: 2.2, wall: 2, rim: 4,
+  port: { w: 9.6, h: 4, r: 2, below: 3.4 },    // Type-C: centred 3.4 mm under the plate, where a module glued under it has its port
+  rocker: { w: 13.2, h: 9.2, r: 0.6, gap: 22 }, // KCD11 mini rocker (13 × 9 mm cut-out), 22 mm round from the port
+  post: 5, hole: 2.9,                            // LED post: 10 mm tube, 5.8 mm bore for a 5 mm LED and its wires
+};
+
+/** Half the width of a rounded-rectangle hole at height dz from its centre (0 outside it). */
+function holeHalf(o, dz) {
+  const r = Math.min(o.r, o.h / 2, o.w / 2), a = Math.abs(dz), s = o.h / 2 - r;
+  if (a > o.h / 2) return 0;
+  return a <= s ? o.w / 2 : o.w / 2 - r + Math.sqrt(Math.max(0, r * r - (a - s) ** 2));
+}
+
+/** One band of the skirt (z0..z1): a ring between Ri and Ro, minus the angular gaps [a0, a1] (radians) of the holes. */
+function skirtBand(t, Ri, Ro, z0, z1, gaps) {
+  if (!gaps.length) { extrude(t, [{ outer: ring(Ro), holes: [ring(Ri)] }], z0, z1); return; }
+  gaps.sort((a, b) => a[0] - b[0]);
+  const polys = [];
+  for (let g = 0; g < gaps.length; g++) {
+    const a0 = gaps[g][1], a1 = gaps[(g + 1) % gaps.length][0] + (g + 1 === gaps.length ? Math.PI * 2 : 0);
+    const k = Math.max(2, Math.ceil(((a1 - a0) / (Math.PI * 2)) * 96)), outer = [], inner = [];
+    for (let i = 0; i <= k; i++) { const a = a0 + ((a1 - a0) * i) / k; outer.push([Ro * Math.cos(a), Ro * Math.sin(a)]); inner.push([Ri * Math.cos(a), Ri * Math.sin(a)]); }
+    polys.push({ outer: [...outer, ...inner.reverse()] });
+  }
+  extrude(t, polys, z0, z1);
 }
 
 /**
- * The whole lantern. mask: the wall (from wallMask), p: { diameter, height, wall }, cell: mesh size (mm).
- * Returns the shell, the base, the LED height and the size.
+ * The base, as it stands under the lantern (plate on top). R: shell radius, t: shell wall. Returns its triangles and the
+ * height of the plate's top. Printed upside down (plate on the bed), it needs no supports.
+ */
+export function baseMesh(R, t, o = {}) {
+  const B = BASE, tb = new Tris(16384), Ro = R + B.rim, Ri = Ro - B.wall, top = B.skirt + B.plate;
+  // the holes in the skirt, at the front (-y)
+  const front = -Math.PI / 2, holes = [{ ...B.port, ang: front, zc: B.skirt - B.port.below }];
+  if (o.rocker !== false) holes.push({ ...B.rocker, ang: front + B.rocker.gap / Ri, zc: B.skirt / 2 + 1 });
+  const zs = new Set([0, B.skirt]);
+  for (const hl of holes) { const n = Math.ceil(hl.h / 0.4); for (let k = 0; k <= n; k++) zs.add(+(hl.zc - hl.h / 2 + (hl.h * k) / n).toFixed(4)); }
+  const cuts = [...zs].filter((z) => z >= 0 && z <= B.skirt).sort((a, b) => a - b);
+  for (let k = 0; k < cuts.length - 1; k++) {
+    const z0 = cuts[k], z1 = cuts[k + 1], zm = (z0 + z1) / 2, gaps = [];
+    for (const hl of holes) { const hw = holeHalf(hl, zm - hl.zc); if (hw > 0) gaps.push([hl.ang - hw / Ri, hl.ang + hw / Ri]); }
+    skirtBand(tb, Ri, Ro, k ? z0 - 0.01 : z0, z1, gaps);
+  }
+  // the plate: a groove the shell stands in, and a hole for the LED post
+  const gin = R - t - 0.3, gout = R + 0.3, post = ring(B.post + 0.15, 48);
+  extrude(tb, [{ outer: ring(Ro), holes: [post] }], B.skirt - 0.01, top - B.groove);
+  extrude(tb, [{ outer: ring(gin), holes: [post] }], top - B.groove - 0.01, top);
+  extrude(tb, [{ outer: ring(Ro), holes: [ring(gout)] }], top - B.groove - 0.01, top);
+  return { tris: tb.done(), top };
+}
+
+/** The LED post: a tube pushed into the plate (flush with its underside) that holds the LED at `led` mm. */
+export function postMesh(top, led) {
+  const t = new Tris(2048);
+  extrude(t, [{ outer: ring(BASE.post, 48), holes: [ring(BASE.hole, 32)] }], top - BASE.plate, Math.max(top + 6, led - 1));
+  return t.done();
+}
+
+/**
+ * The whole lantern. mask: the wall (from wallMask), p: { diameter, height, wall, rimBottom, rimTop, rocker }, cell: mesh
+ * size (mm). Returns the shell, the base, the LED post (all where they sit when put together), the LED height and the size.
  */
 export function buildLantern(mask, w, h, p, cell = 0.8) {
-  const R = p.diameter / 2, base = 3, led = base + p.rimBottom + (p.height - p.rimTop - p.rimBottom) / 2;
+  const R = p.diameter / 2, b = baseMesh(R, p.wall, { rocker: p.rocker }), z0 = b.top - BASE.groove;
+  const led = z0 + p.rimBottom + (p.height - p.rimTop - p.rimBottom) / 2;
   const shell = shellMesh(mask, w, h, R, p.wall, p.height, cell);
-  // the shell stands on the base disc
-  for (let i = 2; i < shell.length; i += 3) shell[i] += base;
-  return { shell, base: baseMesh(R, p.wall, led), led, size: [p.diameter + 8, p.diameter + 8, p.height + base] };
+  // the shell stands in the groove of the plate
+  for (let i = 2; i < shell.length; i += 3) shell[i] += z0;
+  return { shell, base: b.tris, post: postMesh(b.top, led), led, top: b.top, size: [p.diameter + 2 * BASE.rim, p.diameter + 2 * BASE.rim, z0 + p.height] };
+}
+
+/** A part turned over (180° about x) and stood on z = 0: the base prints with its plate on the bed. */
+export function upsideDown(tris) {
+  const o = new Float32Array(tris.length); let zMax = -Infinity;
+  for (let i = 2; i < tris.length; i += 3) zMax = Math.max(zMax, tris[i]);
+  for (let i = 0; i < tris.length; i += 3) { o[i] = tris[i]; o[i + 1] = -tris[i + 1]; o[i + 2] = zMax - tris[i + 2]; }
+  return o;
+}
+
+/** A part stood on z = 0. */
+export function onBed(tris) {
+  const o = Float32Array.from(tris); let zMin = Infinity;
+  for (let i = 2; i < o.length; i += 3) zMin = Math.min(zMin, o[i]);
+  for (let i = 2; i < o.length; i += 3) o[i] -= zMin;
+  return o;
 }
