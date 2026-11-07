@@ -10,6 +10,7 @@ import { heightField } from '@/lib/mesh/mesh.js';
 import { fetchElevation, fetchImagery, xToLon, yToLat } from '@/lib/topo/geo';
 import type { ColourMode, TopoParams, TopoShape } from '@/lib/topo/design';
 import { bytesToB64 } from '@/lib/mesh/b64.js';
+import { buildPuzzle } from '@/lib/topo/puzzle.js';
 import './topo.css';
 
 const PLACES: [string, View][] = [
@@ -32,7 +33,7 @@ type Part = { tris: Float32Array; color: string };
 export function TopoMaker(buy: KitBuy) {
   const [view, setView] = useState<View>(PLACES[0][1]);
   const [name, setName] = useState(PLACES[0][0]);
-  const [p, setP] = useState<TopoParams>({ shape: 'square', width: 120, metres: 10000, exaggeration: 1.5, base: 3, terrace: 0, seaFloor: 'flat' });
+  const [p, setP] = useState<TopoParams>({ shape: 'square', width: 120, metres: 10000, exaggeration: 1.5, base: 3, terrace: 0, seaFloor: 'flat', pieces: 1, gap: 0.25 });
   const [detail, setDetail] = useState<'200' | '300'>('200');
   const [grid, setGrid] = useState<Grid | null>(null);
   const [state, setState] = useState<{ kind: 'idle' | 'loading' | 'error'; text?: string }>({ kind: 'idle' });
@@ -44,6 +45,10 @@ export function TopoMaker(buy: KitBuy) {
   const sel = useRef<Selection | null>(null), snap = useRef<MeshSnap | null>(null);
   const set = <K extends keyof TopoParams>(k: K, v: TopoParams[K]) => setP((o) => ({ ...o, [k]: v }));
   const aspect = p.shape === 'rect' ? 1.5 : 1;
+  const canCut = p.shape === 'square' || p.shape === 'rect', cut = canCut && p.pieces > 1;
+  // a jigsaw prints in one colour or by height (satellite colours are for the one-plate model)
+  const choosePieces = (n: number) => { setP((o) => ({ ...o, pieces: n })); if (n > 1) setMode((m) => (m === 'satellite' ? 'height' : m)); };
+  const chooseMode = (m: ColourMode) => { setMode(m); if (m === 'satellite') setP((o) => ({ ...o, pieces: 1 })); };
 
   async function takeArea() {
     const s = sel.current; if (!s) return;
@@ -82,6 +87,12 @@ export function TopoMaker(buy: KitBuy) {
     const g = dp.grid, k = g.w > 220 ? 2 : 1, w = Math.floor((g.w - 1) / k) + 1, h = Math.floor((g.h - 1) / k) + 1, e = new Int16Array(w * h);
     for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) e[j * w + i] = g.elev[j * k * g.w + i * k];
     const pp = { ...dp.p, shape: g.shape }, model = buildTerrain(pp, e, w, h) as Model;
+    if (pp.pieces > 1 && (g.shape === 'square' || g.shape === 'rect')) {
+      // the pieces, a little apart so the cuts show
+      const pz = buildPuzzle(pp, e, w, h, Math.max(2, pp.width / 50)) as { pieces: { tris: Float32Array; row: number; col: number }[] };
+      const tone = dp.mode === 'height' ? ['#6f8f55', '#7f9c64'] : ['#b9b08f', '#a79e7c'];
+      return { model, parts: pz.pieces.map((q) => ({ tris: q.tris, color: tone[(q.row + q.col) % 2] })) };
+    }
     if (dp.mode === 'satellite' && dp.sat) {
       // the cell colours, thinned out like the elevation for the preview
       const cw = w - 1, ch = h - 1, gw = g.w - 1, cls = new Uint8Array(cw * ch);
@@ -123,11 +134,11 @@ export function TopoMaker(buy: KitBuy) {
       </>}
       stage={tab === 'map' ? <SlippyMap view={view} onView={setView} aspect={aspect} shape={p.shape} onSelection={(s) => { sel.current = s; }} layer={layer} onLayer={setLayer} />
         : <MeshView parts={parts} fitKey={`${grid?.lat}-${grid?.lon}-${grid?.shape}-${dp.p.width}`} bg="#e4e2d8" snapRef={snap} />}
-      stats={model ? <><span>Model <b>{model.size[0].toFixed(0)} × {model.size[1].toFixed(0)} × {model.size[2].toFixed(0)} mm</b></span><span>Area <b>{(p.metres / 1000).toFixed(p.metres < 10000 ? 1 : 0)} km</b> across</span><span>Elevation <b>{Math.round(model.lo)}–{Math.round(model.hi)} m</b></span></>
+      stats={model ? <><span>Model <b>{model.size[0].toFixed(0)} × {model.size[1].toFixed(0)} × {model.size[2].toFixed(0)} mm</b></span>{cut && <span>Jigsaw <b>{p.pieces} pieces</b></span>}<span>Area <b>{(p.metres / 1000).toFixed(p.metres < 10000 ? 1 : 0)} km</b> across</span><span>Elevation <b>{Math.round(model.lo)}–{Math.round(model.hi)} m</b></span></>
         : <span>{state.kind === 'error' ? state.text : 'Move and zoom the map until the frame holds your place, then press “Use this area”.'}</span>}
-      getting={model ? <WhatYouGet meta={`${p.width} mm wide`} parts={mode === 'satellite' && parts.length > 1 ? parts.map((q, i) => ({ title: `Colour ${i + 1}`, text: 'One colour of the map, as its own part. They fit together into one model.', tris: q.tris, color: q.color })) : mode === 'height' ? parts.map((q, i) => ({ title: `Height band ${i + 1}`, text: 'Shown in colour: you get one terrain and swap filament at the heights in the README.', tris: q.tris, color: q.color })) : [{ title: '3D map', text: 'The terrain of the area you chose, on a base.', tris: model.tris, color: '#b9b08f', tag: 'your area' }]}
+      getting={model ? <WhatYouGet meta={`${p.width} mm wide`} parts={cut ? [{ title: 'Jigsaw pieces', count: p.pieces, text: `The map cut into ${p.pieces} interlocking pieces with straight outer edges, one STL each, laid out to print without touching. ${p.gap <= 0.15 ? 'Snug' : p.gap >= 0.35 ? 'Loose' : 'Standard'} fit (${p.gap} mm gap).`, tris: parts[0]?.tris ?? null, color: '#b9b08f', tag: 'your area' }] : mode === 'satellite' && parts.length > 1 ? parts.map((q, i) => ({ title: `Colour ${i + 1}`, text: 'One colour of the map, as its own part. They fit together into one model.', tris: q.tris, color: q.color })) : mode === 'height' ? parts.map((q, i) => ({ title: `Height band ${i + 1}`, text: 'Shown in colour: you get one terrain and swap filament at the heights in the README.', tris: q.tris, color: q.color })) : [{ title: '3D map', text: 'The terrain of the area you chose, on a base.', tris: model.tris, color: '#b9b08f', tag: 'your area' }]}
       files={[...(mode === 'satellite' && parts.length > 1 ? [{ title: 'Colour 3MF', text: `All ${parts.length} colours in one file, ready for the AMS in Bambu Studio.` }] : []), ...STANDARD_FILES]} /> : null}
-      youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>{mode === 'satellite' && sat && sat.palette.length > 1 ? `A ${sat.palette.length}-colour 3MF ready for Bambu Studio and the AMS, the same parts as STL, print notes, a preview and a commercial license.` : mode === 'height' ? 'A terrain STL, the exact heights for your filament changes, a preview and a commercial license.' : 'A terrain STL of the area you chose, print notes, a preview and a commercial license.'}</p></>}
+      youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>{cut ? `${p.pieces} jigsaw pieces of your area, one STL each${mode === 'height' ? ', the heights for your filament changes' : ''}, print notes, a preview and a commercial license.` : mode === 'satellite' && sat && sat.palette.length > 1 ? `A ${sat.palette.length}-colour 3MF ready for Bambu Studio and the AMS, the same parts as STL, print notes, a preview and a commercial license.` : mode === 'height' ? 'A terrain STL, the exact heights for your filament changes, a preview and a commercial license.' : 'A terrain STL of the area you chose, print notes, a preview and a commercial license.'}</p></>}
       side={<>
         <Group title="Place">
           <form onSubmit={search} className="kit-ctl" style={{ gridTemplateColumns: '1fr auto' }}>
@@ -139,7 +150,7 @@ export function TopoMaker(buy: KitBuy) {
           <Text label="Name" value={name} onChange={setName} max={40} />
         </Group>
         <Group title="Colours">
-          <Seg<ColourMode> label="Print in" value={mode} onChange={setMode} options={[['satellite', 'Satellite colours'], ['height', 'By height'], ['one', 'One colour']]} />
+          <Seg<ColourMode> label="Print in" value={mode} onChange={chooseMode} options={[['satellite', 'Satellite colours'], ['height', 'By height'], ['one', 'One colour']]} />
           {mode !== 'one' && <Seg<'2' | '3' | '4'> label="Filaments" value={colours} onChange={setColours} options={[['2', '2'], ['3', '3'], ['4', '4']]} />}
           {mode !== 'one' && palette.length > 0 && <div className="topo-swatches" aria-label="Colours">{palette.map((c, i) => <span key={i}><i style={{ background: c }} />{i + 1}</span>)}</div>}
           <p className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>{mode === 'satellite'
@@ -147,11 +158,20 @@ export function TopoMaker(buy: KitBuy) {
               : sat && sat.palette.length < 2 ? 'This area is one colour in the satellite picture, so it prints in one colour. Try a bigger area, or colour by height.'
               : sat && sat.palette.length < Number(colours) ? `This area only has ${sat.palette.length} clearly different colours, so it uses ${sat.palette.length} filaments.`
               : 'Forests, fields, water and snow in the colours of the real place, for an AMS. Each part comes coloured in the 3MF.')
+            : cut && mode === 'height' ? 'Every piece gets the same filament changes at the same heights, so the bands line up across the puzzle.'
             : mode === 'height' ? 'Green valleys to snowy peaks with filament changes at set heights. Works on any printer, no AMS needed.'
             : 'One filament. Paint it after printing, or print it in white for a clean model.'}</p>
         </Group>
+        <Group title="Print as">
+          <Select label="Print as" value={String(canCut ? p.pieces : 1)} onChange={(v) => choosePieces(Number(v))}
+            options={canCut ? [['1', 'One plate'], ['4', 'Jigsaw puzzle, 4 pieces'], ['9', 'Jigsaw puzzle, 9 pieces'], ['12', 'Jigsaw puzzle, 12 pieces'], ['16', 'Jigsaw puzzle, 16 pieces']] : [['1', 'One plate']]} />
+          {cut && <Seg<string> label="Fit" value={String(p.gap)} onChange={(v) => set('gap', Number(v))} options={[['0.15', 'Snug'], ['0.25', 'Standard'], ['0.35', 'Loose']]} />}
+          <p className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>{!canCut ? 'Jigsaws are cut from square and 3 : 2 maps. Choose one of those shapes to print it as pieces.'
+            : cut ? 'Interlocking pieces with straight outer edges: a puzzle of a real place, and big maps print in parts on a small bed. Standard fit suits most printers; choose Snug for a tight press fit, Loose if your printer runs wide.'
+            : 'One solid plate. Or cut it into an interlocking jigsaw of 4 to 16 pieces: a puzzle of a real place that also lets a big map print on a small bed.'}</p>
+        </Group>
         <Group title="Model">
-          <Seg<TopoShape> label="Shape" value={p.shape} onChange={(s) => set('shape', s)} options={[['square', 'Square'], ['rect', '3 : 2'], ['circle', 'Round'], ['hexagon', 'Hexagon']]} />
+          <Seg<TopoShape> label="Shape" value={p.shape} onChange={(s) => setP((o) => ({ ...o, shape: s, pieces: s === 'square' || s === 'rect' ? o.pieces : 1 }))} options={[['square', 'Square'], ['rect', '3 : 2'], ['circle', 'Round'], ['hexagon', 'Hexagon']]} />
           <Range label="Width" value={p.width} onChange={(v) => set('width', v)} min={60} max={250} step={5} fmt={(v) => `${v} mm`} />
           <Range label="Height exaggeration" value={p.exaggeration} onChange={(v) => set('exaggeration', v)} min={0.5} max={8} step={0.1} fmt={(v) => `×${v.toFixed(1)}`} hint={model ? `Highest point: ${model.size[2].toFixed(1)} mm. Flat areas look better with more.` : 'Mountains look right at ×1–2; gentle hills need ×3 or more.'} />
           <Range label="Base" value={p.base} onChange={(v) => set('base', v)} min={1} max={15} step={0.5} fmt={(v) => `${v} mm`} />

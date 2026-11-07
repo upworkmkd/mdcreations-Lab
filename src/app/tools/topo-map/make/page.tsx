@@ -9,7 +9,7 @@ export const metadata: Metadata = pageMeta({
   absoluteTitle: true,
   description: 'Pick any place on the satellite map and get a 3D printable map: mountains, valleys and lakes as an STL, or a 2-4 colour 3MF in the real colours for the AMS.',
   path: '/tools/topo-map/make',
-  keywords: ['3d printed map', '3d map stl', 'terrain stl generator', 'map to stl', 'multicolor map 3mf', 'himalaya 3d print'],
+  keywords: ['3d printed map', '3d map stl', 'terrain stl generator', 'map to stl', 'multicolor map 3mf', 'himalaya 3d print', '3d printed map puzzle', 'topographic jigsaw puzzle stl'],
 });
 
 export default async function MakeTopo() {
