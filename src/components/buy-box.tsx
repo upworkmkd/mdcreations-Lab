@@ -24,7 +24,7 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 
 export type BuyBoxProps = {
   tool: string; next: string; ready: boolean; getDesign: () => { design: unknown; preview: string; settings?: unknown } | null;
-  currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean;
+  currency: Currency; amountMinor: number | null; regularMinor?: number | null; signedIn: boolean; payConfigured: boolean;
   plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean; viewerName?: string; reviewed?: boolean;
   doneBlurb?: string; preview?: boolean;   // preview = the tool is not public yet (admins only)
   print?: { priceMinor: number; toolName: string } | null;   // "Order it printed", when the tool has a printed price (India)
@@ -32,7 +32,7 @@ export type BuyBoxProps = {
 };
 
 /** "Get the files": download options, sign-in, Razorpay (one design or a plan), and the thank-you window. */
-export function BuyBox({ tool, next, ready, getDesign, currency, amountMinor, signedIn: signedIn0, payConfigured, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false, doneBlurb, preview, print, free = false }: BuyBoxProps) {
+export function BuyBox({ tool, next, ready, getDesign, currency, amountMinor, regularMinor = null, signedIn: signedIn0, payConfigured, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false, doneBlurb, preview, print, free = false }: BuyBoxProps) {
   const [thanks, setThanks] = useState<string | null>(null);
   const [askedReview, setAskedReview] = useState(reviewed);
   const [plan, setPlan] = useState<MakerPlan | null>(plan0 ?? null);
@@ -116,6 +116,8 @@ export function BuyBox({ tool, next, ready, getDesign, currency, amountMinor, si
   }, [ensureSignedIn, proceed]);
 
   const price = amountMinor != null ? formatMoney(amountMinor, currency) : null;
+  const was = price && regularMinor != null ? formatMoney(regularMinor, currency) : null;   // sale: shown crossed out, never charged
+  const wasEl = was ? <s className="was">{was}</s> : null;
   const working = phase.kind === 'working';
 
   return (
@@ -130,7 +132,7 @@ export function BuyBox({ tool, next, ready, getDesign, currency, amountMinor, si
       ) : (
         <>
           <button type="button" className="btn buybtn" onClick={onBuy} disabled={!ready || working || (!onPlan && !preview && !free && !payConfigured)}>
-            {working ? phase.text : !ready ? 'Building the layers…' : preview ? <>Download <span className="mono">admin preview</span></> : free ? <>Download <span className="mono">free</span></> : onPlan ? <>Download <span className="mono">in your {plan!.name} plan</span></> : plan ? <>Buy and download <span className="mono">{price}</span></> : <>Download <span className="mono">{price ? `from ${price}` : 'choose an option'}</span></>}
+            {working ? phase.text : !ready ? 'Building the layers…' : preview ? <>Download <span className="mono">admin preview</span></> : free ? <>Download <span className="mono">free</span></> : onPlan ? <>Download <span className="mono">in your {plan!.name} plan</span></> : plan ? <>Buy and download <span className="mono">{wasEl}{price}</span></> : <>Download <span className="mono">{price ? <>from {wasEl}{price}</> : 'choose an option'}</span></>}
           </button>
           {preview ? <p className="note">Admin preview: this tool is not live yet, so only you can download. It is free for your account.</p>
             : free ? <p className="note ok">This tool is free. {signedIn ? 'Your files are saved in your account.' : 'Sign in (or make an account) to download and keep your files.'}</p>
@@ -145,7 +147,7 @@ export function BuyBox({ tool, next, ready, getDesign, currency, amountMinor, si
       )}
       {/* the windows live on <body>, outside the tool's own styles */}
       {thanks != null && createPortal(<ThankYou open onClose={() => { setThanks(null); setAskedReview(true); }} fileId={thanks} name={viewerName} askReview={!askedReview} blurb={doneBlurb} tool={tool} />, document.body)}
-      {chooser && createPortal(<PlanChooser open onClose={() => setChooser(false)} onChoose={onChoose} single={price} plans={plans} otherPlan={otherPlan} />, document.body)}
+      {chooser && createPortal(<PlanChooser open onClose={() => setChooser(false)} onChoose={onChoose} single={price} singleWas={was} plans={plans} otherPlan={otherPlan} />, document.body)}
       {authOpen && createPortal(<AuthDialog open onClose={() => setAuthOpen(false)} onSignedIn={() => { setSignedIn(true); setAuthOpen(false); proceed(); }} next={next} reason="Sign in to buy and download your files. Your design stays right here." />, document.body)}
     </div>
   );

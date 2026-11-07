@@ -5,8 +5,11 @@ import { getEmailSettings, getShopSettings, sampleMailData } from '@/lib/order-m
 import { adminOrderEmail, customerOrderEmail } from '@/lib/emails/order-emails';
 import { Card, Empty, PageHead, ago, when } from '../ui';
 import { getAutomation, lastRun } from '@/lib/automation.server';
-import { AutomationForm, AutomationRun, EmailSettingsForm, GuidesForm, ShopForm, TestButton } from './forms';
+import { AutomationForm, AutomationRun, EmailSettingsForm, GuidesForm, SaleForm, ShopForm, TestButton } from './forms';
 import { getGuides } from '@/lib/guides.server';
+import { getSalePercent } from '@/lib/sale.server';
+import { regularPrice } from '@/lib/sale';
+import { formatMoney } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Settings' };
@@ -15,14 +18,17 @@ const KIND: Record<string, string> = { order_customer: 'Receipt', order_admin: '
 
 export default async function Settings() {
   const me = await requireAdmin();
-  const [s, shop, auto, last, log, guides] = await Promise.all([
+  const [s, shop, auto, last, log, guides, sale] = await Promise.all([
     getEmailSettings(),
     getShopSettings(),
     getAutomation(),
     lastRun(),
     supabaseAdmin().from('email_log').select('*').order('created_at', { ascending: false }).limit(25),
     getGuides(),
+    getSalePercent(),
   ]);
+  const was = regularPrice(14900, sale, 'INR');
+  const saleExample = was ? `a ₹149 tool shows ${formatMoney(was, 'INR')} crossed out` : null;
   const provider = mailProvider();
   const sample = sampleMailData(me.email, me.name);
   const [cust, adm] = [customerOrderEmail(sample), adminOrderEmail(sample)];
@@ -74,6 +80,10 @@ export default async function Settings() {
           <p className="muted adm-help">Only orders and plans from the two weeks before the due day are looked at, so switching this on does not email old customers. Up to 40 of each email a day; the rest go the next day.</p>
         </Card>
       </div>
+
+      <Card title="Sale">
+        <SaleForm percent={sale} example={saleExample} />
+      </Card>
 
       <Card title="Tutorial videos">
         <GuidesForm shadowVideo={guides.shadowVideo} />

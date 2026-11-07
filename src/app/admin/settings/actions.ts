@@ -82,3 +82,17 @@ export async function saveGuides(_: FormState, form: FormData): Promise<FormStat
   revalidatePath('/tools/shadow-lamp/make');
   return { ok: shadowVideo ? 'Saved. The video link now shows in the Shadow Lamp Maker.' : 'Saved. No video link is shown.' };
 }
+
+/** The sale: every paid tool shows a "regular" price this much higher, crossed out. Customers still pay the set price. */
+export async function saveSale(_: FormState, form: FormData): Promise<FormState> {
+  await requireAdmin();
+  const { SALE_MAX } = await import('@/lib/sale');
+  const raw = String(form.get('percent') ?? '').trim().replace('%', '');
+  const percent = raw === '' ? 0 : Number(raw);
+  if (!Number.isFinite(percent) || percent < 0 || percent > SALE_MAX) return { error: `Use a number from 0 to ${SALE_MAX}.` };
+  const value = { percent: Math.round(percent * 10) / 10 };
+  const { error } = await supabaseAdmin().from('site_settings').upsert({ key: 'sale', value, updated_at: new Date().toISOString() });
+  if (error) return { error: error.message };
+  revalidatePath('/', 'layout');
+  return { ok: value.percent ? `Saved. Tools now show a regular price ${value.percent}% higher, crossed out.` : 'Saved. No sale price is shown.' };
+}

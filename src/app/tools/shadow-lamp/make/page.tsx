@@ -7,6 +7,8 @@ import { getViewer } from '@/lib/auth.server';
 import { supabaseConfigured } from '@/lib/env';
 import { entitlement, getPlans } from '@/lib/plans.server';
 import { formatMoney } from '@/lib/money';
+import { regularPrice } from '@/lib/sale';
+import { getSalePercent } from '@/lib/sale.server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getGuides } from '@/lib/guides.server';
 import { youtubeId } from '@/lib/youtube';
@@ -25,8 +27,9 @@ export const metadata: Metadata = pageMeta({
 export default async function MakePage({ searchParams }: PageProps<'/tools/shadow-lamp/make'>) {
   const sp = await searchParams;
   const example = typeof sp.example === 'string' ? sp.example : undefined;
-  const [tool, currency, viewer, guides, saved] = await Promise.all([getTool('shadow-lamp'), getCurrency(), getViewer(), getGuides(), loadSavedDesign('shadow-lamp', sp.design)]);
+  const [tool, currency, viewer, guides, saved, sale] = await Promise.all([getTool('shadow-lamp'), getCurrency(), getViewer(), getGuides(), loadSavedDesign('shadow-lamp', sp.design), getSalePercent()]);
   const amount = tool?.prices[currency] ?? null;
+  const regular = tool?.free ? null : regularPrice(amount, sale, currency);   // shown crossed out (Admin → Settings → Sale)
   const ent = viewer ? await entitlement(viewer.id, 'shadow-lamp').catch(() => null) : null;
   const reviewed = viewer ? ((await supabaseAdmin().from('testimonials').select('id', { count: 'exact', head: true }).eq('user_id', viewer.id).eq('source', 'site')).count ?? 0) > 0 : false;
   const plan = ent?.covers ? { name: ent.plan.name, remaining: ent.remaining, limit: ent.plan.daily_limit } : null;
@@ -52,7 +55,7 @@ export default async function MakePage({ searchParams }: PageProps<'/tools/shado
         </div>
       </div>
       {saved && <EditingBanner name={saved.name} slug="shadow-lamp" />}
-      <Maker saved={saved} currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} example={example} plan={plan} plans={plans} otherPlan={Boolean(ent && !ent.covers)} viewerName={viewer?.name ?? ''} reviewed={reviewed} printMinor={printMinor} free={Boolean(tool?.free)} guideVideo={guides.shadowVideo || null} />
+      <Maker saved={saved} currency={currency} amountMinor={amount} regularMinor={regular} signedIn={Boolean(viewer)} payConfigured={payConfigured} example={example} plan={plan} plans={plans} otherPlan={Boolean(ent && !ent.covers)} viewerName={viewer?.name ?? ''} reviewed={reviewed} printMinor={printMinor} free={Boolean(tool?.free)} guideVideo={guides.shadowVideo || null} />
     </div>
   );
 }

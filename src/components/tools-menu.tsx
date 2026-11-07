@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export type MenuTool = { slug: string; name: string; short: string; image: string; live: boolean; price: string | null };
+export type MenuTool = { slug: string; name: string; short: string; image: string; live: boolean; price: string | null; was?: string | null };
 
 /**
  * "Tools" in the main menu: a panel with every tool, paid ones on the left and free ones on the right.
@@ -37,7 +37,7 @@ export function ToolsMenu({ paid, free }: { paid: MenuTool[]; free: MenuTool[] }
         <span className="tm-text">
           <span className="tm-name">{t.name}{!t.live && <span className="tm-soon">Soon</span>}</span>
           <span className="tm-short">{t.short}</span>
-          {t.live && t.price && <span className="tm-price">{t.price}</span>}
+          {t.live && t.price && <span className="tm-price">{t.was && <s className="was">{t.was}</s>}{t.price}</span>}
         </span>
       </Link>
     </li>

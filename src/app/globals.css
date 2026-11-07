@@ -7492,3 +7492,25 @@ a.pill {
 .edit-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 18px; margin: 0 0 18px; }
 .edit-banner > span { flex: 1 1 420px; }
 .file-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* sale: the "regular" price, crossed out before the real one (Admin → Settings → Sale) */
+s.was {
+	text-decoration: line-through;
+	text-decoration-thickness: 1px;
+	opacity: 0.55;
+	font-weight: 400;
+	margin-right: 0.4em;
+}
+.price-card .amount s.was { font-size: 0.55em; vertical-align: 0.25em; }
+.price-card .sale-note {
+	display: block;
+	width: fit-content;
+	margin: 6px 0 0;
+	padding: 2px 10px;
+	border-radius: 999px;
+	background: var(--accent, #d9a441);
+	color: #1c1d16;
+	font: 600 12px/1.6 var(--mono, monospace);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
