@@ -9,6 +9,7 @@ import { SCRIPTS } from '@/lib/name/fonts';
 import type { NameMode, NameParams } from '@/lib/name/design';
 import { loadGoogleFont, textMask } from '@/lib/mesh/text-mask';
 import { encodeRle } from '@/lib/layers/rle.js';
+import { obj, restoreFrom, str, type SavedDesign } from '@/lib/saved-design';
 
 const COLOURS = ['#f4f1e8', '#161616', '#c0392b', '#1f5fa8', '#2e7d4f', '#f2c14e', '#e67e22', '#d36fa0', '#7a4fa0', '#8a8f98', '#c9a227'];
 const PRESET: Record<NameMode, Partial<NameParams> & { size: number }> = {
@@ -17,16 +18,31 @@ const PRESET: Record<NameMode, Partial<NameParams> & { size: number }> = {
   topper: { size: 30, border: 1, baseT: 3, letterT: 0, backing: 'outline', corner: 3 },
 };
 
-export function NameMaker(buy: KitBuy) {
-  const [script, setScript] = useState('latin');
+type Settings = { script: string; fontIdx: number; text: string; size: number; align: 'left' | 'center' | 'right'; p: NameParams; baseCol: string; topCol: string };
+
+/** Older designs: the text, font, settings and colours are in the build settings; the letter size falls back to the preset. */
+function fromParams(q: Record<string, unknown>): Partial<Settings> {
+  const family = str(q.font, ''), p = q.p as NameParams | undefined, c = obj(q.colors);
+  const sc = SCRIPTS.find((x) => x.fonts.some((f) => f.family === family));
+  return {
+    ...(sc ? { script: sc.id, fontIdx: Math.max(0, sc.fonts.findIndex((f) => f.family === family)) } : {}),
+    text: str(q.text, '').split(' / ').join('\n') || undefined, p,
+    ...(p?.mode && PRESET[p.mode] ? { size: PRESET[p.mode].size } : {}),
+    baseCol: str(c.base, '#161616'), topCol: str(c.letters, '#f2c14e'),
+  };
+}
+
+export function NameMaker({ saved, ...buy }: KitBuy & { saved?: SavedDesign | null }) {
+  const [init] = useState(() => restoreFrom<Settings>(saved, fromParams));
+  const [script, setScript] = useState(init?.script && SCRIPTS.some((x) => x.id === init.script) ? init.script : 'latin');
   const sc = SCRIPTS.find((s) => s.id === script)!;
-  const [fontIdx, setFontIdx] = useState(0);
+  const [fontIdx, setFontIdx] = useState(init?.fontIdx ?? 0);
   const font = sc.fonts[Math.min(fontIdx, sc.fonts.length - 1)];
-  const [text, setText] = useState('Aarav');
-  const [size, setSize] = useState(PRESET.keychain.size);
-  const [align, setAlign] = useState<'left' | 'center' | 'right'>('center');
-  const [p, setP] = useState<NameParams>({ mode: 'keychain', backing: 'outline', border: 2.5, bold: 0.2, baseT: 2.4, letterT: 1.2, hole: 5, holes: true, stake: 60, corner: 3 });
-  const [baseCol, setBaseCol] = useState('#161616'), [topCol, setTopCol] = useState('#f2c14e');
+  const [text, setText] = useState(init?.text ?? 'Aarav');
+  const [size, setSize] = useState(init?.size ?? PRESET.keychain.size);
+  const [align, setAlign] = useState<'left' | 'center' | 'right'>(init?.align ?? 'center');
+  const [p, setP] = useState<NameParams>(() => ({ mode: 'keychain', backing: 'outline', border: 2.5, bold: 0.2, baseT: 2.4, letterT: 1.2, hole: 5, holes: true, stake: 60, corner: 3, ...(init?.p ?? {}) }));
+  const [baseCol, setBaseCol] = useState(init?.baseCol ?? '#161616'), [topCol, setTopCol] = useState(init?.topCol ?? '#f2c14e');
   const [loaded, setLoaded] = useState<Record<string, boolean>>({});
   const snap = useRef<MeshSnap | null>(null);
   const set = <K extends keyof NameParams>(k: K, v: NameParams[K]) => setP((o) => ({ ...o, [k]: v }));
@@ -47,8 +63,9 @@ export function NameMaker(buy: KitBuy) {
 
   const getDesign = useCallback(() => {
     if (!mask) return null;
-    return { design: { name: lines.join(' ').slice(0, 40) || 'Name', text: lines.join(' / '), font: font.family, p, w: mask.w, h: mask.h, mask: encodeRle(mask.mask), colors: { base: baseCol, letters: topCol } }, preview: snap.current?.jpeg() ?? '' };
-  }, [mask, lines, font.family, p, baseCol, topCol]);
+    return { design: { name: lines.join(' ').slice(0, 40) || 'Name', text: lines.join(' / '), font: font.family, p, w: mask.w, h: mask.h, mask: encodeRle(mask.mask), colors: { base: baseCol, letters: topCol } }, preview: snap.current?.jpeg() ?? '',
+      settings: { script, fontIdx, text, size, align, p, baseCol, topCol } satisfies Settings };
+  }, [mask, lines, font.family, p, baseCol, topCol, script, fontIdx, text, size, align]);
 
   return (
     <Workbench tool="name-sign" next="/tools/name-sign/make" ready={Boolean(model)} getDesign={getDesign} buy={buy}

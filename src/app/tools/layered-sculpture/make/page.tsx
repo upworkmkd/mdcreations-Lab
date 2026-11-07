@@ -9,6 +9,8 @@ import { supabaseConfigured } from '@/lib/env';
 import { entitlement, getPlans } from '@/lib/plans.server';
 import { formatMoney } from '@/lib/money';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { loadSavedDesign } from '@/lib/saved-design.server';
+import { EditingBanner } from '@/components/kit/kit-page';
 
 export const metadata: Metadata = pageMeta({
   title: 'Make a Layered Sculpture Online – Colour Layer STL',
@@ -18,8 +20,8 @@ export const metadata: Metadata = pageMeta({
   keywords: ['layered sculpture STL', 'picture to layered 3D print', 'multi colour layer art generator', 'layered wall art 3D printing'],
 });
 
-export default async function MakeLayers() {
-  const [tool, currency, viewer] = await Promise.all([getTool('layered-sculpture'), getCurrency(), getViewer()]);
+export default async function MakeLayers({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const [tool, currency, viewer, saved] = await Promise.all([getTool('layered-sculpture'), getCurrency(), getViewer(), searchParams.then((sp) => loadSavedDesign('layered-sculpture', sp.design))]);
   const live = tool?.status === 'live';
   const admin = viewer?.role === 'admin';
   if (!live && !admin) redirect('/tools/layered-sculpture');   // not launched yet: only the shop owner can try it
@@ -43,7 +45,8 @@ export default async function MakeLayers() {
         </div>
         <p className="muted" style={{ maxWidth: '50ch', fontSize: 15 }}>{live ? 'Free to try. We keep a copy of your picture for 10 days to improve the tool, unless you untick the box under the upload; the printable files are built when you download.' : 'Admin preview: this tool is not live yet. Try it, download for free, and switch it to Live in Admin → Tools and prices when you are happy.'}</p>
       </div>
-      <LayerMaker currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} plan={plan} plans={plans}
+      {saved && <EditingBanner name={saved.name} slug="layered-sculpture" />}
+      <LayerMaker saved={saved} currency={currency} amountMinor={amount} signedIn={Boolean(viewer)} payConfigured={payConfigured} plan={plan} plans={plans}
         otherPlan={Boolean(ent && !ent.covers)} viewerName={viewer?.name ?? ''} reviewed={reviewed} preview={!live && admin} free={Boolean(tool?.free)} />
       <div style={{ height: 64 }} />
     </div>

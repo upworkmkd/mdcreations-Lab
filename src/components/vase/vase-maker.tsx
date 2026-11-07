@@ -6,6 +6,7 @@ import { Workbench, type KitBuy } from '@/components/kit/workbench';
 import { WhatYouGet, STANDARD_FILES } from '@/components/kit/what-you-get';
 import { buildVase } from '@/lib/vase/build.js';
 import type { VaseMode, VaseParams } from '@/lib/vase/design';
+import { restoreFrom, str, type SavedDesign } from '@/lib/saved-design';
 
 const BASE: VaseParams = { mode: 'spiral', height: 180, r0: 38, r1: 55, r2: 46, r3: 34, sides: 0, soft: 0.3, twist: 0, ripples: 0, rippleDepth: 0, wave: 0, bands: 0, bandDepth: 0, wall: 1.6, floor: 3, drain: 0, segments: 160, step: 1.2, fitting: 'top', hole: 42 };
 const PRESETS: Record<string, Partial<VaseParams>> = {
@@ -18,16 +19,20 @@ const PRESETS: Record<string, Partial<VaseParams>> = {
   'Drum shade': { mode: 'shade', sides: 12, soft: 0.6, ripples: 0, rippleDepth: 0, twist: 30, r0: 90, r1: 90, r2: 90, r3: 90, height: 160, fitting: 'top' },
 };
 
-export function VaseMaker(buy: KitBuy) {
-  const [p, setP] = useState<VaseParams>({ ...BASE, ...PRESETS['Twisted hexagon'] });
-  const [name, setName] = useState('Twisted hexagon');
-  const [colour, setColour] = useState('#d36fa0');
+type Settings = { name: string; p: VaseParams; colour: string };
+
+export function VaseMaker({ saved, ...buy }: KitBuy & { saved?: SavedDesign | null }) {
+  // opened from "Edit design": the saved settings, or (older designs) the build settings, which hold the whole shape
+  const [init] = useState(() => restoreFrom<Settings>(saved, (q) => ({ name: str(q.name, 'Vase'), p: q.p as VaseParams })));
+  const [p, setP] = useState<VaseParams>(() => ({ ...BASE, ...PRESETS['Twisted hexagon'], ...(init?.p ?? {}) }));
+  const [name, setName] = useState(init?.name ?? 'Twisted hexagon');
+  const [colour, setColour] = useState(init?.colour ?? '#d36fa0');
   const snap = useRef<MeshSnap | null>(null);
   const set = <K extends keyof VaseParams>(k: K, v: VaseParams[K]) => setP((o) => ({ ...o, [k]: v }));
   const dp = useDeferredValue(p);
   const model = useMemo(() => buildVase(dp) as { parts: { tris: Float32Array; file: string }[]; size: number[] }, [dp]);
   const parts = useMemo(() => model.parts.map((q) => ({ tris: q.tris, color: colour })), [model, colour]);
-  const getDesign = useCallback(() => ({ design: { name, p }, preview: snap.current?.jpeg() ?? '' }), [name, p]);
+  const getDesign = useCallback(() => ({ design: { name, p }, preview: snap.current?.jpeg() ?? '', settings: { name, p, colour } satisfies Settings }), [name, p, colour]);
   const maxR = Math.max(p.r0, p.r1, p.r2, p.r3);
   const mode = (m: VaseMode) => setP((o) => ({ ...o, mode: m, ...(m === 'shade' && o.mode !== 'shade' ? { r0: 100, r1: 95, r2: 80, r3: 70, height: 150 } : {}), ...(m !== 'shade' && o.mode === 'shade' ? { r0: 40, r1: 55, r2: 46, r3: 34, height: 180 } : {}), ...(m === 'planter' ? { drain: o.drain || 8 } : {}) }));
 

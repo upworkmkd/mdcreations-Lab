@@ -9,6 +9,7 @@ import { PRESETS, drawPreset, type Preset } from '@/lib/cookie/shapes';
 import type { CookieMode, CookieParams } from '@/lib/cookie/design';
 import { loadGoogleFont, textMask } from '@/lib/mesh/text-mask';
 import { encodeRle } from '@/lib/layers/rle.js';
+import { maskUrl, num, restoreFrom, rleBytes, savedPicture, str, useRestoredPicture, type SavedDesign } from '@/lib/saved-design';
 
 const noop = () => () => {};
 type Pic = CanvasImageSource & { width: number; height: number };
@@ -44,15 +45,34 @@ const place = (src: Uint8Array, sw: number, sh: number, W: number, H: number) =>
   for (let y = 0; y < sh; y++) o.set(src.subarray(y * sw, y * sw + sw), (y + oy) * W + ox); return o;
 };
 
-export function CookieMaker(buy: KitBuy) {
-  const [source, setSource] = useState<Source>('preset');
-  const [preset, setPreset] = useState<Preset>('mandala');
+type Settings = {
+  source: Source; preset: Preset; picture: string | null; text: string; thr: number | null; printed: 'drawing' | 'cutout'; invert: boolean;
+  fill: boolean; largest: boolean; useDetail: boolean; plateShape: 'circle' | 'square' | 'rounded'; name: string; p: CookieParams;
+};
+
+/** Older designs: the settings, and the saved shape as a black-on-white picture (the stencil's cut-outs, or the cutter's outline). */
+function fromParams(q: Record<string, unknown>): Partial<Settings> {
+  const p = q.p as CookieParams, w = num(q.w, 0), h = num(q.h, 0);
+  const stencil = p?.mode === 'stencil', src = stencil ? q.detail : q.shape;
+  const picture = typeof src === 'string' && w && h ? maskUrl(rleBytes(src, w * h), w, h) : null;
+  return { name: str(q.name, 'Cutter'), p, ...(picture ? { source: 'picture' as const, picture, printed: 'cutout' as const, thr: 128 } : {}) };
+}
+
+function thumbOf(im: Pic) {
+  const c = document.createElement('canvas'); c.width = 200; c.height = Math.round((200 * im.height) / im.width); c.getContext('2d')!.drawImage(im, 0, 0, c.width, c.height); return c.toDataURL('image/png');
+}
+
+export function CookieMaker({ saved, ...buy }: KitBuy & { saved?: SavedDesign | null }) {
+  const [init] = useState(() => restoreFrom<Settings>(saved, fromParams));
+  const [source, setSource] = useState<Source>(init?.source ?? 'preset');
+  const [preset, setPreset] = useState<Preset>(init?.preset ?? 'mandala');
   const [pic, setPic] = useState<Pic | null>(null), [thumb, setThumb] = useState<string | null>(null);
-  const [text, setText] = useState('A'), [fontOk, setFontOk] = useState(false);
-  const [thr, setThr] = useState<number | null>(null), [printed, setPrinted] = useState<'drawing' | 'cutout'>('drawing'), [invert, setInvert] = useState(false), [fill, setFill] = useState(true), [largest, setLargest] = useState(true), [useDetail, setUseDetail] = useState(true);
-  const [plateShape, setPlateShape] = useState<'circle' | 'square' | 'rounded'>('circle');
-  const [name, setName] = useState('Rangoli mandala');
-  const [p, setP] = useState<CookieParams>({ mode: 'stencil', size: 160, height: 15, wall: 1.2, edge: 0.6, flange: 3, flangeT: 1.6, plateT: 2.4, reliefT: 1.5, clearance: 0.8, handle: true, stampToo: true, stencilT: 1.2, rim: 4, islands: 'join', bridge: 1.2 });
+  const [text, setText] = useState(init?.text ?? 'A'), [fontOk, setFontOk] = useState(false);
+  const [thr, setThr] = useState<number | null>(init?.thr ?? null), [printed, setPrinted] = useState<'drawing' | 'cutout'>(init?.printed ?? 'drawing'), [invert, setInvert] = useState(init?.invert ?? false), [fill, setFill] = useState(init?.fill ?? true), [largest, setLargest] = useState(init?.largest ?? true), [useDetail, setUseDetail] = useState(init?.useDetail ?? true);
+  const [plateShape, setPlateShape] = useState<'circle' | 'square' | 'rounded'>(init?.plateShape ?? 'circle');
+  const [name, setName] = useState(init?.name ?? 'Rangoli mandala');
+  const [p, setP] = useState<CookieParams>(() => ({ mode: 'stencil', size: 160, height: 15, wall: 1.2, edge: 0.6, flange: 3, flangeT: 1.6, plateT: 2.4, reliefT: 1.5, clearance: 0.8, handle: true, stampToo: true, stencilT: 1.2, rim: 4, islands: 'join', bridge: 1.2, ...(init?.p ?? {}) }));
+  useRestoredPicture(init?.picture, (im) => { setPic(im); setThumb(thumbOf(im)); });
   const snap = useRef<MeshSnap | null>(null);
   const set = <K extends keyof CookieParams>(k: K, v: CookieParams[K]) => setP((o) => ({ ...o, [k]: v }));
 
@@ -112,12 +132,12 @@ export function CookieMaker(buy: KitBuy) {
 
   const getDesign = useCallback(() => {
     if (!masks) return null;
-    return { design: { name, p, px: masks.px, w: masks.W, h: masks.H, shape: encodeRle(masks.shape), detail: masks.detail ? encodeRle(masks.detail) : null }, preview: snap.current?.jpeg() ?? '' };
-  }, [masks, name, p]);
+    return { design: { name, p, px: masks.px, w: masks.W, h: masks.H, shape: encodeRle(masks.shape), detail: masks.detail ? encodeRle(masks.detail) : null }, preview: snap.current?.jpeg() ?? '',
+      settings: { source, preset, picture: source === 'picture' ? savedPicture(pic) : null, text, thr, printed, invert, fill, largest, useDetail, plateShape, name, p } satisfies Settings };
+  }, [masks, name, p, source, preset, pic, text, thr, printed, invert, fill, largest, useDetail, plateShape]);
 
   const onImage = (im: HTMLImageElement, n: string) => {
-    setPic(im); setThr(null); setSource('picture'); setName(n.slice(0, 40) || 'Cutter');
-    const c = document.createElement('canvas'); c.width = 200; c.height = Math.round((200 * im.height) / im.width); c.getContext('2d')!.drawImage(im, 0, 0, c.width, c.height); setThumb(c.toDataURL('image/png'));
+    setPic(im); setThr(null); setSource('picture'); setName(n.slice(0, 40) || 'Cutter'); setThumb(thumbOf(im));
   };
   const stencilPieces = model?.find((q) => q.file === 'stencil')?.pieces ?? 0;
 

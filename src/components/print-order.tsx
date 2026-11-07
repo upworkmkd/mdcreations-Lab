@@ -21,7 +21,7 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 
 export type PrintOrderProps = {
   tool: string; toolName: string; next: string; ready: boolean; priceMinor: number; signedIn: boolean;
-  getDesign: () => { design: unknown; preview: string } | null;
+  getDesign: () => { design: unknown; preview: string; settings?: unknown } | null;
   productId?: string;   // an STL shop product instead of a design made in a tool
 };
 
@@ -33,7 +33,7 @@ export function PrintOrder({ tool, toolName, next, ready, priceMinor, signedIn: 
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(signedIn0);
-  const [snap, setSnap] = useState<{ design: unknown; preview: string } | null>(null);
+  const [snap, setSnap] = useState<{ design: unknown; preview: string; settings?: unknown } | null>(null);
   const price = formatMoney(priceMinor, 'INR');
 
   const start = useCallback(async () => {
@@ -69,7 +69,7 @@ export function PrintOrder({ tool, toolName, next, ready, priceMinor, signedIn: 
   );
 }
 
-function PrintDialog({ onClose, tool, toolName, price, snap, productId }: { onClose(): void; tool: string; toolName: string; price: string; snap: { design: unknown; preview: string }; productId?: string }) {
+function PrintDialog({ onClose, tool, toolName, price, snap, productId }: { onClose(): void; tool: string; toolName: string; price: string; snap: { design: unknown; preview: string; settings?: unknown }; productId?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const [ship, setShip] = useState<ShipTo>(EMPTY_SHIP);
@@ -107,7 +107,7 @@ function PrintDialog({ onClose, tool, toolName, price, snap, productId }: { onCl
         co = await post<Co>('/api/checkout/stl', { productId, mode: 'print', shipTo: c.value });
       } else {
         setStep({ kind: 'working', text: 'Saving your design…' });
-        const { id: designId } = await post<{ id: string }>('/api/designs', { tool, design: snap.design, preview: snap.preview });
+        const { id: designId } = await post<{ id: string }>('/api/designs', { tool, design: snap.design, preview: snap.preview, settings: snap.settings });
         setStep({ kind: 'working', text: 'Starting the payment…' });
         co = await post<Co>('/api/checkout/print', { designId, shipTo: c.value });
       }

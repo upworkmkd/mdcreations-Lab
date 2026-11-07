@@ -13,11 +13,11 @@ export const metadata: Metadata = pageMeta({
   keywords: ['online 3d design tool', 'draw to stl', 'pixel art stl', 'keychain designer', 'custom sign stl', 'multicolor 3mf generator', 'blender alternative for 3d printing', 'mandala coaster stl'],
 });
 
-export default async function MakeStudio() {
-  const c = await makerContext('design-studio');
+export default async function MakeStudio({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const c = await makerContext('design-studio', (await searchParams).design);
   return (
-    <KitPage slug="design-studio" name="Design Studio" title="Design it, print it" note={previewNote(c.live, 'Free to draw and preview in 3D. Pay per design or use your plan to download the colour 3MF and STL files.')}>
-      <StudioMaker {...c.buy} />
+    <KitPage slug="design-studio" editing={c.saved?.name} name="Design Studio" title="Design it, print it" note={previewNote(c.live, 'Free to draw and preview in 3D. Pay per design or use your plan to download the colour 3MF and STL files.')}>
+      <StudioMaker {...c.buy} saved={c.saved} />
     </KitPage>
   );
 }

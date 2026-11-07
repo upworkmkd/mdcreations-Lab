@@ -12,11 +12,11 @@ export const metadata: Metadata = pageMeta({
   keywords: ['name keychain stl', 'name sign 3d print', 'hindi name keychain', 'cake topper stl', 'custom name plate stl', 'punjabi name keychain', 'tamil name keychain', 'multicolor name keychain stl', 'door name plate stl'],
 });
 
-export default async function MakeName() {
-  const c = await makerContext('name-sign');
+export default async function MakeName({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const c = await makerContext('name-sign', (await searchParams).design);
   return (
-    <KitPage slug="name-sign" name="Name Sign & Keychain Maker" title="Make a name keychain or sign" note={previewNote(c.live, 'Free to try. Type a name in any Indian language or English; the files are built when you download.')}>
-      <NameMaker {...c.buy} />
+    <KitPage slug="name-sign" editing={c.saved?.name} name="Name Sign & Keychain Maker" title="Make a name keychain or sign" note={previewNote(c.live, 'Free to try. Type a name in any Indian language or English; the files are built when you download.')}>
+      <NameMaker {...c.buy} saved={c.saved} />
     </KitPage>
   );
 }

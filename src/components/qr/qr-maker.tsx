@@ -12,6 +12,7 @@ import { PX, buildQrPlate } from '@/lib/qr/build.js';
 import { stlBinary, storeZip } from '@/lib/mesh/mesh.js';
 import { loadGoogleFont, textMask } from '@/lib/mesh/text-mask';
 import { track } from '@/components/tracker';
+import { restoreFrom, type SavedDesign } from '@/lib/saved-design';
 
 type Shape = 'rounded' | 'square' | 'keychain' | 'circle';
 type Ecc = 'L' | 'M' | 'Q' | 'H';
@@ -32,14 +33,21 @@ const FORM: Record<Kind, { k: string; label: string; area?: boolean; placeholder
   email: [{ k: 'email', label: 'Email address' }, { k: 'subject', label: 'Subject (optional)' }, { k: 'body', label: 'Message (optional)', area: true }],
 };
 
-export function QrMaker({ print = null, signedIn = false }: { print?: { priceMinor: number; toolName: string } | null; signedIn?: boolean }) {
+type Settings = {
+  kind: Kind; fields: Record<Kind, Fields>; size: number; ecc: Ecc; quiet: number; baseT: number; codeT: number; shape: Shape; corner: number; hole: number;
+  labelOn: boolean; labelText: string; labelSize: number; baseCol: string; codeCol: string;
+};
+
+export function QrMaker({ print = null, signedIn = false, saved = null }: { print?: { priceMinor: number; toolName: string } | null; signedIn?: boolean; saved?: SavedDesign | null }) {
   const snap = useRef<MeshSnap | null>(null);
-  const [kind, setKind] = useState<Kind>('url');
-  const [fields, setFields] = useState<Record<Kind, Fields>>({ url: { url: 'labs.themdcreations.com' }, text: {}, wifi: { security: 'WPA' }, upi: {}, whatsapp: {}, contact: {}, phone: {}, email: {} });
-  const [size, setSize] = useState(50), [ecc, setEcc] = useState<Ecc>('M'), [quiet, setQuiet] = useState(2);
-  const [baseT, setBaseT] = useState(2), [codeT, setCodeT] = useState(1), [shape, setShape] = useState<Shape>('rounded'), [corner, setCorner] = useState(4), [hole, setHole] = useState(5);
-  const [labelOn, setLabelOn] = useState(true), [labelText, setLabelText] = useState(''), [labelSize, setLabelSize] = useState(5);
-  const [baseCol, setBaseCol] = useState('#f4f1e8'), [codeCol, setCodeCol] = useState('#161616');
+  // older printed orders kept only the finished model, so there is nothing to bring back for them
+  const [init] = useState(() => restoreFrom<Settings>(saved, () => null));
+  const [kind, setKind] = useState<Kind>(init?.kind ?? 'url');
+  const [fields, setFields] = useState<Record<Kind, Fields>>(() => ({ url: { url: 'labs.themdcreations.com' }, text: {}, wifi: { security: 'WPA' }, upi: {}, whatsapp: {}, contact: {}, phone: {}, email: {}, ...(init?.fields ?? {}) }));
+  const [size, setSize] = useState(init?.size ?? 50), [ecc, setEcc] = useState<Ecc>(init?.ecc ?? 'M'), [quiet, setQuiet] = useState(init?.quiet ?? 2);
+  const [baseT, setBaseT] = useState(init?.baseT ?? 2), [codeT, setCodeT] = useState(init?.codeT ?? 1), [shape, setShape] = useState<Shape>(init?.shape ?? 'rounded'), [corner, setCorner] = useState(init?.corner ?? 4), [hole, setHole] = useState(init?.hole ?? 5);
+  const [labelOn, setLabelOn] = useState(init?.labelOn ?? true), [labelText, setLabelText] = useState(init?.labelText ?? ''), [labelSize, setLabelSize] = useState(init?.labelSize ?? 5);
+  const [baseCol, setBaseCol] = useState(init?.baseCol ?? '#f4f1e8'), [codeCol, setCodeCol] = useState(init?.codeCol ?? '#161616');
   const [view, setView] = useState<'3d' | 'flat' | 'get'>('3d');
   const [fontReady, setFontReady] = useState(false);
   const flat = useRef<HTMLCanvasElement>(null);
@@ -111,8 +119,9 @@ export function QrMaker({ print = null, signedIn = false }: { print?: { priceMin
     if (!model || !qr || !packed.file) return null;
     const what = KINDS.find((k) => k[0] === kind)?.[1] ?? kind;
     const notes = [`Opens: ${what}${kind === 'wifi' ? ` (${f.ssid ?? ''})` : pl.label ? ` (${pl.label})` : ''}`, `Size: ${model.size[0].toFixed(1)} x ${model.size[1].toFixed(1)} mm, ${(baseT + codeT).toFixed(1)} mm tall`, `Shape: ${shape}`, `Colour change at ${baseT.toFixed(1)} mm`, ...(labelShown ? [`Label: ${labelShown}`] : [])];
-    return { design: { name: `QR ${pl.label || what}`.slice(0, 40), format: '3mf', file: packed.file, parts: [{ name: 'Plate', color: baseCol }, { name: 'Code', color: codeCol }], notes }, preview: snap.current?.jpeg() ?? '' };
-  }, [model, qr, packed.file, kind, f, pl.label, baseT, codeT, shape, labelShown, baseCol, codeCol]);
+    return { design: { name: `QR ${pl.label || what}`.slice(0, 40), format: '3mf', file: packed.file, parts: [{ name: 'Plate', color: baseCol }, { name: 'Code', color: codeCol }], notes }, preview: snap.current?.jpeg() ?? '',
+      settings: { kind, fields, size, ecc, quiet, baseT, codeT, shape, corner, hole, labelOn, labelText, labelSize, baseCol, codeCol } satisfies Settings };
+  }, [model, qr, packed.file, kind, f, pl.label, baseT, codeT, shape, labelShown, baseCol, codeCol, fields, size, ecc, quiet, corner, hole, labelOn, labelText, labelSize]);
 
   const parts = useMemo(() => (model ? [{ tris: model.base, color: baseCol }, { tris: model.code, color: codeCol }] : []), [model, baseCol, codeCol]);
 

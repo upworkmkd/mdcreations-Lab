@@ -33,6 +33,7 @@ export default async function Designs({ searchParams }: { searchParams: Promise<
                   <b>{d.name}</b>{bought.has(d.id) && <span className="pill fulfilled">bought</span>}
                   <span>{toolBySlug(d.tool_slug)?.name ?? d.tool_slug} · {ago(d.created_at)}</span>
                   <Link href={`/admin/users/${d.user_id}`}>{who.get(d.user_id)?.email ?? 'user'}</Link>
+                  {toolBySlug(d.tool_slug)?.makePath && <Link href={`${toolBySlug(d.tool_slug)!.makePath}?design=${d.id}`} target="_blank" title="Open it in the maker with its saved settings">Open in maker ↗</Link>}
                 </figcaption>
               </figure>
             ))}

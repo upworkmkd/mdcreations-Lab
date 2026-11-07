@@ -12,11 +12,11 @@ export const metadata: Metadata = pageMeta({
   keywords: ['filament painting', 'hueforge alternative', 'filament swap painting stl', 'colour change 3d print picture', 'hueforge online', 'free hueforge alternative', 'filament painting generator'],
 });
 
-export default async function MakePainting() {
-  const c = await makerContext('filament-painting');
+export default async function MakePainting({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const c = await makerContext('filament-painting', (await searchParams).design);
   return (
-    <KitPage slug="filament-painting" name="Filament Painting Maker" title="Make a filament painting" note={previewNote(c.live, 'Free to try. Your picture stays in your browser; the printable files are built when you download.')}>
-      <PaintMaker {...c.buy} />
+    <KitPage slug="filament-painting" editing={c.saved?.name} name="Filament Painting Maker" title="Make a filament painting" note={previewNote(c.live, 'Free to try. Your picture stays in your browser; the printable files are built when you download.')}>
+      <PaintMaker {...c.buy} saved={c.saved} />
     </KitPage>
   );
 }

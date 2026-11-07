@@ -18,6 +18,8 @@ export const metadata: Metadata = { title: 'Your account', robots: { index: fals
 
 const when = (s: string) => new Date(s).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 const money = (a: number, c: string) => (isCurrency(c) ? formatMoney(a, c) : `${a / 100} ${c}`);
+/** "Edit design": the maker that made it, opened with the design's saved settings. */
+const editHref = (tool: string | null, design: string | null) => { const m = tool ? toolBySlug(tool)?.makePath : null; return m && design ? `${m}?design=${design}` : null; };
 const kb = (n: number) => (n > 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.round(n / 1e3)} KB`);
 
 export default async function Account({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -26,7 +28,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   const supabase = await createClient();
   const [files, orders, payments, downloads] = await Promise.all([
     supabase.from('files').select('id, name, size_bytes, created_at, tool_slug, design_id, product_id, designs(name, preview), stl_products(title, slug, images)').order('created_at', { ascending: false }),
-    supabase.from('orders').select('id, tool_slug, currency, amount_minor, status, created_at, provider_order_id, kind, print_status, ship_to, courier, tracking_no, shipped_at, product_id, designs(name, preview), stl_products(title, slug, images)').order('created_at', { ascending: false }).limit(100),
+    supabase.from('orders').select('id, tool_slug, design_id, currency, amount_minor, status, created_at, provider_order_id, kind, print_status, ship_to, courier, tracking_no, shipped_at, product_id, designs(name, preview), stl_products(title, slug, images)').order('created_at', { ascending: false }).limit(100),
     supabase.from('payments').select('provider_payment_id, amount_minor, currency, status, method, created_at').order('created_at', { ascending: false }).limit(100),
     supabase.from('downloads').select('file_id'),
   ]);
@@ -59,6 +61,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
         <div>
           <section id="files">
             <h2>Your files</h2>
+            {files.data?.some((f) => !f.product_id && f.design_id) && <p className="muted" style={{ margin: '-6px 0 16px', fontSize: 14.5 }}>Want a change, say a new size, colour or name? <b>Edit design</b> opens it in its tool with all your settings. The new files are a new design (paid like any design, or from your plan); the files you have stay here.</p>}
             {files.data?.length ? (
               <div className="files">
                 {files.data.map((f) => {
@@ -69,7 +72,10 @@ export default async function Account({ searchParams }: { searchParams: Promise<
                       <div className="meta">
                         <b>{d.name ?? f.name}</b>
                         <span>{d.product ? 'STL files' : toolBySlug(f.tool_slug)?.name ?? f.tool_slug} · {when(f.created_at)} · {kb(f.size_bytes)}{dl.get(f.id) ? ` · downloaded ${dl.get(f.id)}×` : ''}</span>
-                        <a className="btn small" href={`/api/files/${f.id}/download`}>Download zip ↓</a>
+                        <div className="file-acts">
+                          <a className="btn small" href={`/api/files/${f.id}/download`}>Download zip ↓</a>
+                          {!d.product && editHref(f.tool_slug, f.design_id) && <Link className="btn small ghost" href={editHref(f.tool_slug, f.design_id)!} title="Open this design in its maker with all your settings, change it and download it again">Edit design</Link>}
+                        </div>
                       </div>
                     </article>
                   );
@@ -134,6 +140,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
                             {['Paid', 'Printing', 'Shipped', 'Delivered'].map((n, i) => <li key={n} className={i <= at ? 'on' : ''}>{n}</li>)}
                           </ol>
                         )}
+                        {!d.product && editHref(o.tool_slug, o.design_id) && <p><Link className="linkish" href={editHref(o.tool_slug, o.design_id)!}>Edit this design and order again</Link></p>}
                         <p className="acc-po-note">{PRINT_STATUS[st]?.note}{st === 'shipped' || st === 'delivered' ? <> Sent by {o.courier || 'India Post'}{o.tracking_no ? <>, tracking number <b className="mono">{o.tracking_no}</b></> : null}.</> : null}</p>
                       </div>
                       <address className="acc-po-addr">{shipLines(o.ship_to as ShipTo).slice(0, 5).map((l) => <span key={l}>{l}</span>)}</address>
