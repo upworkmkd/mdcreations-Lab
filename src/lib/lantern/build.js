@@ -61,7 +61,9 @@ export function wallMask(band, w, bh, top, bottom, bridge = 1.2) {
       for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r + 1) { const yy = y + dy; if (yy < 0 || yy >= h) continue; const s = yy * w + ((x + dx + w) % w); m[s] = 1; if (lab[s] < 0) lab[s] = main; }
     }
   }
-  return { mask: m, bridges, dropped };
+  // pieces still floating (only when there are very many of them): they would fall out of the print
+  const left = joined.reduce((n, j) => n + (j ? 0 : 1), 0);
+  return { mask: m, bridges, dropped, left };
 }
 
 /* ------------------------------------------------------------------ the shell */
@@ -182,6 +184,28 @@ export function baseMesh(R, t, o = {}) {
   return { tris: tb.done(), top };
 }
 
+/**
+ * The bottom cover: a plate under the base that hides the battery and the wiring, with a ring that pushes into the
+ * skirt to hold it (a drop of glue keeps it, or leave it a push fit to open it again). Under the base: z from -thick to 0.
+ */
+export function coverMesh(R, thick = 2) {
+  const t = new Tris(4096), Ro = R + BASE.rim, Ri = Ro - BASE.wall;
+  extrude(t, [{ outer: ring(Ro) }], -thick, 0);
+  extrude(t, [{ outer: ring(Ri - 0.25), holes: [ring(Ri - 1.85)] }], -0.01, 3);
+  return t.done();
+}
+
+/**
+ * The top cover: a lid on the shell (z0 = the top of the shell), with a ring that pushes into the shell to keep it
+ * centred. Keeps dust out and the ceiling dark.
+ */
+export function lidMesh(R, wall, z0, thick = 2) {
+  const t = new Tris(4096), ri = R - wall - 0.25;
+  extrude(t, [{ outer: ring(R + 1.2) }], z0, z0 + thick);
+  extrude(t, [{ outer: ring(ri), holes: [ring(ri - 1.6)] }], z0 - 3, z0 + 0.01);
+  return t.done();
+}
+
 /** The LED post: a tube pushed into the plate (flush with its underside) that holds the LED at `led` mm. */
 export function postMesh(top, led) {
   const t = new Tris(2048);
@@ -191,7 +215,8 @@ export function postMesh(top, led) {
 
 /**
  * The whole lantern. mask: the wall (from wallMask), p: { diameter, height, wall, rimBottom, rimTop, rocker }, cell: mesh
- * size (mm). Returns the shell, the base, the LED post (all where they sit when put together), the LED height and the size.
+ * size (mm). Returns the shell, the base, the LED post, the bottom cover and the lid (all where they sit when put together), the LED
+ * height and the size.
  */
 export function buildLantern(mask, w, h, p, cell = 0.8) {
   const R = p.diameter / 2, b = baseMesh(R, p.wall, { rocker: p.rocker }), z0 = b.top - BASE.groove;
@@ -199,7 +224,10 @@ export function buildLantern(mask, w, h, p, cell = 0.8) {
   const shell = shellMesh(mask, w, h, R, p.wall, p.height, cell);
   // the shell stands in the groove of the plate
   for (let i = 2; i < shell.length; i += 3) shell[i] += z0;
-  return { shell, base: b.tris, post: postMesh(b.top, led), led, top: b.top, size: [p.diameter + 2 * BASE.rim, p.diameter + 2 * BASE.rim, z0 + p.height] };
+  return {
+    shell, base: b.tris, post: postMesh(b.top, led), cover: coverMesh(R), lid: lidMesh(R, p.wall, z0 + p.height), led, top: b.top,
+    size: [p.diameter + 2 * BASE.rim, p.diameter + 2 * BASE.rim, z0 + p.height + 4],
+  };
 }
 
 /** A part turned over (180° about x) and stood on z = 0: the base prints with its plate on the bed. */

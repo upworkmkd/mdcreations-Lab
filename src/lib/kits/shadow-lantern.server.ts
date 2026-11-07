@@ -13,17 +13,21 @@ async function build(d: LanternDesign, preview: Uint8Array | null, license: { ow
   const post = (L.led - 1) - (L.top - BASE.plate);
   const readme = [
     `Lantern: ${d.p.diameter} mm across, ${d.p.height} mm tall, ${d.p.wall} mm wall. The LED sits ${(L.led - L.top).toFixed(0)} mm above the base plate.`,
-    wm.bridges ? `${wm.bridges} floating bits of the picture got thin bridges so they stay in place.` : '', '',
+    wm.bridges ? `${wm.bridges} floating bits of the picture got thin bridges so they stay in place.` : '',
+    wm.left ? `WARNING: ${wm.left} small floating bits could not be joined and will fall out of the print.` : '', '',
     'FILES',
     '  *_shell.stl      the lantern wall with the picture cut through',
     '  *_base.stl       the base: a plate with a groove for the shell, on an open skirt for the battery and the charger',
     `  *_led-post.stl   the LED post (${post.toFixed(0)} mm), pushed into the hole in the middle of the plate`,
+    '  *_bottom-cover.stl  the plate under the base that hides the battery and the wiring',
+    '  *_top-cover.stl     the lid on top of the shell',
     '',
     'PRINTING (no supports for any part)',
     '  - Shell: standing up, as it is in the file. A dark, opaque filament (black, dark grey, brown):',
     '    light must only pass through the cut-outs. 0.2 mm layers, 2-3 walls, 0.4 mm nozzle.',
     '  - Base: as it is in the file, upside down (plate on the bed, open side up). Any colour.',
     '  - LED post: standing up. Any colour.',
+    '  - Bottom cover and top cover: flat side down, as they are in the files. The top cover in the shell colour.',
     '',
     'WHAT YOU NEED',
     '  - A bare 5 mm warm white LED. A tiny bright point gives sharp shadows; diffused tea lights make them blurry.',
@@ -39,7 +43,9 @@ async function build(d: LanternDesign, preview: Uint8Array | null, license: { ow
     '     into the port hole in the skirt, so a cable plugs in from outside.',
     '  4. Wire it: battery to B+ / B- on the module; OUT+ through the switch and the resistor to the LED (+, the long leg),',
     '     LED (-) to OUT-. Glue the battery and the wires under the plate. The underside stays open.',
-    '  5. Stand the shell in the groove of the plate (a dot of glue if you like). Charge it from any USB-C phone charger.',
+    '  5. Push the bottom cover into the skirt (a drop of glue holds it, or leave it a push fit to open it again).',
+    '  6. Stand the shell in the groove of the plate (a dot of glue if you like) and push the top cover on.',
+    '     Charge it from any USB-C phone charger.',
     '',
     'SHOWING IT',
     '  Put it in the middle of a room or a table, switch off the lights: the picture goes all the way round the walls.',
@@ -47,7 +53,7 @@ async function build(d: LanternDesign, preview: Uint8Array | null, license: { ow
   ].filter((l, i, a) => l !== '' || a[i - 1] !== '');
   return packKit({
     name: d.name, kind: '360 shadow lantern', readme, preview, license,
-    parts: [{ file: 'shell', tris: onBed(L.shell) }, { file: 'base', tris: upsideDown(L.base) }, { file: 'led-post', tris: onBed(L.post) }],
+    parts: [{ file: 'shell', tris: onBed(L.shell) }, { file: 'base', tris: upsideDown(L.base) }, { file: 'led-post', tris: onBed(L.post) }, { file: 'bottom-cover', tris: onBed(L.cover) }, { file: 'top-cover', tris: upsideDown(L.lid) }],
   });
 }
 

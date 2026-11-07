@@ -12,7 +12,7 @@ import { restoreFrom, savedPicture, useRestoredPicture, type SavedDesign } from 
 const noop = () => () => {};
 type Pic = CanvasImageSource & { width: number; height: number };
 type Scene = 'stars' | 'hearts' | 'festival' | 'picture';
-type Settings = { scene: Scene; picture: string | null; repeat: number; level: number; invert: boolean; p: LanternParams; colour: string; names?: string; density?: number; zoom?: number; ox?: number; oy?: number };
+type Settings = { scene: Scene; picture: string | null; repeat: number; level: number; invert: boolean; p: LanternParams; colour: string; name1?: string; name2?: string; at1?: number; at2?: number; seed?: number; density?: number; zoom?: number; ox?: number; oy?: number };
 const SCENE_NAME: Record<Exclude<Scene, 'picture'>, string> = { stars: 'Starry night', hearts: 'Hearts', festival: 'Festival lights' };
 const NAME_FONT = '"Poppins", "Arial Black", Arial, sans-serif';
 
@@ -24,9 +24,9 @@ function heart(g: CanvasRenderingContext2D, x: number, y: number, s: number, rot
 }
 
 /* ------------------------------------------------------------------ built-in scenes (white = light on the walls) */
-function scene(kind: Exclude<Scene, 'picture'>, w: number, h: number, density: number, names: string[]): HTMLCanvasElement {
+function scene(kind: Exclude<Scene, 'picture'>, w: number, h: number, density: number, names: { text: string; at: number }[], seed = 11): HTMLCanvasElement {
   const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d')!;
-  let r = 11; const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
+  let r = seed; const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
   const pine = (x: number, base: number, ht: number) => { g.beginPath(); g.moveTo(x, base - ht); for (let k = 0; k < 4; k++) { const y = base - ht + (ht * (k + 1)) / 4.4, wd = (ht * (k + 1)) / 7; g.lineTo(x + wd, y); g.lineTo(x + wd * 0.45, y); } g.lineTo(x + ht * 0.04, base); g.lineTo(x - ht * 0.04, base); for (let k = 3; k >= 0; k--) { const y = base - ht + (ht * (k + 1)) / 4.4, wd = (ht * (k + 1)) / 7; g.lineTo(x - wd * 0.45, y); g.lineTo(x - wd, y); } g.closePath(); g.fill(); };
   g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff';
   if (kind === 'stars') {
@@ -35,27 +35,25 @@ function scene(kind: Exclude<Scene, 'picture'>, w: number, h: number, density: n
     const mx = w * 0.18, my = h * 0.28, mr = h * 0.13; g.beginPath(); g.arc(mx, my, mr, 0, 7); g.fill(); g.fillStyle = '#000'; g.beginPath(); g.arc(mx + mr * 0.45, my - mr * 0.15, mr * 0.9, 0, 7); g.fill();
     g.fillStyle = '#000'; for (let x = -10; x < w + 10; x += 14 + rnd() * 18) pine(x, h, h * (0.14 + rnd() * 0.16));
   } else if (kind === 'hearts') {
-    // big hearts spread round, each holding a name (in shadow, inside the light); small hearts in between
-    const big = Math.max(1, Math.round(w / (h * 1.05))), bs = Math.min(h * 0.62, (w / big) * 0.8), spots: [number, number, number][] = [];
-    for (let i = 0; i < big; i++) {
-      const x = ((i + 0.5) / big) * w, y = h * (i % 2 ? 0.55 : 0.47);
-      g.fillStyle = '#fff'; heart(g, x, y, bs); spots.push([x, y, bs * 0.62]);
-      const name = names.length ? names[i % names.length] : '';
-      if (name) {
-        g.fillStyle = '#000'; g.textAlign = 'center'; g.textBaseline = 'middle';
-        // below the dip between the two lobes, where the heart is widest
-        let fs = bs * 0.2; g.font = `800 ${fs}px ${NAME_FONT}`;
-        const tw = g.measureText(name).width; if (tw > bs * 0.6) { fs *= (bs * 0.6) / tw; g.font = `800 ${fs}px ${NAME_FONT}`; }
-        g.fillText(name, x, y + bs * 0.03);
-      }
+    // hearts of every size all round, and up to two names in the light (each where the person put it); the drawing
+    // wraps round, so a heart or a name over the edge carries on at the other side
+    const boxes: [number, number, number, number][] = [];   // around the names: no hearts there
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const nm of names) {
+      if (!nm.text) continue;
+      let fs = h * 0.2; g.font = `800 ${fs}px ${NAME_FONT}`;
+      const tw0 = g.measureText(nm.text).width; if (tw0 > w * 0.42) { fs *= (w * 0.42) / tw0; g.font = `800 ${fs}px ${NAME_FONT}`; }
+      const x = (nm.at / 100) * w, y = h * 0.5, tw = g.measureText(nm.text).width;
+      for (const ox of [-w, 0, w]) { g.fillText(nm.text, x + ox, y); boxes.push([x + ox - tw / 2 - fs * 0.35, y - fs * 0.85, x + ox + tw / 2 + fs * 0.35, y + fs * 0.85]); }
     }
-    g.fillStyle = '#fff';
-    const n = Math.round((w * h / 2600) * density), placed: [number, number, number][] = [];
-    for (let k = 0, tries = 0; k < n && tries < n * 30; tries++) {
-      const s = h * (0.045 + rnd() ** 2 * 0.11), x = rnd() * w, y = s * 0.6 + rnd() * (h - s * 1.2);
-      const clear = (q: [number, number, number]) => Math.hypot(q[0] - x, q[1] - y) > q[2] + s * 0.62;
-      if (!spots.every(clear) || !placed.every((q) => Math.hypot(q[0] - x, q[1] - y) > (q[2] + s) * 0.62)) continue;
-      heart(g, x, y, s, (rnd() - 0.5) * 0.7); placed.push([x, y, s]); k++;
+    const n = Math.round((w * h / 1900) * density), placed: [number, number, number][] = [];
+    for (let k = 0, tries = 0; k < n && tries < n * 40; tries++) {
+      const s = h * (0.05 + rnd() ** 2.2 * 0.17), x = rnd() * w, y = s * 0.6 + rnd() * (h - s * 1.2), hs = s * 0.55;
+      if (boxes.some((q) => x + hs > q[0] && x - hs < q[2] && y + hs > q[1] && y - hs < q[3])) continue;
+      if (!placed.every((q) => { const d = Math.min(Math.abs(q[0] - x), w - Math.abs(q[0] - x)); return Math.hypot(d, q[1] - y) > (q[2] + s) * 0.6; })) continue;
+      const rot = (rnd() - 0.5) * 0.7;
+      for (const ox of [-w, 0, w]) heart(g, x + ox, y, s, rot);
+      placed.push([x, y, s]); k++;
     }
   } else {
     // strings of lights in swags, hanging lanterns and diyas along the bottom
@@ -86,9 +84,9 @@ function band(src: Pic, w: number, h: number, repeat: number, level: number, inv
   return m;
 }
 /** What the walls look like: the light through the holes, unrolled. */
-function wallsUrl(mask: Uint8Array, w: number, h: number) {
+function wallsUrl(mask: Uint8Array, w: number, h: number, added?: Uint8Array) {
   const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d')!, im = g.createImageData(w, h);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x, glow = 1 - Math.abs(y / h - 0.5) * 0.9, on = !mask[i]; im.data[i * 4] = on ? 255 * glow : 22; im.data[i * 4 + 1] = on ? 214 * glow : 18; im.data[i * 4 + 2] = on ? 150 * glow : 14; im.data[i * 4 + 3] = 255; }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x, glow = 1 - Math.abs(y / h - 0.5) * 0.9, on = !mask[i]; if (added?.[i]) { im.data[i * 4] = 235; im.data[i * 4 + 1] = 64; im.data[i * 4 + 2] = 52; im.data[i * 4 + 3] = 255; continue; } im.data[i * 4] = on ? 255 * glow : 22; im.data[i * 4 + 1] = on ? 214 * glow : 18; im.data[i * 4 + 2] = on ? 150 * glow : 14; im.data[i * 4 + 3] = 255; }
   g.putImageData(im, 0, 0); return c.toDataURL('image/jpeg', 0.8);
 }
 
@@ -98,8 +96,10 @@ export function LanternMaker({ saved, ...buy }: KitBuy & { saved?: SavedDesign |
   const [init] = useState(() => restoreFrom<Settings>(saved, (q) => ({ p: q.p as LanternParams })));
   const [sceneId, setScene] = useState<Scene>(init?.scene && init.scene in SCENE_NAME || init?.scene === 'picture' ? init.scene : 'stars');
   const [zoom, setZoom] = useState(init?.zoom ?? 0), [ox, setOx] = useState(init?.ox ?? 0), [oy, setOy] = useState(init?.oy ?? 0);
-  const [names, setNames] = useState(init?.names ?? ''), [density, setDensity] = useState(init?.density ?? 1);
-  const nameList = useMemo(() => names.split(',').map((x) => x.trim()).filter(Boolean).slice(0, 6), [names]);
+  const [name1, setName1] = useState(init?.name1 ?? ''), [name2, setName2] = useState(init?.name2 ?? '');
+  const [at1, setAt1] = useState(init?.at1 ?? 25), [at2, setAt2] = useState(init?.at2 ?? 75), [seed, setSeed] = useState(init?.seed ?? 11);
+  const [density, setDensity] = useState(init?.density ?? 1);
+  const nameList = useMemo(() => [{ text: name1.trim(), at: at1 }, { text: name2.trim(), at: at2 }].filter((n) => n.text), [name1, name2, at1, at2]);
   const dNames = useDeferredValue(nameList);
   const [pic, setPic] = useState<Pic | null>(null), [thumb, setThumb] = useState<string | null>(null);
   const [repeat, setRepeat] = useState(init?.repeat ?? 1), [level, setLevel] = useState(init?.level ?? 128), [invert, setInvert] = useState(init?.invert ?? false);
@@ -117,26 +117,32 @@ export function LanternMaker({ saved, ...buy }: KitBuy & { saved?: SavedDesign |
   const bandMask = useMemo(() => {
     if (!ready) return null;
     if (sceneId === 'picture') return pic ? band(pic, S.w, bh, repeat, level, invert, { zoom, ox, oy }) : null;
-    return band(scene(sceneId, Math.round(S.w / repeat), bh, density, dNames), S.w, bh, repeat, 128, invert);
-  }, [ready, sceneId, pic, S.w, bh, repeat, level, invert, density, dNames, zoom, ox, oy]);
+    return band(scene(sceneId, Math.round(S.w / repeat), bh, density, sceneId === 'hearts' ? dNames : [], seed), S.w, bh, repeat, 128, invert);
+  }, [ready, sceneId, pic, S.w, bh, repeat, level, invert, density, dNames, seed, zoom, ox, oy]);
   const live = useMemo(() => ({ bandMask, p, S, bh }), [bandMask, p, S, bh]);
   const dp = useDeferredValue(live);
   const model = useMemo(() => {
     if (!dp.bandMask) return null;
     const wm = wallMask(dp.bandMask, dp.S.w, dp.bh, dp.S.top, dp.S.bottom);
-    return { ...buildLantern(wm.mask, dp.S.w, dp.S.h, dp.p, 1.6), wall: wm.mask, bridges: wm.bridges };
+    // where the bridges went (shown in red on the walls)
+    const added = new Uint8Array(wm.mask.length), off = dp.S.top * dp.S.w;
+    for (let i = 0; i < dp.bandMask.length; i++) if (wm.mask[off + i] && !dp.bandMask[i]) added[off + i] = 1;
+    return { ...buildLantern(wm.mask, dp.S.w, dp.S.h, dp.p, 1.6), wall: wm.mask, added, bridges: wm.bridges, left: wm.left };
   }, [dp]);
-  const parts = useMemo(() => (model ? [{ tris: model.shell, color: colour }, { tris: model.base, color: '#d9a441' }, { tris: model.post, color: '#d9a441' }] : []), [model, colour]);
-  const walls = useMemo(() => (model && view === 'walls' ? wallsUrl(model.wall, dp.S.w, dp.S.h) : null), [model, view, dp]);
+  const parts = useMemo(() => (model ? [{ tris: model.shell, color: colour }, { tris: model.lid, color: colour }, { tris: model.base, color: '#d9a441' }, { tris: model.cover, color: '#d9a441' }, { tris: model.post, color: '#d9a441' }] : []), [model, colour]);
+  // the loose-pieces warning (for uploaded pictures; the built-in scenes are drawn to need only a few bridges, in letters)
+  const warnKey = model && sceneId === 'picture' && (model.bridges > 0 || model.left > 0) ? `${model.bridges}-${model.left}` : null;
+  const [seenWarn, setSeenWarn] = useState<string | null>(null);
+  const walls = useMemo(() => (model && view === 'walls' ? wallsUrl(model.wall, dp.S.w, dp.S.h, sceneId === 'picture' ? model.added : undefined) : null), [model, view, dp, sceneId]);
 
   const getDesign = useCallback(() => {
     if (!bandMask || !model) return null;
     return {
-      design: { name: sceneId === 'picture' ? 'Shadow lantern' : sceneId === 'hearts' && nameList.length ? `${nameList.join(' & ')} lantern` : `${SCENE_NAME[sceneId]} lantern`, p, w: S.w, h: bh, band: encodeRle(bandMask) },
+      design: { name: sceneId === 'picture' ? 'Shadow lantern' : sceneId === 'hearts' && nameList.length ? `${nameList.map((n) => n.text).join(' & ')} lantern` : `${SCENE_NAME[sceneId]} lantern`, p, w: S.w, h: bh, band: encodeRle(bandMask) },
       preview: snap.current?.jpeg() ?? '',
-      settings: { scene: sceneId, picture: sceneId === 'picture' ? savedPicture(pic) : null, repeat, level, invert, p, colour, names, density, zoom, ox, oy } satisfies Settings,
+      settings: { scene: sceneId, picture: sceneId === 'picture' ? savedPicture(pic) : null, repeat, level, invert, p, colour, name1, name2, at1, at2, seed, density, zoom, ox, oy } satisfies Settings,
     };
-  }, [bandMask, model, sceneId, nameList, p, S.w, bh, pic, repeat, level, invert, colour, names, density, zoom, ox, oy]);
+  }, [bandMask, model, sceneId, nameList, p, S.w, bh, pic, repeat, level, invert, colour, name1, name2, at1, at2, seed, density, zoom, ox, oy]);
 
   const onImage = (im: HTMLImageElement) => { setPic(im); setThumb(thumbOf(im)); setScene('picture'); setZoom(0); setOx(0); setOy(0); };
   return (
@@ -145,24 +151,37 @@ export function LanternMaker({ saved, ...buy }: KitBuy & { saved?: SavedDesign |
       busy={!model ? 'Building…' : dp !== live ? 'Updating…' : null}
       bar={<><div className="kit-tabs" role="group" aria-label="View"><button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')}>Lantern</button><button type="button" aria-pressed={view === 'walls'} onClick={() => setView('walls')}>On the walls</button></div>
         {view === '3d' && <><span className="muted">Shell:</span><div className="kit-swatches">{['#2c2e21', '#161616', '#6b3a2a', '#1f3a5f'].map((c) => <button key={c} type="button" aria-label={c} aria-pressed={colour === c} style={{ background: c }} onClick={() => setColour(c)} />)}</div></>}</>}
-      stage={view === '3d' ? <MeshView parts={parts} fitKey={`${p.diameter}-${p.height}`} snapRef={snap} />
+      stage={<>{view === '3d' ? <MeshView parts={parts} fitKey={`${p.diameter}-${p.height}`} snapRef={snap} />
         // eslint-disable-next-line @next/next/no-img-element
-        : <div className="lan-walls">{walls ? <img src={walls} alt="The picture as it falls on the walls, all the way round" /> : null}<p>All the way round the room, as it falls on the walls in the dark (the left edge joins the right).</p></div>}
-      stats={model ? <><span>Lantern <b>{p.diameter} × {p.height} mm</b></span><span>LED at <b>{model.led.toFixed(0)} mm</b></span>{model.bridges > 0 && <span>{model.bridges} floating {model.bridges === 1 ? 'bit gets' : 'bits get'} a thin bridge</span>}</> : <span>Choose a scene or upload a picture.</span>}
+        : <div className="lan-walls">{walls ? <img src={walls} alt="The picture as it falls on the walls, all the way round" /> : null}<p>All the way round the room, as it falls on the walls in the dark (the left edge joins the right).{warnKey ? ' Red: the thin bridges we added to hold loose pieces.' : ''}</p></div>}
+        {warnKey && warnKey !== seenWarn && model && <div className="lan-warn" role="alert">
+          <p className="t">{model.left ? `${model.left} loose ${model.left === 1 ? 'piece' : 'pieces'} will fall out` : `${model.bridges} loose ${model.bridges === 1 ? 'piece' : 'pieces'} in your picture`}</p>
+          <p>Parts of the picture that do not touch the rest of the wall would fall out of the lantern. {model.bridges ? `We joined ${model.bridges === 1 ? 'it' : 'them'} with thin bridges (red in “On the walls”), but bridges show as lines on the walls and break easily. ` : ''}For a cleaner, stronger lantern, join the loose parts to the rest in your picture with thin lines, or try another darkness cut-off or zoom.</p>
+          <div className="b">{view !== 'walls' && <button type="button" className="btn small" onClick={() => setView('walls')}>Show me</button>}<button type="button" className="btn ghost small" onClick={() => setSeenWarn(warnKey)}>OK</button></div>
+        </div>}</>}
+      stats={model ? <><span>Lantern <b>{p.diameter} × {p.height} mm</b></span><span>LED at <b>{model.led.toFixed(0)} mm</b></span>{model.bridges > 0 && <span>{model.bridges} loose {model.bridges === 1 ? 'piece gets' : 'pieces get'} a thin bridge</span>}{model.left > 0 && <span className="warn">{model.left} will fall out</span>}</> : <span>Choose a scene or upload a picture.</span>}
       getting={model ? <WhatYouGet meta={`${p.diameter} × ${p.height} mm`} parts={[
         { title: 'Lantern shell', text: 'The picture cut all the way round a cylinder. Prints standing up, no supports, in a dark opaque filament.', tris: model.shell, color: colour, tag: 'your picture' },
         { title: 'Base', text: `The shell stands in a groove in the plate. Underneath it is open: glue the battery, the Type-C charging module${p.rocker !== false ? ' and the switch' : ''} there. Prints upside down, no supports.`, tris: model.base, color: '#d9a441' },
+        { title: 'Bottom cover', text: 'Pushes into the base from below and hides the battery and the wiring.', tris: model.cover, color: '#d9a441' },
+        { title: 'Top cover', text: 'A lid on top of the shell: keeps dust out and the ceiling dark.', tris: model.lid, color: colour },
         { title: 'LED post', text: `Pushes into the plate and holds the LED at ${(model.led - model.top).toFixed(0)} mm above it, the middle of the picture, so it falls straight on the walls.`, tris: model.post, color: '#d9a441' },
       ]} files={STANDARD_FILES} needs={[
         { title: 'A bare 5 mm LED', text: 'Warm white. A tiny bright point gives the sharpest shadows (not a diffused tea light).' },
         { title: 'Battery and charger', text: 'A small 3.7 V LiPo (or an 18650) and a TP4056 Type-C charging module, glued under the base. Charges from any USB-C phone charger.' },
         ...(p.rocker !== false ? [{ title: 'A mini rocker switch', text: 'KCD11 size (13 × 9 mm), snaps into the hole next to the charging port.' }] : []),
       ]} /> : null}
-      youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>The lantern shell, the base (with a Type-C charging port hole) and the LED post as STL files, print and assembly notes, a preview and a commercial license.</p></>}
+      youGet={<><p className="eyebrow">What you get</p><p style={{ marginTop: 8, fontSize: 14.5 }}>The lantern shell, the base (with a Type-C charging port hole), the bottom and top covers and the LED post as STL files, print and assembly notes, a preview and a commercial license.</p></>}
       side={<>
         <Group title="Picture">
           <Seg<Scene> label="Scene" value={sceneId} onChange={setScene} options={[['stars', 'Starry night'], ['hearts', 'Hearts'], ['festival', 'Festival'], ['picture', 'My picture']]} />
-          {sceneId === 'hearts' && <Text label="Names in the hearts" value={names} onChange={setNames} max={60} placeholder="Priya, Rahul" hint="Separate names with commas. Each big heart gets the next name, in shadow inside the light." />}
+          {sceneId === 'hearts' && <>
+            <Text label="First name" value={name1} onChange={setName1} max={16} placeholder="Priya" />
+            {name1.trim() && <Range label="Where round the lantern" value={at1} onChange={setAt1} min={0} max={100} step={1} fmt={(v) => `${v}%`} />}
+            <Text label="Second name" value={name2} onChange={setName2} max={16} placeholder="Rahul" hint="Both are optional. They shine on the walls among the hearts." />
+            {name2.trim() && <Range label="Where round the lantern" value={at2} onChange={setAt2} min={0} max={100} step={1} fmt={(v) => `${v}%`} />}
+            <button type="button" className="btn ghost small" onClick={() => setSeed((v) => (v * 48271) % 2147483647 || 11)}>Shuffle the hearts</button>
+          </>}
           {sceneId !== 'picture' && <Range label="Density" value={density} onChange={setDensity} min={0.3} max={1.6} step={0.1} fmt={(v) => `${Math.round(v * 100)}%`} hint={sceneId === 'hearts' ? 'How many small hearts round the big ones.' : sceneId === 'stars' ? 'How many stars.' : 'How close the lights are on the strings.'} />}
           {sceneId === 'picture' && <>
             <PicturePick tool="shadow-lantern" onImage={onImage} preview={thumb} label={thumb ? 'Change the picture' : 'Upload a picture'} />
