@@ -27,8 +27,8 @@ export default async function Settings() {
     getGuides(),
     getSalePercent(),
   ]);
-  const was = regularPrice(14900, sale, 'INR');
-  const saleExample = was ? `a ₹149 tool shows ${formatMoney(was, 'INR')} crossed out` : null;
+  const was = regularPrice(19900, sale, 'INR');
+  const saleExample = was ? `a ₹199 tool shows ${formatMoney(was, 'INR')} crossed out` : null;
   const provider = mailProvider();
   const sample = sampleMailData(me.email, me.name);
   const [cust, adm] = [customerOrderEmail(sample), adminOrderEmail(sample)];
