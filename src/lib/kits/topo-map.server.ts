@@ -6,6 +6,7 @@ import { parseTopoDesign, type TopoDesign } from '@/lib/topo/design';
 import { bandHeights, buildColoured, buildTerrain, capDepth, colourName, terrain } from '@/lib/topo/build.js';
 import { coloured3mf } from '@/lib/mesh/threemf.js';
 import { b64ToBytes } from '@/lib/mesh/b64.js';
+import { buildPuzzle } from '@/lib/topo/puzzle.js';
 
 async function build(d: TopoDesign, preview: Uint8Array | null, license: { owner?: string; orderId?: string }) {
   const bytes = b64ToBytes(d.elev);
@@ -21,7 +22,19 @@ async function build(d: TopoDesign, preview: Uint8Array | null, license: { owner
   const credits = ['', 'Elevation data: Terrain Tiles on AWS (Mapzen terrarium; SRTM, GMTED, ETOPO1 and others).'];
   const general = ['  - Print flat, no supports. 0.12 to 0.2 mm layers; 10-15% infill is plenty.', '  - Variable layer height (adaptive layers) keeps gentle slopes smooth.'];
 
-  if (c.mode === 'satellite') {
+  // a jigsaw: one STL per piece, laid out apart so they print without touching (one colour, or colour by height)
+  const puzzle = p.pieces > 1 ? buildPuzzle(p, elev, d.w, d.h, 6) : null;
+  const puzzleLines = puzzle ? [
+    `JIGSAW: ${puzzle.pieces.length} pieces (${puzzle.cols} across, ${puzzle.rows} down), ${p.gap.toFixed(2)} mm fitting gap`,
+    '  - Each piece is its own STL, named by row and column (A1 is the top-left, north-west corner).',
+    '  - Print all pieces in one go: load the STLs together, or one plate at a time if they do not fit your bed.',
+    '  - Print flat, knobs and all; no supports. Use the same settings for every piece so the heights match.',
+    '  - Too tight? Lightly sand the knobs, or order again with a looser fit. Too loose? Choose a snug fit next time.',
+    '  - The outer edges are straight, so the finished map has a clean square border.', '',
+  ] : [];
+  const puzzleParts = puzzle ? puzzle.pieces.map((x: { name: string; tris: Float32Array }) => ({ file: x.name, tris: x.tris })) : null;
+
+  if (c.mode === 'satellite' && !puzzle) {
     const cls = b64ToBytes(c.cls!).slice(0, (d.w - 1) * (d.h - 1));
     if (cls.length !== (d.w - 1) * (d.h - 1) || cls.some((v) => v >= c.n)) throw new Error('The colour map does not match the grid.');
     const m = buildColoured(p, elev, d.w, d.h, cls, c.palette);
@@ -46,8 +59,8 @@ async function build(d: TopoDesign, preview: Uint8Array | null, license: { owner
     colourLines = [`  - Start in ${colourName(c.palette[0])} (${c.palette[0]}).`, ...(at as number[]).map((z: number, i: number) => `  - At ${z.toFixed(1)} mm, change to ${colourName(c.palette[i + 1])} (${c.palette[i + 1]}).`),
       '    In Bambu Studio: right-click the layer slider at that height, "Add color change" (or pause for a manual swap).'];
   }
-  const readme = [...head, 'PRINTING', ...general, ...colourLines, ...credits];
-  return packKit({ name: d.name, kind: '3d map', parts: [{ file: 'terrain', tris: r.tris }], readme, preview, license });
+  const readme = [...head, ...puzzleLines, 'PRINTING', ...general, ...colourLines, ...credits];
+  return packKit({ name: d.name, kind: puzzle ? '3d map puzzle' : '3d map', parts: puzzleParts ?? [{ file: 'terrain', tris: r.tris }], readme, preview, license });
 }
 
 export const kit: Kit | null = { parse: parseTopoDesign, build: build as Kit['build'] };

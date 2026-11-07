@@ -1,9 +1,11 @@
 /* What the browser sends to save a terrain model: the place, the settings and the elevation grid (metres). */
 import { SHAPES, COLOUR_MODES, HEIGHT_PALETTES } from './build.js';
 import { num, pick, cleanName } from '@/lib/kits/check';
+import { PIECE_COUNTS } from './puzzle.js';
 
 export type TopoShape = 'square' | 'rect' | 'circle' | 'hexagon';
-export type TopoParams = { shape: TopoShape; width: number; metres: number; exaggeration: number; base: number; terrace: number; seaFloor: 'flat' | 'keep' };
+/** pieces: 1 = one plate, else a jigsaw of that many pieces (square and 3:2 maps); gap: the fitting gap between pieces (mm). */
+export type TopoParams = { shape: TopoShape; width: number; metres: number; exaggeration: number; base: number; terrace: number; seaFloor: 'flat' | 'keep'; pieces: number; gap: number };
 export type ColourMode = 'one' | 'height' | 'satellite';
 /** satellite: the palette and the colour of every cell come from the browser (cls: base64, one byte per cell). */
 export type TopoColour = { mode: ColourMode; n: number; palette: string[]; cls?: string };
@@ -15,7 +17,10 @@ export function parseTopoDesign(x: unknown): TopoDesign {
     shape: pick(q.shape, SHAPES as TopoShape[], 'shape'), width: num(q.width, 40, 300, 'width'), metres: num(q.metres, 100, 2_000_000, 'area'),
     exaggeration: num(q.exaggeration, 0.2, 30, 'height exaggeration'), base: num(q.base, 1, 30, 'base'), terrace: num(q.terrace, 0, 10, 'terraces'),
     seaFloor: pick(q.seaFloor, ['flat', 'keep'] as const, 'sea floor'),
+    pieces: q.pieces == null ? 1 : Number(pick(String(q.pieces), PIECE_COUNTS.map(String), 'pieces')),
+    gap: q.gap == null ? 0.25 : num(q.gap, 0.05, 0.6, 'fitting gap'),
   };
+  if (p.shape === 'circle' || p.shape === 'hexagon') p.pieces = 1;   // jigsaws are cut from square and 3:2 maps
   const w = Math.round(num(d.w, 32, 400, 'grid')), h = Math.round(num(d.h, 32, 400, 'grid'));
   if (typeof d.elev !== 'string' || Math.abs(d.elev.length - Math.ceil((w * h * 2) / 3) * 4) > 4) throw new Error('The elevation data is missing.');
   const c = (d.colour ?? {}) as Record<string, unknown>;

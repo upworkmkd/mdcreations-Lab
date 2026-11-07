@@ -44,5 +44,5 @@ export const tool: Tool | null = {
 export const seo: ToolSeo | null = {
   title: '3D Map Maker – 3D Printed Map of Any Place, in Satellite Colours',
   description: 'Make a 3D printed map of any place: pick it on the satellite map and download a terrain STL or a multi-colour 3MF in the real colours. Mountains, valleys and lakes from real elevation data.',
-  keywords: ['3d printed map', '3d map maker', '3d map stl', 'terrain stl', 'map to stl', 'multicolor 3d printed map', 'topographic map stl', 'everest 3d print', 'terrain2stl alternative'],
+  keywords: ['3d printed map', '3d map maker', '3d map stl', 'terrain stl', 'map to stl', 'multicolor 3d printed map', 'topographic map stl', 'everest 3d print', 'terrain2stl alternative', '3d map puzzle', 'terrain jigsaw puzzle stl'],
 };
