@@ -69,7 +69,7 @@ export function TopoMaker({ saved, ...buy }: KitBuy & { saved?: SavedDesign | nu
   const [state, setState] = useState<{ kind: 'idle' | 'loading' | 'error'; text?: string }>({ kind: 'idle' });
   const [query, setQuery] = useState(''), [results, setResults] = useState<{ name: string; lat: number; lon: number }[]>([]);
   const [tab, setTab] = useState<'map' | '3d'>(init?.grid ? '3d' : 'map');
-  const [layer, setLayer] = useState<Layer>(init?.layer ?? 'sat');
+  const [layer, setLayer] = useState<Layer>(init?.layer ?? 'hybrid');
   const [mode, setMode] = useState<ColourMode>(init?.mode ?? 'satellite');
   const [colours, setColours] = useState<'2' | '3' | '4'>(init?.colours ?? '4');
   const sel = useRef<Selection | null>(null), snap = useRef<MeshSnap | null>(null);

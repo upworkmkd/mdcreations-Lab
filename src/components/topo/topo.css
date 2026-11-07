@@ -3,7 +3,9 @@
 .topo-map:active { cursor: grabbing; }
 .topo-map img { position: absolute; width: 256px; height: 256px; pointer-events: none; }
 .topo-map img[src*='eox.at'] { image-rendering: auto; }
-.topo-frame { position: absolute; inset: 0; pointer-events: none; }
+.topo-map img.topo-names { z-index: 1; }   /* place names over the satellite picture */
+.topo-frame { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.topo-zoom, .topo-scale, .topo-attr, .topo-layer { z-index: 3; }
 .topo-zoom { position: absolute; right: 12px; top: 12px; display: grid; border: 1px solid var(--line-2); border-radius: var(--radius); overflow: hidden; background: #fff; }
 .topo-zoom button { width: 34px; height: 34px; border: 0; background: #fff; font-size: 20px; cursor: pointer; }
 .topo-zoom button + button { border-top: 1px solid var(--line); }
