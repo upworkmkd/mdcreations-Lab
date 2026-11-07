@@ -43,7 +43,7 @@ export const tool: Tool | null = {
 };
 
 export const seo: ToolSeo | null = {
-  title: '360° Shadow Lantern Maker – Stars and Scenes All Around (STL)',
+  title: '360° Shadow Lantern Maker – Stars, Hearts and Names (STL)',
   description: 'Make a 3D printable lantern that throws stars, hearts with your names or your own picture all round the room. Rechargeable base. Shell, base and LED post STL.',
   keywords: [
     '360 shadow lamp', 'shadow lantern', 'shadow lantern stl', 'star projector lamp', 'star night light 3d print', 'night light projector stl', 'panorama lamp 3d print',
