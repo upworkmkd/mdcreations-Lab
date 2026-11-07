@@ -10,6 +10,10 @@ export const mPerPx = (lat: number, z: number) => (156543.03392 * Math.cos((lat 
 export const ELEV_URL = (z: number, x: number, y: number) => `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
 export const MAP_URL = (z: number, x: number, y: number) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
 /** Sentinel-2 cloudless 2016 by EOX (CC BY 4.0): free for commercial use with credit. About 10 m per pixel. */
+/** Drawn over the satellite picture (transparent tiles, Esri reference layers): roads, then place names and borders. */
+export const ROADS_URL = (z: number, x: number, y: number) => `https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/${z}/${y}/${x}`;
+export const LABELS_URL = (z: number, x: number, y: number) => `https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/${z}/${y}/${x}`;
+export const LABELS_MAX_ZOOM = 19;
 export const SAT_URL = (z: number, x: number, y: number) => `https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/${z}/${y}/${x}.jpg`;
 export const SAT_MAX_ZOOM = 14;
 export const SAT_CREDIT = 'Sentinel-2 cloudless – s2maps.eu by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016)';

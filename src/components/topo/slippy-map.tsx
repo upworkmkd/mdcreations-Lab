@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { MAP_URL, SAT_MAX_ZOOM, SAT_URL, TILE, latToY, lonToX, mPerPx, xToLon, yToLat } from '@/lib/topo/geo';
+import { LABELS_MAX_ZOOM, LABELS_URL, MAP_URL, ROADS_URL, SAT_MAX_ZOOM, SAT_URL, TILE, latToY, lonToX, mPerPx, xToLon, yToLat } from '@/lib/topo/geo';
 
-export type Layer = 'sat' | 'map';
+/** hybrid = the satellite picture with place names, roads and borders over it (like Google's satellite view). */
+export type Layer = 'hybrid' | 'sat' | 'map';
 
 export type View = { lat: number; lon: number; zoom: number };
 export type Selection = { x0: number; y0: number; x1: number; y1: number; zoom: number; metres: number };
@@ -27,14 +28,17 @@ export function SlippyMap({ view, onView, aspect, shape, onSelection, layer, onL
   useEffect(() => { if (last.current !== key) { last.current = key; onSelection(sel); } });
 
   // satellite pictures stop at SAT_MAX_ZOOM: closer than that, the last level is drawn bigger
-  const tz = layer === 'sat' ? Math.min(z, SAT_MAX_ZOOM) : z, k = 2 ** (z - tz), T = TILE * k;
-  const max = 2 ** tz, left = cx - size.w / 2, top = cy - size.h / 2;
-  const tiles: { k: string; src: string; x: number; y: number }[] = [];
-  const url = layer === 'sat' ? SAT_URL : MAP_URL;
-  for (let ty = Math.floor(top / T); ty <= Math.floor((top + size.h) / T); ty++) {
-    if (ty < 0 || ty >= max) continue;
-    for (let tx = Math.floor(left / T); tx <= Math.floor((left + size.w) / T); tx++) tiles.push({ k: `${layer}/${tz}/${tx}/${ty}`, src: url(tz, ((tx % max) + max) % max, ty), x: tx * T - left, y: ty * T - top });
-  }
+  const sat = layer !== 'map', left = cx - size.w / 2, top = cy - size.h / 2;
+  const tiles: { k: string; src: string; x: number; y: number; T: number; over?: boolean }[] = [];
+  const addLayer = (name: string, url: (z: number, x: number, y: number) => string, maxZ: number, over = false) => {
+    const tz = Math.min(z, maxZ), T = TILE * 2 ** (z - tz), max = 2 ** tz;
+    for (let ty = Math.floor(top / T); ty <= Math.floor((top + size.h) / T); ty++) {
+      if (ty < 0 || ty >= max) continue;
+      for (let tx = Math.floor(left / T); tx <= Math.floor((left + size.w) / T); tx++) tiles.push({ k: `${name}/${tz}/${tx}/${ty}`, src: url(tz, ((tx % max) + max) % max, ty), x: tx * T - left, y: ty * T - top, T, over });
+    }
+  };
+  if (sat) addLayer('sat', SAT_URL, SAT_MAX_ZOOM); else addLayer('map', MAP_URL, 19);
+  if (layer === 'hybrid') { addLayer('roads', ROADS_URL, LABELS_MAX_ZOOM, true); addLayer('names', LABELS_URL, LABELS_MAX_ZOOM, true); }
   const zoomTo = (nz: number) => onView({ ...view, zoom: Math.max(2, Math.min(15, nz)) });
 
   return (
@@ -43,7 +47,7 @@ export function SlippyMap({ view, onView, aspect, shape, onSelection, layer, onL
       onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}
       onWheel={(e) => { e.preventDefault(); zoomTo(z + (e.deltaY < 0 ? 1 : -1)); }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {tiles.map((t) => <img key={t.k} src={t.src} alt="" draggable={false} style={{ left: t.x, top: t.y, width: T, height: T }} />)}
+      {tiles.map((t) => <img key={t.k} src={t.src} alt="" draggable={false} className={t.over ? 'topo-names' : undefined} style={{ left: t.x, top: t.y, width: t.T, height: t.T }} />)}
       <svg className="topo-frame" width={size.w} height={size.h} aria-hidden="true">
         <defs><mask id="tm"><rect width="100%" height="100%" fill="#fff" />{frameShape(shape, size.w / 2, size.h / 2, fw, fh, '#000')}</mask></defs>
         <rect width="100%" height="100%" fill="rgba(20,22,16,.35)" mask="url(#tm)" />
@@ -52,11 +56,12 @@ export function SlippyMap({ view, onView, aspect, shape, onSelection, layer, onL
       <div className="topo-zoom" onPointerDown={(e) => e.stopPropagation()}><button type="button" aria-label="Zoom in" onClick={() => zoomTo(z + 1)}>+</button><button type="button" aria-label="Zoom out" onClick={() => zoomTo(z - 1)}>−</button></div>
       <div className="topo-scale">{sel.metres >= 2000 ? `${(sel.metres / 1000).toFixed(sel.metres < 20000 ? 1 : 0)} km` : `${Math.round(sel.metres)} m`} across</div>
       <div className="topo-layer" role="group" aria-label="Map view" onPointerDown={(e) => e.stopPropagation()}>
+        <button type="button" aria-pressed={layer === 'hybrid'} onClick={() => onLayer('hybrid')}>Satellite + names</button>
         <button type="button" aria-pressed={layer === 'sat'} onClick={() => onLayer('sat')}>Satellite</button>
         <button type="button" aria-pressed={layer === 'map'} onClick={() => onLayer('map')}>Simple map</button>
       </div>
-      <div className="topo-attr">{layer === 'sat'
-        ? <><a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless</a> by EOX (Copernicus Sentinel data 2016)</>
+      <div className="topo-attr">{sat
+        ? <><a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless</a> by EOX (Copernicus Sentinel data 2016){layer === 'hybrid' && <> · names and roads: Esri, HERE, Garmin, © OpenStreetMap contributors</>}</>
         : <>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</>}</div>
     </div>
   );
