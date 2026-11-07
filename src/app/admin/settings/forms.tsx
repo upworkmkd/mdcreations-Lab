@@ -1,6 +1,6 @@
 'use client';
 import { useActionState } from 'react';
-import { runAutomationNow, saveAutomation, saveEmailSettings, saveGuides, saveShopSettings, sendTest, type FormState, type RunState } from './actions';
+import { runAutomationNow, saveAutomation, saveEmailSettings, saveGuides, saveSale, saveShopSettings, sendTest, type FormState, type RunState } from './actions';
 import type { Automation } from '@/lib/automation.server';
 
 export function EmailSettingsForm({ customer, admin, notify }: { customer: boolean; admin: boolean; notify: string[] }) {
@@ -110,6 +110,23 @@ export function GuidesForm({ shadowVideo }: { shadowVideo: string }) {
       <label className="lbl">Shadow Lamp tutorial video
         <input name="shadowVideo" type="url" className="input" defaultValue={shadowVideo} placeholder="https://youtu.be/…" />
         <small className="muted">Shown as “Watch the video” at the top of “Which pictures work best?” in the Shadow Lamp Maker. Leave empty to hide it.</small>
+      </label>
+      <div className="adm-inline" style={{ alignItems: 'center' }}>
+        <button className="btn small" disabled={pending}>{pending ? 'Saving…' : 'Save'}</button>
+        {state?.ok && <span className="msg ok">{state.ok}</span>}
+        {state?.error && <span className="msg err">{state.error}</span>}
+      </div>
+    </form>
+  );
+}
+
+export function SaleForm({ percent, example }: { percent: number; example: string | null }) {
+  const [state, run, pending] = useActionState<FormState, FormData>(saveSale, null);
+  return (
+    <form action={run} className="adm-set">
+      <label className="lbl">Sale percentage
+        <input name="percent" type="number" min={0} max={90} step={0.5} className="input" defaultValue={percent || ''} placeholder="0" style={{ maxWidth: 140 }} />
+        <small className="muted">Every paid tool shows a “regular” price this much higher, crossed out, next to its real price. Customers are charged the price set in Tools and prices. 0 or empty turns the sale off.{example ? ` Now: ${example}.` : ''}</small>
       </label>
       <div className="adm-inline" style={{ alignItems: 'center' }}>
         <button className="btn small" disabled={pending}>{pending ? 'Saving…' : 'Save'}</button>

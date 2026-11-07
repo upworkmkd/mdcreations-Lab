@@ -4,6 +4,8 @@ import { ToolCard, splitTools } from '@/components/tool-card';
 import { FEATURED } from '@/lib/featured';
 import { getCatalog, getCurrency } from '@/lib/catalog.server';
 import { formatMoney } from '@/lib/money';
+import { regularPrice } from '@/lib/sale';
+import { getSalePercent } from '@/lib/sale.server';
 import { HeroSlider, type Slide } from '@/components/hero-slider';
 import { LAMP_GALLERY, KIND_LABEL } from '@/lib/gallery';
 import { SocialBand } from '@/components/social-band';
@@ -21,7 +23,7 @@ export const metadata = pageMeta({
 });
 
 export default async function Home() {
-  const [tools, currency, products] = await Promise.all([getCatalog(), getCurrency(), liveProducts().catch(() => [])]);
+  const [tools, currency, products, sale] = await Promise.all([getCatalog(), getCurrency(), liveProducts().catch(() => []), getSalePercent()]);
   // "We print it and ship it": the live tools and shop models that can be ordered printed (India, shipping included)
   const printTools = tools.filter((t) => t.status === 'live' && t.makePath && t.printPrices.INR != null);
   const printModels = products.filter((p) => p.print_price_inr != null);
@@ -32,6 +34,7 @@ export default async function Home() {
     const live = t.status === 'live', p = t.prices[currency];
     return [{
       slug: t.slug, index: t.index, name: t.name, badge, live, price: live && !t.free && p != null ? formatMoney(p, currency) : null,
+      was: live && !t.free && regularPrice(p, sale, currency) != null ? formatMoney(regularPrice(p, sale, currency)!, currency) : null,
       title: t.slide.title, lede: t.slide.lede, image: t.image,
       primary: live && t.makePath ? { href: t.makePath, label: 'Start designing' } : { href: `/tools/${t.slug}`, label: 'See what is coming' },
       secondary: live ? { href: `/tools/${t.slug}`, label: 'How it works' } : { href: '/tools', label: 'All tools' },
@@ -90,7 +93,7 @@ export default async function Home() {
             <h2>Design tools</h2>
             <p>Pick a tool and shape your design with a live preview. A tool for every idea, from gifts to Diwali decor.</p>
           </div>
-          <ul className={`toolgrid${design.length < 4 ? ' few' : ''}`}>{design.map((t) => <ToolCard key={t.slug} t={t} currency={currency} />)}</ul>
+          <ul className={`toolgrid${design.length < 4 ? ' few' : ''}`}>{design.map((t) => <ToolCard key={t.slug} t={t} currency={currency} sale={sale} />)}</ul>
         </div>
       </section>
 
@@ -102,7 +105,7 @@ export default async function Home() {
               <h2>Free tools</h2>
               <p>Handy tools for the jobs around printing. Nothing to install and nothing to pay.</p>
             </div>
-            <ul className={`toolgrid${free.length < 4 ? ' few' : ''}`}>{free.map((t) => <ToolCard key={t.slug} t={t} currency={currency} />)}</ul>
+            <ul className={`toolgrid${free.length < 4 ? ' few' : ''}`}>{free.map((t) => <ToolCard key={t.slug} t={t} currency={currency} sale={sale} />)}</ul>
           </div>
         </section>
       )}

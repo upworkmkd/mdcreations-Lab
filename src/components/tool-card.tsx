@@ -2,17 +2,19 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { CatalogTool } from '@/lib/catalog.server';
 import { formatMoney, type Currency } from '@/lib/money';
+import { regularPrice } from '@/lib/sale';
 
-function chip(t: CatalogTool, currency: Currency) {
+function chip(t: CatalogTool, currency: Currency, sale: number) {
   const p = t.prices[currency];
-  if (t.status !== 'live') return { text: 'Coming soon', cls: 'soon' };
-  if (t.free) return { text: 'Free', cls: 'free' };
-  return { text: p != null ? `from ${formatMoney(p, currency)}` : 'Live', cls: 'live' };
+  if (t.status !== 'live') return { text: <>Coming soon</>, cls: 'soon' };
+  if (t.free) return { text: <>Free</>, cls: 'free' };
+  const was = regularPrice(p, sale, currency);
+  return { text: p != null ? <>from {was != null && <s className="was">{formatMoney(was, currency)}</s>}{formatMoney(p, currency)}</> : 'Live', cls: 'live' };
 }
 
 /** A tool in the grids on the home page and /tools: picture, price chip, name and one line. */
-export function ToolCard({ t, currency }: { t: CatalogTool; currency: Currency }) {
-  const c = chip(t, currency);
+export function ToolCard({ t, currency, sale = 0 }: { t: CatalogTool; currency: Currency; sale?: number }) {
+  const c = chip(t, currency, sale);
   return (
     <li className={`tcard ${t.status === 'live' ? 'live' : 'soon'}`}>
       <Link href={`/tools/${t.slug}`}>

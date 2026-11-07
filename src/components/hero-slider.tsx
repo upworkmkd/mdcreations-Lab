@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 export type Slide = {
-  slug: string; index: string; name: string; live: boolean; price: string | null; badge?: string;
+  slug: string; index: string; name: string; live: boolean; price: string | null; was?: string | null; badge?: string;
   title: string; lede: string; image: string; primary: { href: string; label: string }; secondary: { href: string; label: string };
 };
 
@@ -37,7 +37,7 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
         <div key={s.slug} className={`slide${i === at ? ' on' : ''}`} role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${slides.length}: ${s.name}`} aria-hidden={i !== at} inert={i !== at}>
           <div className="bg"><Image src={s.image} alt="" fill priority={i === 0} sizes="100vw" /></div>
           <div className="wrap">
-            <p className="eyebrow">{s.badge && <span className="badge">{s.badge}</span>}<span className="idx">{s.index}</span> {s.name} <span className={`tag ${s.live ? 'live' : ''}`}>{s.live ? (s.price ? `Live · ${s.price}` : 'Live') : 'Coming soon'}</span></p>
+            <p className="eyebrow">{s.badge && <span className="badge">{s.badge}</span>}<span className="idx">{s.index}</span> {s.name} <span className={`tag ${s.live ? 'live' : ''}`}>{s.live ? (s.price ? <>Live · {s.was && <s className="was">{s.was}</s>}{s.price}</> : 'Live') : 'Coming soon'}</span></p>
             {i === 0 ? <h1>{s.title}</h1> : <h2 className="h1">{s.title}</h2>}
             <p className="lede">{s.lede}</p>
             <div className="actions">

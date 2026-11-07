@@ -48,7 +48,7 @@ function lampSettings(s: Studio) { try { const lamp = s.snapshot(); return lamp 
 
 export type MakerPlan = { name: string; remaining: number | null; limit: number | null };
 
-export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false, printMinor = null, free = false, guideVideo = null, saved = null }: { saved?: SavedDesign | null; guideVideo?: string | null; free?: boolean; currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean; viewerName?: string; reviewed?: boolean; printMinor?: number | null }) {
+export function Maker({ currency, amountMinor, regularMinor = null, signedIn: signedIn0, payConfigured, example, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false, printMinor = null, free = false, guideVideo = null, saved = null }: { saved?: SavedDesign | null; guideVideo?: string | null; free?: boolean; currency: Currency; amountMinor: number | null; regularMinor?: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean; viewerName?: string; reviewed?: boolean; printMinor?: number | null }) {
   const [thanks, setThanks] = useState<string | null>(null);   // file id while the thank-you window is open
   const [askedReview, setAskedReview] = useState(reviewed);
   const [plan, setPlan] = useState<MakerPlan | null>(plan0 ?? null);
@@ -155,6 +155,8 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
   }, [ensureSignedIn, proceed]);
 
   const price = amountMinor != null ? formatMoney(amountMinor, currency) : null;
+  const was = price && regularMinor != null ? formatMoney(regularMinor, currency) : null;   // sale: shown crossed out, never charged
+  const wasEl = was ? <s className="was">{was}</s> : null;
   const working = phase.kind === 'working';
 
   return (
@@ -310,7 +312,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
             ) : (
               <>
                 <button type="button" className="btn buybtn" onClick={onBuy} disabled={!ready || working || (!onPlan && !free && !payConfigured)}>
-                  {working ? phase.text : free ? <>Download <span className="sep" /> <span className="mono">free</span></> : onPlan ? <>Download <span className="sep" /> <span className="mono">in your {plan!.name} plan</span></> : plan ? <>Buy and download <span className="sep" /> <span className="mono">{price}</span></> : <>Download <span className="sep" /> <span className="mono">{price ? `from ${price}` : 'choose an option'}</span></>}
+                  {working ? phase.text : free ? <>Download <span className="sep" /> <span className="mono">free</span></> : onPlan ? <>Download <span className="sep" /> <span className="mono">in your {plan!.name} plan</span></> : plan ? <>Buy and download <span className="sep" /> <span className="mono">{wasEl}{price}</span></> : <>Download <span className="sep" /> <span className="mono">{price ? <>from {wasEl}{price}</> : 'choose an option'}</span></>}
                 </button>
                 {free ? <p className="note ok">This tool is free. {signedIn ? 'Your files are saved in your account.' : 'Sign in (or make an account) to download and keep your files.'}</p>
                   : onPlan ? <p className="note ok">{left == null ? 'Unlimited designs on your plan.' : `${left} of ${plan!.limit} plan designs left today.`}</p>
@@ -350,7 +352,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
       </section>
 
       <ThankYou open={thanks != null} onClose={() => { setThanks(null); setAskedReview(true); }} fileId={thanks} name={viewerName} askReview={!askedReview} />
-      <PlanChooser open={chooser} onClose={() => setChooser(false)} onChoose={onChoose} single={amountMinor != null ? price : null} plans={plans} otherPlan={otherPlan} />
+      <PlanChooser open={chooser} onClose={() => setChooser(false)} onChoose={onChoose} single={amountMinor != null ? price : null} singleWas={was} plans={plans} otherPlan={otherPlan} />
       <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} onSignedIn={() => { setSignedIn(true); setAuthOpen(false); proceed(); }}
         next="/tools/shadow-lamp/make" reason="Sign in to buy and download your files. Your design stays right here." />
     </div>

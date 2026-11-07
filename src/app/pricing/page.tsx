@@ -4,6 +4,8 @@ import { designPriceRange, getCatalog, getCurrency } from '@/lib/catalog.server'
 import { getPlans, currentSubscription } from '@/lib/plans.server';
 import { getViewer } from '@/lib/auth.server';
 import { formatMoney } from '@/lib/money';
+import { regularPrice } from '@/lib/sale';
+import { getSalePercent } from '@/lib/sale.server';
 import { pageMeta, JsonLd } from '@/lib/seo';
 import { CANONICAL_URL } from '@/lib/env';
 import { Subscribe } from './subscribe';
@@ -51,7 +53,7 @@ const FAQ = [
 ];
 
 export default async function Pricing() {
-	const [plans, currency, viewer, catalog] = await Promise.all([getPlans(), getCurrency(), getViewer(), getCatalog()]);
+	const [plans, currency, viewer, catalog, sale] = await Promise.all([getPlans(), getCurrency(), getViewer(), getCatalog(), getSalePercent()]);
 	const sub = viewer ? await currentSubscription(viewer.id).catch(() => null) : null;
 	const tools = catalog.map((t) => ({ slug: t.slug, name: t.name, live: t.status === 'live' }));
 	// each tool has its own price per design, so this card shows the range across the live tools
@@ -88,7 +90,7 @@ export default async function Pricing() {
 						{range && range.tools.length > 1 && (
 							<details className="tool-prices">
 								<summary>Price per tool</summary>
-								<ul>{range.tools.map((t) => <li key={t.slug}><Link href={`/tools/${t.slug}`}>{t.name}</Link><b>{formatMoney(t.price, currency)}</b></li>)}</ul>
+								<ul>{range.tools.map((t) => <li key={t.slug}><Link href={`/tools/${t.slug}`}>{t.name}</Link><b>{regularPrice(t.price, sale, currency) != null && <s className="was">{formatMoney(regularPrice(t.price, sale, currency)!, currency)}</s>}{formatMoney(t.price, currency)}</b></li>)}</ul>
 							</details>
 						)}
 						<Link href="/tools" className="btn ghost">Start designing</Link>

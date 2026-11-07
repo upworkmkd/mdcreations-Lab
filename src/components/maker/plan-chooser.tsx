@@ -5,8 +5,8 @@ export type ChooserPlan = { id: string; name: string; price: string | null; stat
 export type Choice = 'single' | string;   // 'single' or a plan id
 
 /** Asked before a download: one design, or a plan. */
-export function PlanChooser({ open, onClose, onChoose, single, plans, otherPlan }: {
-  open: boolean; onClose(): void; onChoose(c: Choice): void; single: string | null; plans: ChooserPlan[]; otherPlan: boolean;
+export function PlanChooser({ open, onClose, onChoose, single, singleWas = null, plans, otherPlan }: {
+  open: boolean; onClose(): void; onChoose(c: Choice): void; single: string | null; singleWas?: string | null; plans: ChooserPlan[]; otherPlan: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -24,7 +24,7 @@ export function PlanChooser({ open, onClose, onChoose, single, plans, otherPlan 
         <div className="chooser-opts">
           <button type="button" className="opt" onClick={() => onChoose('single')} disabled={!single}>
             <span className="t">Just this design</span>
-            <span className="p">{single ?? '—'}<small> once</small></span>
+            <span className="p">{single && singleWas && <s className="was">{singleWas}</s>}{single ?? '—'}<small> once</small></span>
             <span className="d">Pay once and download this design now. Yours to keep, with a commercial license.</span>
             <span className="go">Buy this design →</span>
           </button>

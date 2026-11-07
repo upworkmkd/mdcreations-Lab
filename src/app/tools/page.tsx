@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getCatalog, getCurrency } from '@/lib/catalog.server';
 import { ToolCard, splitTools } from '@/components/tool-card';
+import { getSalePercent } from '@/lib/sale.server';
 import { JsonLd, pageMeta } from '@/lib/seo';
 import { CANONICAL_URL as SITE_URL } from '@/lib/env';
 
@@ -13,7 +14,7 @@ export const metadata = pageMeta({
 });
 
 export default async function AllTools() {
-  const [tools, currency] = await Promise.all([getCatalog(), getCurrency()]);
+  const [tools, currency, sale] = await Promise.all([getCatalog(), getCurrency(), getSalePercent()]);
   const { design, free } = splitTools(tools);
   const ld = {
     '@context': 'https://schema.org',
@@ -48,7 +49,7 @@ export default async function AllTools() {
             <h2>Design tools</h2>
             <p>Free to design and preview. Pay once per design for the files, or choose a plan. Most can also be ordered printed.</p>
           </div>
-          <ul className={`toolgrid${design.length < 4 ? ' few' : ''}`}>{design.map((t) => <ToolCard key={t.slug} t={t} currency={currency} />)}</ul>
+          <ul className={`toolgrid${design.length < 4 ? ' few' : ''}`}>{design.map((t) => <ToolCard key={t.slug} t={t} currency={currency} sale={sale} />)}</ul>
         </div>
       </section>
 
@@ -59,7 +60,7 @@ export default async function AllTools() {
               <h2>Free tools</h2>
               <p>Handy tools for the jobs around printing. Free, no account, made in your browser.</p>
             </div>
-            <ul className={`toolgrid${free.length < 4 ? ' few' : ''}`}>{free.map((t) => <ToolCard key={t.slug} t={t} currency={currency} />)}</ul>
+            <ul className={`toolgrid${free.length < 4 ? ' few' : ''}`}>{free.map((t) => <ToolCard key={t.slug} t={t} currency={currency} sale={sale} />)}</ul>
           </div>
         </section>
       )}

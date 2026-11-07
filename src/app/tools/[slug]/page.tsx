@@ -5,6 +5,8 @@ import type { Metadata } from 'next';
 import { getCurrency, getTool } from '@/lib/catalog.server';
 import { TOOLS } from '@/lib/tools';
 import { formatMoney } from '@/lib/money';
+import { regularPrice } from '@/lib/sale';
+import { getSalePercent } from '@/lib/sale.server';
 import Image from 'next/image';
 import { INSTAGRAM_URL, SUPPORT_EMAIL } from '@/lib/env';
 import { LAMP_GALLERY, KIND_LABEL } from '@/lib/gallery';
@@ -32,10 +34,11 @@ export async function generateMetadata({ params }: PageProps<'/tools/[slug]'>): 
 
 export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
   const { slug } = await params;
-  const [tool, currency, viewer] = await Promise.all([getTool(slug), getCurrency(), getViewer()]);
+  const [tool, currency, viewer, sale] = await Promise.all([getTool(slug), getCurrency(), getViewer(), getSalePercent()]);
   if (!tool) notFound();
   const live = tool.status === 'live';
   const price = tool.prices[currency];
+  const was = tool.free ? null : regularPrice(price, sale, currency);   // shown crossed out (Admin → Settings → Sale)
   // the tutorial video (shadow lamp for now), with its details for Google's video results
   const videoId = live && tool.slug === 'shadow-lamp' ? youtubeId((await getGuides()).shadowVideo) : null;
   const video = videoId ? KNOWN_VIDEOS[videoId] : null;
@@ -78,7 +81,7 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
             <>
               <Link href={tool.makePath} className="btn">{tool.noAccount ? 'Open the tool' : 'Open the maker'} <span className="arrow">→</span></Link>
               {tool.free ? <span className="mono muted" style={{ fontSize: 14 }}>{tool.noAccount ? 'Free · no account needed' : 'Free · sign in to download your files'}</span>
-                : price != null && <span className="mono muted" style={{ fontSize: 14 }}>Free to try · {formatMoney(price, currency)} to download a design</span>}
+                : price != null && <span className="mono muted" style={{ fontSize: 14 }}>Free to try · {was != null && <s className="was">{formatMoney(was, currency)}</s>}{formatMoney(price, currency)} to download a design</span>}
             </>
           ) : (
             <>
@@ -173,7 +176,8 @@ export default async function ToolPage({ params }: PageProps<'/tools/[slug]'>) {
               ) : (
               <div className="price-card">
                 <p className="eyebrow">One design, one price</p>
-                <div className="amount">{price != null ? formatMoney(price, currency) : '—'}</div>
+                <div className="amount">{was != null && <s className="was">{formatMoney(was, currency)}</s>}{price != null ? formatMoney(price, currency) : '—'}</div>
+                {was != null && <p className="sale-note">Sale · {sale}% off</p>}
                 <p className="per">per design · {currency === 'INR' ? 'incl. GST where applicable' : 'paid by card'} · download again any time</p>
                 <ul>{tool.youGet.map((x) => <li key={x}>{x}</li>)}</ul>
                 {tool.makePath && <Link href={tool.makePath} className="btn">Start designing <span className="arrow">→</span></Link>}

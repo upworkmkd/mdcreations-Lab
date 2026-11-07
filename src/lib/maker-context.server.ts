@@ -8,6 +8,8 @@ import { entitlement, getPlans } from '@/lib/plans.server';
 import { formatMoney } from '@/lib/money';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { loadSavedDesign } from '@/lib/saved-design.server';
+import { regularPrice } from '@/lib/sale';
+import { getSalePercent } from '@/lib/sale.server';
 
 /**
  * Everything a maker page needs for its "Get the files" box. Tools that are not live yet are open to admins only
@@ -15,7 +17,7 @@ import { loadSavedDesign } from '@/lib/saved-design.server';
  * `design` is the ?design=<id> of a saved design to open for editing (see loadSavedDesign): it comes back as `saved`.
  */
 export async function makerContext(slug: string, design?: unknown) {
-  const [tool, currency, viewer] = await Promise.all([getTool(slug), getCurrency(), getViewer()]);
+  const [tool, currency, viewer, sale] = await Promise.all([getTool(slug), getCurrency(), getViewer(), getSalePercent()]);
   const live = tool?.status === 'live', admin = viewer?.role === 'admin';
   if (!live && !admin) redirect(`/tools/${slug}`);
   const amount = tool?.prices[currency] ?? null;
@@ -29,7 +31,7 @@ export async function makerContext(slug: string, design?: unknown) {
   return {
     tool, live, admin, viewer, currency, saved,
     buy: {
-      currency, amountMinor: amount, signedIn: Boolean(viewer), free: Boolean(tool?.free),
+      currency, amountMinor: amount, regularMinor: tool?.free ? null : regularPrice(amount, sale, currency), signedIn: Boolean(viewer), free: Boolean(tool?.free),
       payConfigured: supabaseConfigured() && Boolean(process.env.RAZORPAY_KEY_ID) && live,
       plan: ent?.covers ? { name: ent.plan.name, remaining: ent.remaining, limit: ent.plan.daily_limit } : null,
       plans, otherPlan: Boolean(ent && !ent.covers), viewerName: viewer?.name ?? '', reviewed, preview: !live && admin,
