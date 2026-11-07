@@ -12,11 +12,11 @@ export const metadata: Metadata = pageMeta({
   keywords: ['3d printed map', '3d map stl', 'terrain stl generator', 'map to stl', 'multicolor map 3mf', 'himalaya 3d print'],
 });
 
-export default async function MakeTopo() {
-  const c = await makerContext('topo-map');
+export default async function MakeTopo({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const c = await makerContext('topo-map', (await searchParams).design);
   return (
-    <KitPage slug="topo-map" name="3D Map Maker" title="Print any place on Earth" note={previewNote(c.live, 'Free to try. Choose an area on the satellite map; the printable files are built when you download.')}>
-      <TopoMaker {...c.buy} />
+    <KitPage slug="topo-map" editing={c.saved?.name} name="3D Map Maker" title="Print any place on Earth" note={previewNote(c.live, 'Free to try. Choose an area on the satellite map; the printable files are built when you download.')}>
+      <TopoMaker {...c.buy} saved={c.saved} />
     </KitPage>
   );
 }

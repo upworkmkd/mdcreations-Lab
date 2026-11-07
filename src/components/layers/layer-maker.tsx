@@ -1,28 +1,34 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { mountLayerStudio } from './studio.js';
+import { layerSnapshotFromParams, mountLayerStudio } from './studio.js';
+import type { SavedDesign } from '@/lib/saved-design';
 import { BuyBox, type BuyBoxProps } from '@/components/buy-box';
 import './studio.css';
 import { KeepPicture } from '@/components/keep-picture';
 
-type Studio = { designPayload(): unknown; previewJpeg(): string; destroy(): void; isReady(): boolean };
+type Studio = { designPayload(): unknown; previewJpeg(): string; snapshot(): unknown; destroy(): void; isReady(): boolean };
 
 /** The Layered Sculpture Maker: the studio on the left and centre, layers and "Get the files" on the right. */
-export function LayerMaker(props: Omit<BuyBoxProps, 'tool' | 'next' | 'ready' | 'getDesign' | 'doneBlurb'>) {
+export function LayerMaker({ saved = null, ...props }: Omit<BuyBoxProps, 'tool' | 'next' | 'ready' | 'getDesign' | 'doneBlurb'> & { saved?: SavedDesign | null }) {
   const root = useRef<HTMLDivElement>(null), studio = useRef<Studio | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!root.current) return;
-    const s = mountLayerStudio(root.current, { onReady: setReady }) as Studio;
+    // opened from "Edit design": the sculpture as saved (older designs are rebuilt from their layer map)
+    let restore: unknown = null;
+    if (saved) { try { restore = (saved.settings as { layers?: unknown } | null)?.layers ?? layerSnapshotFromParams(saved.params); } catch { restore = null; } }
+    const s = mountLayerStudio(root.current, { onReady: setReady, restore }) as Studio;
     studio.current = s;
     return () => { s.destroy(); studio.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getDesign = useCallback(() => {
     const s = studio.current; if (!s) return null;
     const design = s.designPayload(); if (!design) return null;
-    return { design, preview: s.previewJpeg() };
+    let layers: unknown = null; try { layers = s.snapshot(); } catch { /* not kept: the design still saves */ }
+    return { design, preview: s.previewJpeg(), settings: layers ? { layers } : null };
   }, []);
 
   return (

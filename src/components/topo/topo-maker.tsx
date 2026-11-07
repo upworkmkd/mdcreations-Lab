@@ -9,7 +9,8 @@ import { buildColoured, buildTerrain, HEIGHT_PALETTES, heightClasses, satelliteC
 import { heightField } from '@/lib/mesh/mesh.js';
 import { fetchElevation, fetchImagery, xToLon, yToLat } from '@/lib/topo/geo';
 import type { ColourMode, TopoParams, TopoShape } from '@/lib/topo/design';
-import { bytesToB64 } from '@/lib/mesh/b64.js';
+import { b64ToBytes, bytesToB64 } from '@/lib/mesh/b64.js';
+import { num, obj, restoreFrom, str, type SavedDesign } from '@/lib/saved-design';
 import './topo.css';
 
 const PLACES: [string, View][] = [
@@ -29,18 +30,48 @@ type Model = { tris: Float32Array; size: number[]; relief: number; lo: number; h
 type Grid = { elev: Int16Array; rgb: Uint8Array | null; w: number; h: number; lat: number; lon: number; metres: number; shape: TopoShape };
 type Part = { tris: Float32Array; color: string };
 
-export function TopoMaker(buy: KitBuy) {
-  const [view, setView] = useState<View>(PLACES[0][1]);
-  const [name, setName] = useState(PLACES[0][0]);
-  const [p, setP] = useState<TopoParams>({ shape: 'square', width: 120, metres: 10000, exaggeration: 1.5, base: 3, terrace: 0, seaFloor: 'flat' });
-  const [detail, setDetail] = useState<'200' | '300'>('200');
-  const [grid, setGrid] = useState<Grid | null>(null);
+type SavedGrid = { elev: string; rgb: string | null; w: number; h: number; lat: number; lon: number; metres: number; shape: TopoShape };
+type Settings = { name: string; p: TopoParams; detail: '200' | '300'; view: View; layer: Layer; mode: ColourMode; colours: '2' | '3' | '4'; grid: SavedGrid | null };
+
+const gridOut = (g: Grid): SavedGrid => ({ ...g, elev: bytesToB64(new Uint8Array(g.elev.buffer, g.elev.byteOffset, g.elev.byteLength)), rgb: g.rgb ? bytesToB64(g.rgb) : null });
+function gridIn(g: SavedGrid | null | undefined): Grid | null {
+  if (!g?.elev || !g.w || !g.h) return null;
+  const b = b64ToBytes(g.elev); if (b.length !== g.w * g.h * 2) return null;
+  return { ...g, elev: new Int16Array(b.buffer), rgb: g.rgb ? b64ToBytes(g.rgb) : null };
+}
+
+/**
+ * Older designs: the area's elevation and settings are all there. The satellite picture was not kept, only its colour
+ * classes, so each point takes its class colour (the same colours come out again).
+ */
+function fromParams(q: Record<string, unknown>): Partial<Settings> {
+  const w = num(q.w, 0), h = num(q.h, 0), p = q.p as TopoParams, c = obj(q.colour), lat = num(q.lat, 0), lon = num(q.lon, 0);
+  let rgb: string | null = null, mode: ColourMode = c.mode === 'height' ? 'height' : c.mode === 'satellite' ? 'satellite' : 'one' as ColourMode;
+  if (mode === 'satellite' && typeof c.cls === 'string' && Array.isArray(c.palette)) {
+    const cls = b64ToBytes(c.cls), pal = (c.palette as string[]).map((x) => [1, 3, 5].map((k) => parseInt(x.slice(k, k + 2), 16))), out = new Uint8Array(w * h * 3), cw = w - 1;
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const col = pal[cls[Math.min(h - 2, j) * cw + Math.min(cw - 1, i)]] ?? [128, 128, 128]; out.set(col, (j * w + i) * 3); }
+    rgb = bytesToB64(out);
+  } else if (mode === 'satellite') mode = 'height';
+  const metres = num(p?.metres, 10000), zoom = Math.max(2, Math.min(15, Math.round(Math.log2((156543 * Math.cos((lat * Math.PI) / 180) * 480) / metres))));
+  return {
+    name: str(q.name, 'Map'), p, detail: w > 250 ? '300' : '200', mode, colours: String(Math.max(2, Math.min(4, num(c.n, 4)))) as '2' | '3' | '4',
+    view: { lat, lon, zoom }, grid: typeof q.elev === 'string' ? { elev: q.elev, rgb, w, h, lat, lon, metres, shape: p?.shape ?? 'square' } : null,
+  };
+}
+
+export function TopoMaker({ saved, ...buy }: KitBuy & { saved?: SavedDesign | null }) {
+  const [init] = useState(() => restoreFrom<Settings>(saved, fromParams));
+  const [view, setView] = useState<View>(init?.view ?? PLACES[0][1]);
+  const [name, setName] = useState(init?.name ?? PLACES[0][0]);
+  const [p, setP] = useState<TopoParams>(() => ({ shape: 'square', width: 120, metres: 10000, exaggeration: 1.5, base: 3, terrace: 0, seaFloor: 'flat', ...(init?.p ?? {}) }));
+  const [detail, setDetail] = useState<'200' | '300'>(init?.detail ?? '200');
+  const [grid, setGrid] = useState<Grid | null>(() => gridIn(init?.grid));
   const [state, setState] = useState<{ kind: 'idle' | 'loading' | 'error'; text?: string }>({ kind: 'idle' });
   const [query, setQuery] = useState(''), [results, setResults] = useState<{ name: string; lat: number; lon: number }[]>([]);
-  const [tab, setTab] = useState<'map' | '3d'>('map');
-  const [layer, setLayer] = useState<Layer>('sat');
-  const [mode, setMode] = useState<ColourMode>('satellite');
-  const [colours, setColours] = useState<'2' | '3' | '4'>('4');
+  const [tab, setTab] = useState<'map' | '3d'>(init?.grid ? '3d' : 'map');
+  const [layer, setLayer] = useState<Layer>(init?.layer ?? 'sat');
+  const [mode, setMode] = useState<ColourMode>(init?.mode ?? 'satellite');
+  const [colours, setColours] = useState<'2' | '3' | '4'>(init?.colours ?? '4');
   const sel = useRef<Selection | null>(null), snap = useRef<MeshSnap | null>(null);
   const set = <K extends keyof TopoParams>(k: K, v: TopoParams[K]) => setP((o) => ({ ...o, [k]: v }));
   const aspect = p.shape === 'rect' ? 1.5 : 1;
@@ -108,8 +139,9 @@ export function TopoMaker(buy: KitBuy) {
     if (!grid) return null;
     const colour = mode === 'satellite' && sat && sat.palette.length > 1 ? { mode, n: sat.palette.length, palette: sat.palette, cls: bytesToB64(sat.cls) }
       : mode === 'height' ? { mode, n: Number(colours) } : { mode: 'one' };
-    return { design: { name, p: { ...p, shape: grid.shape }, colour, lat: grid.lat, lon: grid.lon, w: grid.w, h: grid.h, elev: bytesToB64(new Uint8Array(grid.elev.buffer)) }, preview: snap.current?.jpeg() ?? '' };
-  }, [grid, name, p, mode, sat, colours]);
+    return { design: { name, p: { ...p, shape: grid.shape }, colour, lat: grid.lat, lon: grid.lon, w: grid.w, h: grid.h, elev: bytesToB64(new Uint8Array(grid.elev.buffer)) }, preview: snap.current?.jpeg() ?? '',
+      settings: { name, p, detail, view, layer, mode, colours, grid: gridOut(grid) } satisfies Settings };
+  }, [grid, name, p, mode, sat, colours, detail, view, layer]);
   const stale = grid && (grid.shape !== p.shape);
 
   return (

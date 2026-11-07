@@ -3,8 +3,46 @@
 /* eslint-disable */
 import * as THREE from 'three';
 import * as Core from '@/lib/layers/core.js';
-import { encodeRle } from '@/lib/layers/rle.js';
+import { decodeRle, encodeRle } from '@/lib/layers/rle.js';
 import { offerPicture } from '../../lib/keep-picture';
+
+/* ---------- "Edit design" ---------- */
+/** A picture (image or canvas) as a data URL of at most `max` px: PNG when it has see-through parts, else JPEG. */
+function pictureData(img, w, h, max = 1400, budget = 1400000) {
+  for (let side = max, k = 0; k < 6; k++, side = Math.round(side * 0.72)) {
+    const s = Math.min(1, side / Math.max(w, h)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(h * s));
+    const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(img, 0, 0, c.width, c.height);
+    const d = g.getImageData(0, 0, c.width, c.height).data; let alpha = false;
+    for (let i = 3; i < d.length; i += 28) if (d[i] < 250) { alpha = true; break; }
+    const url = alpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.88);
+    if (url.length <= budget) return url;
+  }
+  return null;
+}
+/**
+ * Older designs, saved before editing existed: the layer map, painted in its colours, becomes the picture, with the
+ * size, frame and print settings as they were. The colours are found again from that picture.
+ */
+export function layerSnapshotFromParams(q) {
+  if (!q || typeof q.cls !== 'string' || !q.nx || !q.ny || !Array.isArray(q.colors)) return null;
+  const nx = q.nx, ny = q.ny, cls = decodeRle(q.cls, nx * ny), rgb = q.colors.map((h) => [1, 3, 5].map((i) => parseInt(String(h).slice(i, i + 2), 16)));
+  // outside the window (255) takes the nearest colour on its row, so it adds no colour of its own
+  const c = document.createElement('canvas'); c.width = nx; c.height = ny;
+  const g = c.getContext('2d'), im = g.createImageData(nx, ny);
+  for (let y = 0; y < ny; y++) {
+    let last = -1; const row = y * nx;
+    for (let x = 0; x < nx; x++) if (cls[row + x] !== 255) { last = cls[row + x]; break; }
+    for (let x = 0; x < nx; x++) {
+      const v = cls[row + x]; if (v !== 255) last = v;
+      const col = rgb[last] || [244, 244, 242], k = 4 * (row + x);
+      im.data[k] = col[0]; im.data[k + 1] = col[1]; im.data[k + 2] = col[2]; im.data[k + 3] = 255;
+    }
+  }
+  g.putImageData(im, 0, 0);
+  const P = Object.assign({}, q.p || {}, { prefix: q.name || 'sculpture', mode: 'colour', colors: Math.max(2, Math.min(12, q.K || rgb.length)), fit: 'cover', zoom: 1, panX: 0, panY: 0, rotate: 0, flipH: false,
+    brightness: 0, contrast: 0, saturation: 0, gamma: 1, blur: 0, invert: false, smooth: 0, despeckle: 0, transparent: 'layer', order: 'loose', manual: null });
+  return { v: 1, P, overrides: {}, picture: c.toDataURL('image/png') };
+}
 
 export function mountLayerStudio(root, opts = {}) {
   const $ = (s, r) => (r || root).querySelector(s);
@@ -366,6 +404,23 @@ export function mountLayerStudio(root, opts = {}) {
     return c.toDataURL('image/jpeg', 0.82);
   }
 
+  function snapshot() {
+    if (!S.img) return null;
+    const picture = S.isSample ? null : pictureData(S.img, S.imgW, S.imgH);
+    if (!S.isSample && !picture) return null;
+    return { v: 1, P: Object.assign({}, P), overrides: Object.assign({}, S.overrides), picture };
+  }
+  function restore(snap) {
+    for (const k in snap.P || {}) if (k in DEF || k === 'manual') P[k] = snap.P[k];
+    refreshControls(); persist();
+    const keepEdits = () => { S.overrides = Object.assign({}, snap.overrides || {}); };
+    if (!snap.picture) { useSample(); keepEdits(); return; }
+    const im = new Image();
+    im.onload = () => { setImage(im, im.naturalWidth, im.naturalHeight, false); keepEdits(); };
+    im.onerror = useSample;
+    im.src = snap.picture;
+  }
+
   /* ---------- image loading ---------- */
   function setImage(img, w, h, sample) { S.img = img; S.imgW = w; S.imgH = h; S.isSample = sample; S.overrides = {}; $('#tag-sample').hidden = !sample; invalidate('A'); }
   function loadFile(file) {
@@ -394,11 +449,12 @@ export function mountLayerStudio(root, opts = {}) {
   on(window, 'dragover', (e) => e.preventDefault());
   on(window, 'drop', (e) => { e.preventDefault(); dragN = 0; $('#drop').hidden = true; const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) loadFile(f); });
   on(window, 'paste', (e) => { const it = e.clipboardData && [...e.clipboardData.items].find((i) => i.type.startsWith('image/')); if (it) loadFile(it.getAsFile()); });
-  window.__layerStudio = { S, P: () => P, V };
-  if (opts.sample) { const im = new Image(); im.onload = () => setImage(im, im.naturalWidth, im.naturalHeight, true); im.onerror = useSample; im.src = opts.sample; } else useSample();
+  window.__layerStudio = { S, P: () => P, V, designPayload, snapshot };   // handy for support and tests
+  if (opts.restore) restore(opts.restore);
+  else if (opts.sample) { const im = new Image(); im.onload = () => setImage(im, im.naturalWidth, im.naturalHeight, true); im.onerror = useSample; im.src = opts.sample; } else useSample();
 
   return {
-    designPayload, previewJpeg,
+    designPayload, previewJpeg, snapshot,
     isReady: () => S.ready,
     name: () => P.prefix,
     destroy() {

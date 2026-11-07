@@ -2,7 +2,8 @@
 import { PrintOrder } from '@/components/print-order';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { mountStudio } from './studio.js';
+import { lampSnapshotFromParams, mountStudio } from './studio.js';
+import type { SavedDesign } from '@/lib/saved-design';
 import { AuthDialog } from '@/components/auth-dialog';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import { formatMoney, type Currency } from '@/lib/money';
@@ -18,7 +19,7 @@ import './maker.css';
 import { KeepPicture } from '@/components/keep-picture';
 import { PictureGuide } from './picture-guide';
 
-type Studio = { designPayload(): unknown; previewJpeg(): string; destroy(): void; loadExample(src: string, name: string, nudge?: { x: number; y: number }, plateSrc?: string): void };
+type Studio = { designPayload(): unknown; previewJpeg(): string; snapshot(): unknown; destroy(): void; loadExample(src: string, name: string, nudge?: { x: number; y: number }, plateSrc?: string): void };
 type Phase = { kind: 'idle' } | { kind: 'working'; text: string } | { kind: 'done'; fileId: string } | { kind: 'error'; text: string; orderId?: string };
 
 type RzpResponse = { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string };
@@ -42,9 +43,12 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   return j as T;
 }
 
+/** What "Edit design" needs to open this lamp again (null if it cannot be kept). */
+function lampSettings(s: Studio) { try { const lamp = s.snapshot(); return lamp ? { lamp } : null; } catch { return null; } }
+
 export type MakerPlan = { name: string; remaining: number | null; limit: number | null };
 
-export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false, printMinor = null, free = false, guideVideo = null }: { guideVideo?: string | null; free?: boolean; currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean; viewerName?: string; reviewed?: boolean; printMinor?: number | null }) {
+export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigured, example, plan: plan0, plans = [], otherPlan = false, viewerName = '', reviewed = false, printMinor = null, free = false, guideVideo = null, saved = null }: { saved?: SavedDesign | null; guideVideo?: string | null; free?: boolean; currency: Currency; amountMinor: number | null; signedIn: boolean; payConfigured: boolean; example?: string; plan?: MakerPlan | null; plans?: ChooserPlan[]; otherPlan?: boolean; viewerName?: string; reviewed?: boolean; printMinor?: number | null }) {
   const [thanks, setThanks] = useState<string | null>(null);   // file id while the thank-you window is open
   const [askedReview, setAskedReview] = useState(reviewed);
   const [plan, setPlan] = useState<MakerPlan | null>(plan0 ?? null);
@@ -53,7 +57,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
   const [chooser, setChooser] = useState(false);
   const choice = useRef<Choice>('single');
   const first = EXAMPLES.find((e) => e.id === example) ?? EXAMPLES.find((e) => e.id === DEFAULT_EXAMPLE)!;
-  const [picked, setPicked] = useState<string | null>(first.id);
+  const [picked, setPicked] = useState<string | null>(saved ? null : first.id);
   const root = useRef<HTMLDivElement>(null), studio = useRef<Studio | null>(null);
   const [ready, setReady] = useState(false);
   const [signedIn, setSignedIn] = useState(signedIn0);
@@ -65,7 +69,10 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
 
   useEffect(() => {
     if (!root.current) return;
-    const s = mountStudio(root.current, { onReady: setReady, onResult: setLamp, onRejected: (f: File, why: string) => track('upload_rejected', why.slice(0, 120), { type: f.type, ext: f.name.split('.').pop()?.toLowerCase(), kb: Math.round(f.size / 1024) }), sample: `/examples/${first.id}.png`, sampleName: first.name, sampleNudge: (first as { nudge?: { x: number; y: number } }).nudge, samplePlate: (first as { plate?: boolean }).plate ? `/examples/${first.id}-plate.png` : undefined }) as Studio;
+    // opened from "Edit design": the lamp as saved (older designs are rebuilt from what the server builds from)
+    let restore: unknown = null;
+    if (saved) { try { restore = (saved.settings as { lamp?: unknown } | null)?.lamp ?? lampSnapshotFromParams(saved.params, saved.kept); } catch { restore = null; } }
+    const s = mountStudio(root.current, { restore, onReady: setReady, onResult: setLamp, onRejected: (f: File, why: string) => track('upload_rejected', why.slice(0, 120), { type: f.type, ext: f.name.split('.').pop()?.toLowerCase(), kb: Math.round(f.size / 1024) }), sample: `/examples/${first.id}.png`, sampleName: first.name, sampleNudge: (first as { nudge?: { x: number; y: number } }).nudge, samplePlate: (first as { plate?: boolean }).plate ? `/examples/${first.id}-plate.png` : undefined }) as Studio;
     studio.current = s;
     (window as unknown as { __lamp?: Studio }).__lamp = s;   // handy for support and tests
     return () => { s.destroy(); studio.current = null; };
@@ -78,7 +85,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
     if (!design) return;
     try {
       setPhase({ kind: 'working', text: 'Saving your design…' });
-      const { id: designId } = await post<{ id: string }>('/api/designs', { tool: 'shadow-lamp', design, preview: s.previewJpeg() });
+      const { id: designId } = await post<{ id: string }>('/api/designs', { tool: 'shadow-lamp', design, preview: s.previewJpeg(), settings: lampSettings(s) });
       setPhase({ kind: 'working', text: 'Starting the payment…' });
       const co = await post<{ free?: boolean; plan?: boolean; remaining?: number | null; fileId?: string; orderId?: string; keyId: string; providerOrderId: string; amount: number; currency: string; description: string; prefill: { name: string; email: string } }>(
         '/api/checkout', { designId, currency });
@@ -315,7 +322,7 @@ export function Maker({ currency, amountMinor, signedIn: signedIn0, payConfigure
                 )}
                 {printMinor != null && (
                   <PrintOrder tool="shadow-lamp" toolName="Shadow Lamp" next="/tools/shadow-lamp/make" ready={ready && !working} priceMinor={printMinor} signedIn={signedIn}
-                    getDesign={() => { const s = studio.current; const design = s?.designPayload(); return s && design ? { design, preview: s.previewJpeg() } : null; }} />
+                    getDesign={() => { const s = studio.current; const design = s?.designPayload(); return s && design ? { design, preview: s.previewJpeg(), settings: lampSettings(s) } : null; }} />
                 )}
                 <p className="hint">{free ? 'Free to design and download.' : 'Free to try.'} {signedIn ? 'You are signed in.' : free ? 'You will sign in or create an account to download.' : 'You will sign in or create an account before paying.'} {free ? 'Your files stay in your account.' : onPlan ? 'Your files stay in your account.' : <>One payment per design, or <Link href="/pricing">a monthly plan</Link>; your files stay in your account.</>} Every download includes a <Link href="/license">commercial license</Link>.</p>
               </>

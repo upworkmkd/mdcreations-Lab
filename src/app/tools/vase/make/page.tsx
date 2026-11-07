@@ -12,11 +12,11 @@ export const metadata: Metadata = pageMeta({
   keywords: ['vase generator stl', 'vase mode stl', 'lamp shade stl generator', 'planter stl generator', 'twisted vase 3d print', 'parametric vase', 'spiral vase stl', 'lamp shade generator'],
 });
 
-export default async function MakeVase() {
-  const c = await makerContext('vase');
+export default async function MakeVase({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const c = await makerContext('vase', (await searchParams).design);
   return (
-    <KitPage slug="vase" name="Vase & Lamp Shade Maker" title="Make a vase or lamp shade" note={previewNote(c.live, 'Free to try. Shape it with the sliders; the printable file is built when you download.')}>
-      <VaseMaker {...c.buy} />
+    <KitPage slug="vase" editing={c.saved?.name} name="Vase & Lamp Shade Maker" title="Make a vase or lamp shade" note={previewNote(c.live, 'Free to try. Shape it with the sliders; the printable file is built when you download.')}>
+      <VaseMaker {...c.buy} saved={c.saved} />
     </KitPage>
   );
 }

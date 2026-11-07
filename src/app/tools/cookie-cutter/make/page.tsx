@@ -12,11 +12,11 @@ export const metadata: Metadata = pageMeta({
   keywords: ['rangoli stencil maker', '3d printed rangoli', 'diwali rangoli stencil', 'rangoli stencil stl', 'mandala stencil', 'kolam stencil', 'cookie cutter stl generator', 'cookie stamp stl', 'cookie cutter from image', 'stencil from image'],
 });
 
-export default async function MakeCookie() {
-  const c = await makerContext('cookie-cutter');
+export default async function MakeCookie({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const c = await makerContext('cookie-cutter', (await searchParams).design);
   return (
-    <KitPage slug="cookie-cutter" name="Rangoli Stencil & Cookie Cutter Maker" title="Make a rangoli stencil or cookie cutter" note={previewNote(c.live, 'Free to try. We keep a copy of your picture for 10 days to improve the tool, unless you untick the box under the upload; the printable files are built when you download.')}>
-      <CookieMaker {...c.buy} />
+    <KitPage slug="cookie-cutter" editing={c.saved?.name} name="Rangoli Stencil & Cookie Cutter Maker" title="Make a rangoli stencil or cookie cutter" note={previewNote(c.live, 'Free to try. We keep a copy of your picture for 10 days to improve the tool, unless you untick the box under the upload; the printable files are built when you download.')}>
+      <CookieMaker {...c.buy} saved={c.saved} />
     </KitPage>
   );
 }

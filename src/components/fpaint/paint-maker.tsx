@@ -8,6 +8,7 @@ import { RATIOS, buildPainting, gridFor, layerCount, layerTop, simulate, spread,
 import type { Filament, PaintParams } from '@/lib/fpaint/design';
 import { adjust, grayGrid, type Framing } from '@/lib/mesh/image-grid';
 import { bytesToB64 } from '@/lib/mesh/b64.js';
+import { grayUrl, num, restoreFrom, savedPicture, str, useRestoredPicture, type SavedDesign } from '@/lib/saved-design';
 import './paint.css';
 
 type Pic = CanvasImageSource & { width: number; height: number };
@@ -37,19 +38,37 @@ const PALETTES: Record<string, Omit<Filament, 'start'>[]> = {
   Sepia: [{ name: 'Dark brown', hex: '#3b2414', td: 0.7 }, { name: 'Brown', hex: '#8b5a2b', td: 1.0 }, { name: 'Sand', hex: '#d8b98a', td: 1.3 }, { name: 'Ivory', hex: '#f3ead6', td: 1.6 }],
 };
 
-export function PaintMaker(buy: KitBuy) {
+type Adj = { brightness: number; contrast: number; gamma: number };
+type Settings = { name: string; p: PaintParams; colours: Filament[]; fr: Framing; adj: Adj; picture: string | null };
+
+/** Older designs: the settings and filaments, and the saved brightness grid as the picture (already framed and adjusted). */
+function fromParams(q: Record<string, unknown>): Partial<Settings> {
+  const w = num(q.w, 0), h = num(q.h, 0);
+  return { name: str(q.name, 'Filament painting'), p: q.p as PaintParams, colours: Array.isArray(q.colours) ? q.colours as Filament[] : undefined,
+    fr: { zoom: 1, x: 0, y: 0 }, adj: { brightness: 0, contrast: 0, gamma: 1 }, picture: typeof q.gray === 'string' && w && h ? grayUrl(q.gray, w, h) : null };
+}
+
+function thumbOf(im: Pic) {
+  const c = document.createElement('canvas'); c.width = 240; c.height = Math.round((240 * im.height) / im.width); c.getContext('2d')!.drawImage(im, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.8);
+}
+
+export function PaintMaker({ saved, ...buy }: KitBuy & { saved?: SavedDesign | null }) {
+  const [init] = useState(() => restoreFrom<Settings>(saved, fromParams));
+  const P0: PaintParams = { width: 150, ratio: '4:3', detail: 'standard', firstLayer: 0.2, layer: 0.08, minH: 0.6, maxH: 2.4, curve: 1, frame: 0, ...(init?.p ?? {}) };
   const [img, setImg] = useState<Pic | null>(null), [thumb, setThumb] = useState<string | null>(null);
-  const [name, setName] = useState('Filament painting');
-  const [p, setP] = useState<PaintParams>({ width: 150, ratio: '4:3', detail: 'standard', firstLayer: 0.2, layer: 0.08, minH: 0.6, maxH: 2.4, curve: 1, frame: 0 });
-  const [colours, setColours] = useState<Filament[]>(() => spread({ width: 150, ratio: '4:3', detail: 'standard', firstLayer: 0.2, layer: 0.08, minH: 0.6, maxH: 2.4, curve: 1, frame: 0 }, PALETTES.Sunset.map((c) => ({ ...c, start: 1 }))));
-  const [fr, setFr] = useState<Framing>({ zoom: 1, x: 0, y: 0 });
-  const [adj, setAdj] = useState({ brightness: 0, contrast: 0.1, gamma: 1 });
+  const [name, setName] = useState(init?.name ?? 'Filament painting');
+  const [p, setP] = useState<PaintParams>(P0);
+  const [colours, setColours] = useState<Filament[]>(() => init?.colours?.length ? init.colours : spread(P0, PALETTES.Sunset.map((c) => ({ ...c, start: 1 }))));
+  const [fr, setFr] = useState<Framing>(init?.fr ?? { zoom: 1, x: 0, y: 0 });
+  const [adj, setAdj] = useState<Adj>(init?.adj ?? { brightness: 0, contrast: 0.1, gamma: 1 });
+  const userPic = useRef(false);
+  useRestoredPicture(init?.picture, (im) => { userPic.current = true; setImg(im); setThumb(thumbOf(im)); });
   const [view, setView] = useState<'paint' | '3d'>('paint');
   const snap = useRef<MeshSnap | null>(null), cv = useRef<HTMLCanvasElement>(null);
   const n1 = layerCount(p);
   const setPar = <K extends keyof PaintParams>(k: K, val: PaintParams[K]) => { const n = { ...p, [k]: val }; setP(n); setColours((c) => spread(n, c)); };
 
-  useEffect(() => { const t = setTimeout(() => setImg((cur) => cur ?? demoLandscape()), 0); return () => clearTimeout(t); }, []);
+  useEffect(() => { if (init?.picture) return; const t = setTimeout(() => setImg((cur) => cur ?? demoLandscape()), 0); return () => clearTimeout(t); }, [init]);
 
   const G = useMemo(() => gridFor(p), [p]);
   const v = useMemo(() => (img ? adjust(grayGrid(img, G.w, G.h, fr), adj) : null), [img, G, fr, adj]);
@@ -73,15 +92,15 @@ export function PaintMaker(buy: KitBuy) {
   const setCol = (k: number, c: Partial<Filament>) => setColours((o) => o.map((x, i) => (i === k ? { ...x, ...c } : x)));
   const setStart = (k: number, s: number) => setColours((o) => o.map((x, i) => (i === k ? { ...x, start: Math.max(i > 1 ? o[i - 1].start + 1 : 2, Math.min(i + 1 < o.length ? o[i + 1].start - 1 : n1, s)) } : x)));
   const onImage = (im: HTMLImageElement, n: string) => {
-    setImg(im); setName(n.slice(0, 40) || 'Filament painting'); setFr({ zoom: 1, x: 0, y: 0 });
-    const c = document.createElement('canvas'); c.width = 240; c.height = Math.round((240 * im.height) / im.width); c.getContext('2d')!.drawImage(im, 0, 0, c.width, c.height); setThumb(c.toDataURL('image/jpeg', 0.8));
+    userPic.current = true; setImg(im); setName(n.slice(0, 40) || 'Filament painting'); setFr({ zoom: 1, x: 0, y: 0 }); setThumb(thumbOf(im));
   };
   const getDesign = useCallback(() => {
     if (!v) return null;
     // the painted simulation is the nicest picture of the result
     const preview = cv.current ? (() => { const c = document.createElement('canvas'), k = Math.min(1, 900 / G.w); c.width = Math.round(G.w * k); c.height = Math.round(G.h * k); c.getContext('2d')!.drawImage(cv.current!, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.85); })() : snap.current?.jpeg() ?? '';
-    return { design: { name, p, colours, w: G.w, h: G.h, gray: bytesToB64(v) }, preview };
-  }, [v, name, p, colours, G]);
+    return { design: { name, p, colours, w: G.w, h: G.h, gray: bytesToB64(v) }, preview,
+      settings: { name, p, colours, fr, adj, picture: userPic.current ? savedPicture(img) : null } satisfies Settings };
+  }, [v, name, p, colours, G, fr, adj, img]);
 
   const guide = useMemo(() => swapGuide(p, colours) as string[], [p, colours]);
 

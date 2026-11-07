@@ -12,11 +12,11 @@ export const metadata: Metadata = pageMeta({
   keywords: ['lithophane maker online', 'image to lithophane', 'lithophane lamp stl', 'lithophane maker', 'photo to lithophane', 'lithophane stl generator', 'cylinder lithophane lamp', 'moon lamp lithophane', 'heart lithophane'],
 });
 
-export default async function MakeLithophane() {
-  const c = await makerContext('lithophane');
+export default async function MakeLithophane({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const c = await makerContext('lithophane', (await searchParams).design);
   return (
-    <KitPage slug="lithophane" name="Lithophane Maker" title="Make a lithophane" note={previewNote(c.live, 'Free to try. We keep a copy of your photo for 10 days to improve the tool, unless you untick the box under the upload; the printable files are built when you download.')}>
-      <LithoMaker {...c.buy} />
+    <KitPage slug="lithophane" editing={c.saved?.name} name="Lithophane Maker" title="Make a lithophane" note={previewNote(c.live, 'Free to try. We keep a copy of your photo for 10 days to improve the tool, unless you untick the box under the upload; the printable files are built when you download.')}>
+      <LithoMaker {...c.buy} saved={c.saved} />
     </KitPage>
   );
 }

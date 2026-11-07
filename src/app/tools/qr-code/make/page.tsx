@@ -5,6 +5,7 @@ import { getCurrency, getTool } from '@/lib/catalog.server';
 import { printOffer } from '@/lib/maker-context.server';
 import { getViewer } from '@/lib/auth.server';
 import { KitPage } from '@/components/kit/kit-page';
+import { loadSavedDesign } from '@/lib/saved-design.server';
 import { QrMaker } from '@/components/qr/qr-maker';
 
 export const metadata: Metadata = pageMeta({
@@ -15,13 +16,13 @@ export const metadata: Metadata = pageMeta({
   keywords: ['qr code to stl', '3d printable qr code', 'qr code stl generator', 'wifi qr code 3d print', 'upi qr code stand', 'qr code keychain stl', 'qr code 3d print', 'upi qr code 3d print'],
 });
 
-export default async function QrPage() {
-  const [tool, viewer, currency] = await Promise.all([getTool('qr-code'), getViewer(), getCurrency()]);
+export default async function QrPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const [tool, viewer, currency, saved] = await Promise.all([getTool('qr-code'), getViewer(), getCurrency(), searchParams.then((sp) => loadSavedDesign('qr-code', sp.design))]);
   if (tool?.status !== 'live' && viewer?.role !== 'admin') redirect('/tools/qr-code');
   return (
-    <KitPage slug="qr-code" name="QR Code to STL" title="Make a printable QR code"
+    <KitPage slug="qr-code" editing={saved?.name} name="QR Code to STL" title="Make a printable QR code"
       note="Free, no account. Wi-Fi, UPI, WhatsApp, a website or a contact card, as a printable STL. Everything is made in your browser.">
-      <QrMaker print={printOffer(tool, currency, viewer?.role === 'admin')} signedIn={Boolean(viewer)} />
+      <QrMaker print={printOffer(tool, currency, viewer?.role === 'admin')} signedIn={Boolean(viewer)} saved={saved} />
     </KitPage>
   );
 }

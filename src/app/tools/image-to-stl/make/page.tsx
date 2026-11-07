@@ -6,6 +6,7 @@ import { getCurrency, getTool } from '@/lib/catalog.server';
 import { printOffer } from '@/lib/maker-context.server';
 import { getViewer } from '@/lib/auth.server';
 import { KitPage } from '@/components/kit/kit-page';
+import { loadSavedDesign } from '@/lib/saved-design.server';
 import { ImageStlMaker } from '@/components/image-stl/image-stl-maker';
 
 export const metadata: Metadata = pageMeta({
@@ -17,13 +18,13 @@ export const metadata: Metadata = pageMeta({
   keywords: ['image to stl', 'convert image to stl', 'png to stl', 'jpg to stl', 'svg to stl', 'image to stl converter online', 'logo to stl', 'picture to stl free', 'heightmap to stl', 'png to stl keychain', 'image to 3d print'],
 });
 
-export default async function ImageToStlPage() {
-  const [tool, viewer, currency] = await Promise.all([getTool('image-to-stl'), getViewer(), getCurrency()]);
+export default async function ImageToStlPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const [tool, viewer, currency, saved] = await Promise.all([getTool('image-to-stl'), getViewer(), getCurrency(), searchParams.then((sp) => loadSavedDesign('image-to-stl', sp.design))]);
   if (tool?.status !== 'live' && viewer?.role !== 'admin') redirect('/tools/image-to-stl');
   return (
-    <KitPage slug="image-to-stl" name="Image to STL Converter" title="Convert an image to STL"
+    <KitPage slug="image-to-stl" editing={saved?.name} name="Image to STL Converter" title="Convert an image to STL"
       note="Free, no account. Upload a PNG, JPG or SVG and download a printable STL. Everything is made in your browser; your picture is never uploaded.">
-      <ImageStlMaker print={printOffer(tool, currency, viewer?.role === 'admin')} signedIn={Boolean(viewer)} />
+      <ImageStlMaker print={printOffer(tool, currency, viewer?.role === 'admin')} signedIn={Boolean(viewer)} saved={saved} />
       <section className="istl-notes">
         <div>
           <h2>Which mode should I use?</h2>

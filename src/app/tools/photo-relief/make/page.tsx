@@ -12,11 +12,11 @@ export const metadata: Metadata = pageMeta({
   keywords: ['photo relief stl', 'photo to relief stl', 'embossed plaque stl', 'bas relief generator', 'photo plaque 3d print', 'image to 3d relief', 'memorial plaque stl'],
 });
 
-export default async function MakeRelief() {
-  const c = await makerContext('photo-relief');
+export default async function MakeRelief({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const c = await makerContext('photo-relief', (await searchParams).design);
   return (
-    <KitPage slug="photo-relief" name="Photo Relief Maker" title="Make a photo relief" note={previewNote(c.live, 'Free to try. We keep a copy of your photo for 10 days to improve the tool, unless you untick the box under the upload; the printable files are built when you download.')}>
-      <ReliefMaker {...c.buy} />
+    <KitPage slug="photo-relief" editing={c.saved?.name} name="Photo Relief Maker" title="Make a photo relief" note={previewNote(c.live, 'Free to try. We keep a copy of your photo for 10 days to improve the tool, unless you untick the box under the upload; the printable files are built when you download.')}>
+      <ReliefMaker {...c.buy} saved={c.saved} />
     </KitPage>
   );
 }

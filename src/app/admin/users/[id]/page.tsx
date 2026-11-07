@@ -114,7 +114,7 @@ export default async function User({ params, searchParams }: { params: Promise<{
         {designs.data?.length ? (
           <div className="adm-designs">
             {designs.data.map((d) => (
-              <figure key={d.id}>{d.preview ? <img src={d.preview} alt="" /> : <div className="ph" />}<figcaption><b>{d.name}</b><span>{toolBySlug(d.tool_slug)?.name ?? d.tool_slug} · {ago(d.created_at)}</span></figcaption></figure>
+              <figure key={d.id}>{d.preview ? <img src={d.preview} alt="" /> : <div className="ph" />}<figcaption><b>{d.name}</b><span>{toolBySlug(d.tool_slug)?.name ?? d.tool_slug} · {ago(d.created_at)}</span>{toolBySlug(d.tool_slug)?.makePath && <Link href={`${toolBySlug(d.tool_slug)!.makePath}?design=${d.id}`} target="_blank">Open in maker ↗</Link>}</figcaption></figure>
             ))}
           </div>
         ) : <Empty>No designs saved.</Empty>}

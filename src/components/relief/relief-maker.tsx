@@ -8,6 +8,7 @@ import { RATIOS, buildRelief, gridFor } from '@/lib/relief/build.js';
 import type { Plaque, ReliefParams } from '@/lib/relief/design';
 import { adjust, grayGrid, loadImage, type Framing } from '@/lib/mesh/image-grid';
 import { bytesToB64 } from '@/lib/mesh/b64.js';
+import { grayUrl, num, restoreFrom, savedPicture, str, useRestoredPicture, type SavedDesign } from '@/lib/saved-design';
 import { transform } from '@/lib/mesh/mesh.js';
 
 type Pic = CanvasImageSource & { width: number; height: number };
@@ -32,18 +33,35 @@ function coarse(v: Uint8Array, G: { w: number; h: number; pitch: number }) {
   return { v: out, G: { ...G, w, h, pitch: G.pitch * k } };
 }
 
-export function ReliefMaker(buy: KitBuy) {
+type Adj = { brightness: number; contrast: number; gamma: number };
+type Settings = { name: string; p: ReliefParams; fr: Framing; adj: Adj; soft: number; finish: string; picture: string | null };
+
+/** Older designs: the settings, and the saved height grid as the picture (already framed, adjusted and smoothed). */
+function fromParams(q: Record<string, unknown>): Partial<Settings> {
+  const w = num(q.w, 0), h = num(q.h, 0);
+  return { name: str(q.name, 'Photo relief'), p: q.p as ReliefParams, fr: { zoom: 1, x: 0, y: 0 }, adj: { brightness: 0, contrast: 0, gamma: 1 }, soft: 0,
+    picture: typeof q.gray === 'string' && w && h ? grayUrl(q.gray, w, h) : null };
+}
+
+function thumbOf(im: Pic) {
+  const c = document.createElement('canvas'); c.width = 240; c.height = Math.round((240 * im.height) / im.width); c.getContext('2d')!.drawImage(im, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.8);
+}
+
+export function ReliefMaker({ saved, ...buy }: KitBuy & { saved?: SavedDesign | null }) {
+  const [init] = useState(() => restoreFrom<Settings>(saved, fromParams));
   const [img, setImg] = useState<Pic | null>(null), [thumb, setThumb] = useState<string | null>(null);
-  const [name, setName] = useState('Photo relief');
-  const [p, setP] = useState<ReliefParams>({ shape: 'rounded', width: 140, ratio: '4:3', height: 105, corner: 10, base: 2, relief: 3, frame: 5, frameUp: 1, raise: 'dark', detail: 'standard', hole: 0 });
-  const [fr, setFr] = useState<Framing>({ zoom: 1, x: 0, y: 0 });
-  const [adj, setAdj] = useState({ brightness: 0, contrast: 0.15, gamma: 1 });
-  const [soft, setSoft] = useState(0.4);
-  const [finish, setFinish] = useState('#d8d2c4');
+  const [name, setName] = useState(init?.name ?? 'Photo relief');
+  const [p, setP] = useState<ReliefParams>(() => ({ shape: 'rounded', width: 140, ratio: '4:3', height: 105, corner: 10, base: 2, relief: 3, frame: 5, frameUp: 1, raise: 'dark', detail: 'standard', hole: 0, ...(init?.p ?? {}) }));
+  const [fr, setFr] = useState<Framing>(init?.fr ?? { zoom: 1, x: 0, y: 0 });
+  const [adj, setAdj] = useState<Adj>(init?.adj ?? { brightness: 0, contrast: 0.15, gamma: 1 });
+  const [soft, setSoft] = useState(init?.soft ?? 0.4);
+  const [finish, setFinish] = useState(init?.finish ?? '#d8d2c4');
+  const userPic = useRef(false);
+  useRestoredPicture(init?.picture, (im) => { userPic.current = true; setImg(im); setThumb(thumbOf(im)); });
   const snap = useRef<MeshSnap | null>(null);
   const set = <K extends keyof ReliefParams>(k: K, v: ReliefParams[K]) => setP((o) => ({ ...o, [k]: v }));
 
-  useEffect(() => { let ok = true; loadImage(DEMO).then((im) => { if (ok) setImg((cur) => cur ?? im); }).catch(() => {}); return () => { ok = false; }; }, []);
+  useEffect(() => { if (init?.picture) return; let ok = true; loadImage(DEMO).then((im) => { if (ok) setImg((cur) => cur ?? im); }).catch(() => {}); return () => { ok = false; }; }, [init]);
 
   const free = p.shape !== 'circle' && p.shape !== 'heart';
   const plaqueH = p.ratio === 'custom' ? p.height : Math.round(p.width / (RATIOS[p.ratio as keyof typeof RATIOS] ?? 4 / 3));
@@ -57,10 +75,10 @@ export function ReliefMaker(buy: KitBuy) {
   const parts = useMemo(() => (upright ? [{ tris: upright, color: finish }] : []), [upright, finish]);
 
   const onImage = (im: HTMLImageElement, n: string) => {
-    setImg(im); setName(n.slice(0, 40) || 'Photo relief'); setFr({ zoom: 1, x: 0, y: 0 });
-    const c = document.createElement('canvas'); c.width = 240; c.height = Math.round((240 * im.height) / im.width); c.getContext('2d')!.drawImage(im, 0, 0, c.width, c.height); setThumb(c.toDataURL('image/jpeg', 0.8));
+    userPic.current = true; setImg(im); setName(n.slice(0, 40) || 'Photo relief'); setFr({ zoom: 1, x: 0, y: 0 }); setThumb(thumbOf(im));
   };
-  const getDesign = useCallback(() => (v ? { design: { name, p, w: G.w, h: G.h, gray: bytesToB64(v) }, preview: snap.current?.jpeg() ?? '' } : null), [v, name, p, G]);
+  const getDesign = useCallback(() => (v ? { design: { name, p, w: G.w, h: G.h, gray: bytesToB64(v) }, preview: snap.current?.jpeg() ?? '',
+    settings: { name, p, fr, adj, soft, finish, picture: userPic.current ? savedPicture(img) : null } satisfies Settings } : null), [v, name, p, G, fr, adj, soft, finish, img]);
 
   return (
     <Workbench tool="photo-relief" next="/tools/photo-relief/make" ready={Boolean(v)} getDesign={getDesign} buy={buy}
