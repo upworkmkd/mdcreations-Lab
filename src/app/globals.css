@@ -7492,3 +7492,14 @@ a.pill {
 .edit-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 18px; margin: 0 0 18px; }
 .edit-banner > span { flex: 1 1 420px; }
 .file-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Two-Name Illusion: what each side shows */
+.ill-views { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; }
+.ill-views figure { display: flex; align-items: center; gap: 10px; margin: 0; }
+.ill-views img { height: 34px; width: auto; image-rendering: auto; background: #f4f1e8; border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }
+.ill-views figcaption { font-size: 13px; color: var(--ink-2); }
+
+/* 360° Shadow Lantern: the picture on the walls, unrolled */
+.lan-walls { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 24px; background: #0f0d0a; }
+.lan-walls img { width: 100%; height: auto; max-height: 70%; object-fit: contain; border-radius: 6px; }
+.lan-walls p { color: #cbbf9f; font-size: 13px; text-align: center; }

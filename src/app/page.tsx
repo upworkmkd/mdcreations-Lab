@@ -17,7 +17,7 @@ export const metadata = pageMeta({
   absoluteTitle: true,
   description: 'Design 3D prints in your browser: custom shadow lamps, Diwali rangoli stencils, photo lithophanes, name keychains and more. Download print-ready STL files.',
   path: '/',
-  keywords: ['3D printing tools', 'online STL generator', 'STL maker online', 'image to STL converter', 'PNG to STL', 'SVG to STL', 'photo to STL', 'image to STL', 'shadow lamp maker', 'custom shadow lamp STL', 'lithophane maker', 'name keychain STL', '3D printed rangoli stencil', 'cookie cutter STL generator', 'photo relief STL', 'filament painting', 'HueForge alternative', 'vase mode STL generator', 'QR code to STL', '3D print cost calculator', 'STL files India', 'MD Creations Labs'],
+  keywords: ['3D printing tools', 'online STL generator', 'STL maker online', 'image to STL converter', 'PNG to STL', 'SVG to STL', 'photo to STL', 'image to STL', 'shadow lamp maker', 'custom shadow lamp STL', 'lithophane maker', 'name keychain STL', '3D printed rangoli stencil', 'cookie cutter STL generator', 'photo relief STL', 'filament painting', 'HueForge alternative', 'vase mode STL generator', 'QR code to STL', 'two name illusion STL', '360 shadow lantern STL', 'flip picture lenticular STL', '3D print cost calculator', 'STL files India', 'MD Creations Labs'],
 });
 
 export default async function Home() {

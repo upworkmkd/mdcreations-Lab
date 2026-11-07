@@ -15,6 +15,9 @@ import { kit as vase } from '@/lib/kits/vase.server';
 import { kit as browserFile } from '@/lib/kits/browser-file.server';
 import { kit as designStudio } from '@/lib/kits/design-studio.server';
 import { kit as gridfinity } from '@/lib/kits/gridfinity.server';
+import { kit as nameIllusion } from '@/lib/kits/name-illusion.server';
+import { kit as shadowLantern } from '@/lib/kits/shadow-lantern.server';
+import { kit as flipPicture } from '@/lib/kits/flip-picture.server';
 export type { License, Built } from '@/lib/kits/types';
 
 /**
@@ -27,6 +30,9 @@ export const KITS: Record<string, Kit> = {
   // free tools built in the browser: only for printed orders (the browser sends the finished model)
   'qr-code': browserFile, 'image-to-stl': browserFile,
   'design-studio': designStudio,
+  'name-illusion': nameIllusion,
+  'shadow-lantern': shadowLantern,
+  'flip-picture': flipPicture,
   ...Object.fromEntries(Object.entries({ lithophane, 'name-sign': nameSign, 'cookie-cutter': cookieCutter, 'photo-relief': photoRelief, 'filament-painting': filamentPainting, 'topo-map': topoMap, vase, gridfinity }).filter((e): e is [string, Kit] => e[1] != null)),
 };
 

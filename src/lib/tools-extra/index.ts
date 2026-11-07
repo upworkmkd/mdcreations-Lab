@@ -12,7 +12,10 @@ import * as printCost from './print-cost';
 import * as qrCode from './qr-code';
 import * as imageToStl from './image-to-stl';
 import * as designStudio from './design-studio';
+import * as nameIllusion from './name-illusion';
+import * as shadowLantern from './shadow-lantern';
+import * as flipPicture from './flip-picture';
 
-const SLOTS: { tool: Tool | null; seo: ToolSeo | null }[] = [lithophane, nameSign, cookieCutter, photoRelief, filamentPainting, topoMap, vase, gridfinity, printCost, qrCode, imageToStl, designStudio];
+const SLOTS: { tool: Tool | null; seo: ToolSeo | null }[] = [lithophane, nameSign, cookieCutter, photoRelief, filamentPainting, topoMap, vase, gridfinity, printCost, qrCode, imageToStl, designStudio, nameIllusion, shadowLantern, flipPicture];
 export const EXTRA_TOOLS: Tool[] = SLOTS.flatMap((s) => (s.tool ? [s.tool] : []));
 export const EXTRA_SEO: Record<string, ToolSeo> = Object.fromEntries(SLOTS.flatMap((s) => (s.tool && s.seo ? [[s.tool.slug, s.seo]] : [])));
